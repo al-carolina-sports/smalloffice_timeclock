@@ -156,6 +156,17 @@
 	margin-bottom: 8px;
 }
 
+.css-tc-admin .css-tc-correction__total {
+	font-weight: 700;
+}
+
+.css-tc-admin .css-tc-correction__hours {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 14px;
+	align-items: baseline;
+}
+
 .css-tc-admin .css-tc-review-form {
 	display: flex;
 	flex-wrap: wrap;

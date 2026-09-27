@@ -429,9 +429,29 @@
 	background: #fff;
 }
 
-.css-tc-correct__day legend {
-	padding: 0 6px;
+.css-tc-correct__legend {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 4px 16px;
+	width: calc(100% - 8px);
+	padding: 0 4px;
 	font-weight: 700;
+}
+
+.css-tc-correct__total,
+.css-tc-correct__shift {
+	font-weight: 700;
+}
+
+.css-tc-correct__pair {
+	grid-column: 1 / -1;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px 16px;
 }
 
 .css-tc-correct__line {
@@ -470,15 +490,30 @@
 	font: inherit;
 }
 
-.css-tc-correct__check,
 .css-tc-correct__reason {
 	grid-column: 1 / -1;
+}
+
+@media (max-width: 480px) {
+	.css-tc-correct__legend,
+	.css-tc-correct__pair {
+		flex-direction: column;
+		align-items: flex-start;
+	}
 }
 
 .css-tc-correct__check {
 	display: flex;
 	align-items: center;
 	gap: 8px;
+}
+
+.css-tc-correct__check span {
+	display: inline;
+	margin: 0;
+	font-size: 14px;
+	font-weight: 400;
+	color: var(--tc-ink);
 }
 
 .css-tc-correct__note {

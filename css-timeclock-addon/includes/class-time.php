@@ -470,6 +470,70 @@ class Css_Tc_Time {
 	}
 
 	/**
+	 * Clock time (H:MM or H:MM:SS) to seconds from midnight.
+	 *
+	 * @param string $hms Clock time.
+	 * @return int|null Null when the value is empty or not a clock time.
+	 */
+	public function hms_to_seconds( $hms ) {
+		$hms = trim( (string) $hms );
+		if ( ! preg_match( '/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/', $hms, $match ) ) {
+			return null;
+		}
+		$hours   = (int) $match[1];
+		$minutes = (int) $match[2];
+		$seconds = isset( $match[3] ) ? (int) $match[3] : 0;
+		if ( $hours > 23 || $minutes > 59 || $seconds > 59 ) {
+			return null;
+		}
+		return ( $hours * HOUR_IN_SECONDS ) + ( $minutes * MINUTE_IN_SECONDS ) + $seconds;
+	}
+
+	/**
+	 * Seconds between two clock times. The next-day flag adds 24 hours.
+	 *
+	 * @param string $in_hms   Clock-in.
+	 * @param string $out_hms  Clock-out.
+	 * @param bool   $next_day Clock-out is the following day.
+	 * @return int Negative when a clock time is missing or the span is backwards.
+	 */
+	public function hms_span_seconds( $in_hms, $out_hms, $next_day = false ) {
+		$in  = $this->hms_to_seconds( $in_hms );
+		$out = $this->hms_to_seconds( $out_hms );
+		if ( null === $in || null === $out ) {
+			return -1;
+		}
+		$diff = $out - $in;
+		if ( $next_day ) {
+			$diff += DAY_IN_SECONDS;
+		}
+		if ( $diff < 0 ) {
+			return -1;
+		}
+		return $diff;
+	}
+
+	/**
+	 * Zero-padded hours and minutes (08:30, 00:00). Missing time is --:--.
+	 *
+	 * Rounding matches format_duration(): nearest minute. A span under 30
+	 * seconds rounds to 00:00.
+	 *
+	 * @param int $seconds Duration, or negative when the shift is incomplete.
+	 * @return string
+	 */
+	public function format_hours_hm( $seconds ) {
+		$seconds = (int) $seconds;
+		if ( $seconds < 0 ) {
+			return '--:--';
+		}
+		$rounded = (int) round( $seconds / 60 );
+		$hours   = (int) floor( $rounded / 60 );
+		$minutes = $rounded % 60;
+		return str_pad( (string) $hours, 2, '0', STR_PAD_LEFT ) . ':' . str_pad( (string) $minutes, 2, '0', STR_PAD_LEFT );
+	}
+
+	/**
 	 * Whether an open shift's clock-in is older than the configured maximum.
 	 *
 	 * @param string $clock_in Stored clock-in.

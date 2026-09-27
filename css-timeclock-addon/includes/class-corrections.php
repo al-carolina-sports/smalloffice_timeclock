@@ -24,6 +24,13 @@ class Css_Tc_Corrections {
 	const STATUS_REJECTED = 'rejected';
 
 	/**
+	 * Shifts for a user and pay period, reused while building the review list.
+	 *
+	 * @var array<string,array<int,array<string,mixed>>>
+	 */
+	private $day_shift_cache = array();
+
+	/**
 	 * @return void
 	 */
 	public function register() {
@@ -692,14 +699,87 @@ class Css_Tc_Corrections {
 			'submitted_at'    => $punches->format_time( $post->post_date ),
 		);
 
+		$time = css_tc_addon()->time;
+		$proposed_seconds = ( '' !== $proposed_in && '' !== $proposed_out ) ? $time->elapsed_seconds( $proposed_in, $proposed_out ) : -1;
+		$original_seconds = ( '' !== $original_in && '' !== $original_out ) ? $time->elapsed_seconds( $original_in, $original_out ) : -1;
+		$row['proposed_hours'] = $time->format_hours_hm( $proposed_seconds );
+		$row['original_hours'] = $time->format_hours_hm( $original_seconds );
+
 		if ( $for_admin ) {
-			$row['employee']        = css_tc_addon()->employees->display_name( (int) $post->post_author );
-			$row['employee_id']     = (int) $post->post_author;
-			$row['reviewer']        = $reviewer_id ? css_tc_addon()->employees->display_name( $reviewer_id ) : '';
+			$row['employee']         = css_tc_addon()->employees->display_name( (int) $post->post_author );
+			$row['employee_id']      = (int) $post->post_author;
+			$row['reviewer']         = $reviewer_id ? css_tc_addon()->employees->display_name( $reviewer_id ) : '';
 			$row['applied_shift_id'] = (int) get_post_meta( $post->ID, 'css_tc_applied_shift_id', true );
+			$row['day_total_hours']  = $time->format_hours_hm(
+				$this->review_day_seconds( (int) $post->post_author, $row['work_date'], $row['shift_id'], $proposed_seconds )
+			);
+			$row['day_original_hours'] = $time->format_hours_hm(
+				$this->review_day_seconds( (int) $post->post_author, $row['work_date'], $row['shift_id'], null )
+			);
 		}
 
 		return $row;
+	}
+
+	/**
+	 * Counted seconds for one calendar day. A proposal replaces that shift.
+	 *
+	 * @param int      $user_id          Employee.
+	 * @param string   $work_date        Y-m-d.
+	 * @param int      $shift_id         Shift this correction edits, or 0 for a new punch.
+	 * @param int|null $override_seconds Proposed seconds, or null to use stored times. Negative skips the shift.
+	 * @return int
+	 */
+	private function review_day_seconds( $user_id, $work_date, $shift_id, $override_seconds ) {
+		$total   = 0;
+		$matched = false;
+		foreach ( $this->shifts_on_date( $user_id, $work_date ) as $shift ) {
+			$complete = empty( $shift['is_open'] ) && empty( $shift['is_missing_in'] ) && '' !== $shift['clock_in_raw'] && '' !== $shift['clock_out_raw'];
+			if ( (int) $shift['id'] === (int) $shift_id && $shift_id > 0 ) {
+				$matched = true;
+				if ( null === $override_seconds ) {
+					if ( $complete && (int) $shift['seconds'] >= 0 ) {
+						$total += (int) $shift['seconds'];
+					}
+				} elseif ( $override_seconds >= 0 ) {
+					$total += (int) $override_seconds;
+				}
+				continue;
+			}
+			if ( $complete && (int) $shift['seconds'] >= 0 ) {
+				$total += (int) $shift['seconds'];
+			}
+		}
+		if ( ! $matched && null !== $override_seconds && $override_seconds >= 0 ) {
+			$total += (int) $override_seconds;
+		}
+		return $total;
+	}
+
+	/**
+	 * @param int    $user_id   Employee.
+	 * @param string $work_date Y-m-d.
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function shifts_on_date( $user_id, $work_date ) {
+		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', (string) $work_date ) ) {
+			return array();
+		}
+		$period = css_tc_addon()->pay_periods->period_for_date( $work_date );
+		if ( ! $period ) {
+			return array();
+		}
+		$key = (int) $user_id . '|' . $period['start'];
+		if ( ! isset( $this->day_shift_cache[ $key ] ) ) {
+			$this->day_shift_cache[ $key ] = css_tc_addon()->timecard->shifts_for_period( (int) $user_id, $period );
+		}
+		$day = array();
+		foreach ( $this->day_shift_cache[ $key ] as $shift ) {
+			if ( isset( $shift['work_date'] ) && $shift['work_date'] === $work_date ) {
+				$day[] = $shift;
+			}
+		}
+		return $day;
 	}
 
 	/**

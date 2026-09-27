@@ -41,8 +41,25 @@ $form_error = isset( $form_error ) ? (string) $form_error : '';
 			<?php wp_nonce_field( Css_Tc_Corrections::EMPLOYEE_NONCE ); ?>
 			<input type="hidden" name="action" value="css_tc_submit_period" />
 			<?php foreach ( $form['days'] as $day ) : ?>
+				<?php
+				$css_tc_day_seconds = 0;
+				foreach ( $day['lines'] as $css_tc_sum_line ) {
+					$css_tc_span = css_tc_addon()->time->hms_span_seconds(
+						isset( $css_tc_sum_line['in_hms'] ) ? $css_tc_sum_line['in_hms'] : '',
+						isset( $css_tc_sum_line['out_hms'] ) ? $css_tc_sum_line['out_hms'] : '',
+						! empty( $css_tc_sum_line['out_next_day'] )
+					);
+					if ( $css_tc_span >= 0 ) {
+						$css_tc_day_seconds += $css_tc_span;
+					}
+				}
+				$css_tc_day_hours = css_tc_addon()->time->format_hours_hm( $css_tc_day_seconds );
+				?>
 				<fieldset class="css-tc-correct__day" id="day-<?php echo esc_attr( $day['date'] ); ?>" data-day>
-					<legend><?php echo esc_html( $day['weekday'] . ', ' . $day['date_label'] ); ?></legend>
+					<legend class="css-tc-correct__legend">
+						<span><?php echo esc_html( $day['weekday'] . ', ' . $day['date_label'] ); ?></span>
+						<strong class="css-tc-correct__total"><?php echo esc_html__( 'Total hours:', 'css-timeclock-addon' ); ?> <span data-day-total><?php echo esc_html( $css_tc_day_hours ); ?></span></strong>
+					</legend>
 					<div data-lines>
 						<?php foreach ( $day['lines'] as $index => $line ) : ?>
 							<?php
