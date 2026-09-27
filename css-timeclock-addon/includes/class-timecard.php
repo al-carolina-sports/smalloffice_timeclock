@@ -409,6 +409,7 @@ class Css_Tc_Timecard {
 				'date_label'  => $time->format_day_label( $cursor ),
 				'lines'       => $lines,
 				'has_pending' => $has_pending,
+				'is_future'   => ( $cursor > $time->site_today() ),
 			);
 			$cursor = $time->shift_date( $cursor, 1 );
 			++$guard;

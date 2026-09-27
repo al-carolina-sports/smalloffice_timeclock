@@ -60,11 +60,14 @@ $form_error = isset( $form_error ) ? (string) $form_error : '';
 					$css_tc_cancel_dates[] = $day['date'];
 				}
 				?>
-				<fieldset class="css-tc-correct__day" id="day-<?php echo esc_attr( $day['date'] ); ?>" data-day>
+				<fieldset class="css-tc-correct__day<?php echo ! empty( $day['is_future'] ) ? ' is-future' : ''; ?>" id="day-<?php echo esc_attr( $day['date'] ); ?>" data-day>
 					<legend class="css-tc-correct__legend">
 						<span><?php echo esc_html( $day['weekday'] . ', ' . $day['date_label'] ); ?></span>
 						<strong class="css-tc-correct__total"><?php echo esc_html__( 'Total hours:', 'css-timeclock-addon' ); ?> <span data-day-total><?php echo esc_html( $css_tc_day_hours ); ?></span></strong>
 					</legend>
+					<?php if ( ! empty( $day['is_future'] ) ) : ?>
+						<p class="css-tc-correct__note"><?php echo esc_html__( 'This day hasn\'t happened yet.', 'css-timeclock-addon' ); ?></p>
+					<?php endif; ?>
 					<div data-lines>
 						<?php foreach ( $day['lines'] as $index => $line ) : ?>
 							<?php
@@ -93,7 +96,9 @@ $form_error = isset( $form_error ) ? (string) $form_error : '';
 						include CSS_TC_ADDON_DIR . 'public/views/correction-line.php';
 						?>
 					</template>
-					<button type="button" class="css-tc-correct__add" data-add-punch><?php echo esc_html__( 'Add punch', 'css-timeclock-addon' ); ?></button>
+					<?php if ( empty( $day['is_future'] ) ) : ?>
+						<button type="button" class="css-tc-correct__add" data-add-punch><?php echo esc_html__( 'Add punch', 'css-timeclock-addon' ); ?></button>
+					<?php endif; ?>
 					<?php if ( $css_tc_day_pending ) : ?>
 						<p class="css-tc-correct__cancel css-tc-no-print">
 							<button type="submit" form="css-tc-cancel-<?php echo esc_attr( $day['date'] ); ?>"><?php echo esc_html__( 'Cancel request', 'css-timeclock-addon' ); ?></button>

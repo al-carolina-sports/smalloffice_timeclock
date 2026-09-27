@@ -744,6 +744,12 @@ class Css_Tc_Corrections {
 		if ( is_wp_error( $open ) ) {
 			return $open;
 		}
+		if ( $date > css_tc_addon()->time->site_today() ) {
+			return new WP_Error(
+				'css_tc_future',
+				__( 'You can correct a day through today. Later days open when they arrive.', 'css-timeclock-addon' )
+			);
+		}
 
 		$reason = $this->sanitize_note( isset( $input['reason'] ) ? $input['reason'] : '' );
 
@@ -808,6 +814,9 @@ class Css_Tc_Corrections {
 
 		if ( $shift_id < 1 && '' === $proposed_in ) {
 			return new WP_Error( 'css_tc_need_in', __( 'A missing punch still needs a proposed clock-in time so a supervisor can apply it.', 'css-timeclock-addon' ) );
+		}
+		if ( $shift_id < 1 && '' !== $proposed_in ) {
+			$missing = true;
 		}
 
 		return array(

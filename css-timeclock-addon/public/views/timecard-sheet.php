@@ -234,12 +234,15 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 					if ( 'admin' === $mode && $edit_day === $day['date'] ) {
 						$day_classes .= ' is-editing';
 					}
-					$has_punches  = ! empty( $day['shifts'] );
+					$in_period    = ! empty( $day['in_period'] );
+					$is_future    = ( $day['date'] > css_tc_addon()->time->site_today() );
 					$correct_href = '';
-					$edit_label   = __( 'Correct this day', 'css-timeclock-addon' );
-					if ( $has_punches && 'employee' === $mode && $is_open ) {
+					$edit_label   = empty( $day['shifts'] )
+						? __( 'Add a shift', 'css-timeclock-addon' )
+						: __( 'Correct this day', 'css-timeclock-addon' );
+					if ( $in_period && 'employee' === $mode && $is_open && ! $is_future ) {
 						$correct_href = Css_Tc_Shortcodes::correct_url( $day['date'] );
-					} elseif ( $has_punches && 'admin' === $mode ) {
+					} elseif ( $in_period && 'admin' === $mode ) {
 						$correct_href = Css_Tc_Admin::timecards_url(
 							array(
 								'employee' => $user_id,
@@ -247,7 +250,9 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 								'edit_day' => $day['date'],
 							)
 						);
-						$edit_label = __( 'Edit this day', 'css-timeclock-addon' );
+						$edit_label = empty( $day['shifts'] )
+							? __( 'Add a shift', 'css-timeclock-addon' )
+							: __( 'Edit this day', 'css-timeclock-addon' );
 					}
 					?>
 					<div class="<?php echo esc_attr( $day_classes ); ?>" id="day-<?php echo esc_attr( $day['date'] ); ?>">

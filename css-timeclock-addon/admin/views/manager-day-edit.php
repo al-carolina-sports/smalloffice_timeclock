@@ -31,12 +31,25 @@ $time     = css_tc_addon()->time;
 	</p>
 	<?php if ( ! $edit_row ) : ?>
 		<p class="css-tc-sheet__error"><?php echo esc_html__( 'That day is not in this pay period.', 'css-timeclock-addon' ); ?></p>
-	<?php elseif ( empty( $edit_row['shifts'] ) ) : ?>
-		<p class="css-tc-sheet__error"><?php echo esc_html__( 'That day has no punches to edit.', 'css-timeclock-addon' ); ?></p>
 	<?php else : ?>
 		<?php
+		$css_tc_edit_lines = $edit_row['shifts'];
+		if ( empty( $css_tc_edit_lines ) ) {
+			$css_tc_edit_lines = array(
+				array(
+					'id'            => 0,
+					'in_hms'        => '',
+					'out_hms'       => '',
+					'out_next_day'  => false,
+					'is_open'       => false,
+					'is_stale'      => false,
+					'is_missing_in' => false,
+					'is_long'       => false,
+				),
+			);
+		}
 		$css_tc_day_seconds = 0;
-		foreach ( $edit_row['shifts'] as $css_tc_sum_line ) {
+		foreach ( $css_tc_edit_lines as $css_tc_sum_line ) {
 			$css_tc_span = $time->hms_span_seconds(
 				isset( $css_tc_sum_line['in_hms'] ) ? $css_tc_sum_line['in_hms'] : '',
 				isset( $css_tc_sum_line['out_hms'] ) ? $css_tc_sum_line['out_hms'] : '',
@@ -47,6 +60,11 @@ $time     = css_tc_addon()->time;
 			}
 		}
 		?>
+		<?php if ( empty( $edit_row['shifts'] ) ) : ?>
+			<p class="css-tc-banner css-tc-banner--long" role="status">
+				<?php echo esc_html__( 'This day has no punches. Add a clock-in and clock-out, then save. The shift is recorded as Edited by manager.', 'css-timeclock-addon' ); ?>
+			</p>
+		<?php endif; ?>
 		<?php if ( empty( $is_open ) ) : ?>
 			<p class="css-tc-banner css-tc-banner--closed" role="status">
 				<?php echo esc_html__( 'This pay period is closed. Saving still updates these punches and records the edit.', 'css-timeclock-addon' ); ?>
@@ -67,10 +85,16 @@ $time     = css_tc_addon()->time;
 				<legend class="css-tc-correct__legend">
 					<span>
 						<?php
+						if ( empty( $edit_row['shifts'] ) ) {
+							/* translators: 1: weekday, 2: date label */
+							$css_tc_edit_format = __( 'Add a shift for %1$s, %2$s', 'css-timeclock-addon' );
+						} else {
+							/* translators: 1: weekday, 2: date label */
+							$css_tc_edit_format = __( 'Edit %1$s, %2$s', 'css-timeclock-addon' );
+						}
 						echo esc_html(
 							sprintf(
-								/* translators: 1: weekday, 2: date label */
-								__( 'Edit %1$s, %2$s', 'css-timeclock-addon' ),
+								$css_tc_edit_format,
 								isset( $edit_row['weekday'] ) ? $edit_row['weekday'] : '',
 								isset( $edit_row['date_label'] ) ? $edit_row['date_label'] : $edit_day
 							)
@@ -83,7 +107,7 @@ $time     = css_tc_addon()->time;
 					</strong>
 				</legend>
 				<div data-lines>
-					<?php foreach ( $edit_row['shifts'] as $index => $line ) : ?>
+					<?php foreach ( $css_tc_edit_lines as $index => $line ) : ?>
 						<?php
 						$key = $edit_day . '-' . $index;
 						$css_tc_shift_seconds = $time->hms_span_seconds(
