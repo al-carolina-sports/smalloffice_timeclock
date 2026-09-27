@@ -3,7 +3,7 @@
  * Plugin Name:       SMOTC
  * Plugin URI:        https://wordpress.org/plugins/aio-time-clock-lite/
  * Description:       PIN pad and name-list kiosk add-on for SMOTC Core. Shared tablets clock employees in and out without a WordPress login, show a live who-is-working board, and let staff suggest punch edits for supervisor approval.
- * Version:           1.4.3
+ * Version:           1.4.4
  * Requires at least: 5.0
  * Requires PHP:      7.4
  * Author:            CSS
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CSS_TC_ADDON_VERSION', '1.4.3' );
+define( 'CSS_TC_ADDON_VERSION', '1.4.4' );
 define( 'CSS_TC_ADDON_FILE', __FILE__ );
 define( 'CSS_TC_ADDON_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CSS_TC_ADDON_URL', plugin_dir_url( __FILE__ ) );

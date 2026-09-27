@@ -34,9 +34,12 @@ if ( function_exists( 'wp_body_open' ) ) {
 	<?php if ( ! $css_tc_wide_kiosk ) : ?>
 		<header class="css-tc-wide__bar">
 			<a class="css-tc-wide__home" href="<?php echo esc_url( home_url( '/' ) ); ?>"><?php bloginfo( 'name' ); ?></a>
-			<?php if ( is_user_logged_in() ) : ?>
-				<span class="css-tc-wide__user"><?php echo esc_html( wp_get_current_user()->display_name ); ?></span>
-			<?php endif; ?>
+			<div class="css-tc-wide__tools">
+				<?php Css_Tc_Shortcodes::render_staff_nav( 'times' ); ?>
+				<?php if ( is_user_logged_in() ) : ?>
+					<span class="css-tc-wide__user"><?php echo esc_html( wp_get_current_user()->display_name ); ?></span>
+				<?php endif; ?>
+			</div>
 		</header>
 	<?php endif; ?>
 	<main class="css-tc-wide__main">
