@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.4.2
+Stable tag: 1.4.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,9 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under SMOTC.
 
 == Changelog ==
+
+= 1.4.3 =
+* My Time Clock, the corrections view, and the kiosks use a full-width page instead of the theme content column, so a desktop shows the seven-day week grid. A setting, Wide layout, turns that off and leaves the pages inside the theme. A narrow window still stacks each day. The theme stylesheet is not loaded on those pages, so a sidebar cannot cover the sheet.
 
 = 1.4.2 =
 * The timecard follows the width of its column, not the browser window. In a narrow theme column (about 500px, as on Twenty Fifteen) each day is its own row, weekday names shorten to Mon, Tue, and clock-in and clock-out both stay visible. A medium column keeps the week grid with short names and stacks the out time under the in time. A wide column keeps the full week grid.

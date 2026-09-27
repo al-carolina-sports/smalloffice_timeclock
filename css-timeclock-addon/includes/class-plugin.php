@@ -121,6 +121,7 @@ class Css_Tc_Plugin {
 			'pay_period_anchor'       => '2026-09-07',
 			'missed_clock_out_hours'  => 16,
 			'long_shift_hours'        => 16,
+			'wide_layout'             => 1,
 		);
 	}
 

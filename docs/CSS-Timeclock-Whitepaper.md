@@ -291,6 +291,7 @@ Optional commercial shortcut: AIO **Pro** (~$40/year) documents PIN/QR/locations
 | 1.4 | 2026-09-25 | Add-on 1.4.0 timecards, pay periods, closed-period enforcement, and the UTC storage contract. |
 | 1.4.1 | 2026-09-27 | Closed-period notice, long-shift flags, SMOTC Real Time Monitoring, and AIO clock times stored as UTC. |
 | 1.4.2 | 2026-09-27 | Timecard layout follows the content column. Request change replaces Flag day. Sub-minute shifts and missed clock-outs are labeled. |
+| 1.4.3 | 2026-09-27 | My Time Clock and the kiosks use a full-width page so the week grid can use a desktop screen. Wide layout setting turns it off. |
 
 ---
 
@@ -325,7 +326,9 @@ An edit icon appears on a current-period day that has an open shift, a missed cl
 
 **Flag day** (1.4.0–1.4.1) posted `css_tc_flag_day` and stored the date in user meta `css_tc_flagged_dates`. That made `needs_correction` true so the pencil appeared. The button was rendered on every day of the open period that did not already need a correction, including days with no punches, and the label was easy to misread as a status. In 1.4.2 the same action is labeled **Request change** and is shown only on days that already have punches and do not already show the pencil. **Cancel request** clears the flag. **Correct this pay period** is still the way to add a missing shift on an empty day.
 
-The day grid uses container queries on `.css-tc-sheet`, so a wide browser with a narrow theme column (Twenty Fifteen is about 630px, and columns around 500px) does not keep seven clipped cells. At 680px and under, each day is one row, the weekday is Mon/Tue, and both clock times stay on the row (wrapping to a second line only if they must). Between that and 1040px the week grid stays, with short weekday names and the clock-out stacked under the clock-in. Wider sheets keep the full names and a single in–out line. The long-shift badge is allowed to wrap.
+My Time Clock, the corrections view on that page, and the kiosk pages use `template_include` to render `public/views/wide-layout.php` instead of the theme template. The theme stylesheet is dequeued on those requests. A CSS breakout would still sit in Twenty Fifteen’s sidebar column and can be clipped by a parent with `overflow` hidden. The wide canvas is up to 1360px, so a desktop gets the seven-day grid. The SMOTC setting **Wide layout** (default on) turns the template off and leaves the pages in the theme column.
+
+The day grid still uses container queries on `.css-tc-sheet`. At 680px and under, each day is one row, the weekday is Mon/Tue, and both clock times stay on the row. Between that and 1040px the week grid stays, with short weekday names and the clock-out stacked under the clock-in. Wider sheets keep the full names and a single in–out line. The long-shift badge is allowed to wrap.
 
 A finished shift under 30 seconds displays as `<1 min` on that day. The raw seconds still add into the pay-period total, which is rounded to the nearest minute. An open shift does not display as `0:00`: inside the missed clock-out window it says **Still clocked in**, and after that **Missed clock-out**, and the pencil is available while the period is open.
 

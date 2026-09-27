@@ -279,6 +279,7 @@ class Css_Tc_Ajax {
 		$settings['pay_period_anchor'] = $anchor;
 		$settings['missed_clock_out_hours'] = min( 36, max( 1, isset( $_POST['missed_clock_out_hours'] ) ? absint( $_POST['missed_clock_out_hours'] ) : 16 ) );
 		$settings['long_shift_hours']       = min( 36, max( 1, isset( $_POST['long_shift_hours'] ) ? absint( $_POST['long_shift_hours'] ) : 16 ) );
+		$settings['wide_layout']            = empty( $_POST['wide_layout'] ) ? 0 : 1;
 
 		css_tc_addon()->update_settings( $settings );
 
