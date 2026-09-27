@@ -23,9 +23,10 @@ class Css_Tc_Timecard {
 	 */
 	public function build( $user_id, $period ) {
 		$user_id = (int) $user_id;
-		$shifts  = $this->shifts_for_period( $user_id, $period );
-		$pending = css_tc_addon()->corrections->pending_by_date( $user_id, $period['start'], $period['end'] );
-		$flags   = $this->flagged_dates( $user_id );
+		$shifts   = $this->shifts_for_period( $user_id, $period );
+		$pending  = css_tc_addon()->corrections->pending_by_date( $user_id, $period['start'], $period['end'] );
+		$approved = css_tc_addon()->corrections->dates_with_status( $user_id, $period['start'], $period['end'], 'private' );
+		$flags    = $this->flagged_dates( $user_id );
 
 		$by_date = array();
 		foreach ( $shifts as $shift ) {
@@ -60,6 +61,7 @@ class Css_Tc_Timecard {
 			while ( $cursor <= $week['end'] && $guard < 7 ) {
 				$list = isset( $by_date[ $cursor ] ) ? $by_date[ $cursor ] : array();
 				$day_seconds = 0;
+				// Stored punches only. A pending correction's proposed times are not added here.
 				foreach ( $list as $shift ) {
 					if ( $shift['seconds'] > 0 ) {
 						$day_seconds += (int) $shift['seconds'];
@@ -72,7 +74,7 @@ class Css_Tc_Timecard {
 				}
 				$week_seconds  += $day_seconds;
 				$total_seconds += $day_seconds;
-				$days[] = $this->day_cell( $cursor, $list, $day_seconds, $period, $pending, $flags );
+				$days[] = $this->day_cell( $cursor, $list, $day_seconds, $period, $pending, $flags, $approved );
 				$cursor = css_tc_addon()->time->shift_date( $cursor, 1 );
 				++$guard;
 			}
@@ -206,9 +208,10 @@ class Css_Tc_Timecard {
 	 * @param array<string,mixed>              $period   Period.
 	 * @param array<string,array<int,mixed>>   $pending  Pending corrections by date.
 	 * @param string[]                         $flags    Flagged Y-m-d dates.
+	 * @param array<string,bool>              $approved Dates with an approved correction.
 	 * @return array<string,mixed>
 	 */
-	private function day_cell( $date, $shifts, $seconds, $period, $pending, $flags ) {
+	private function day_cell( $date, $shifts, $seconds, $period, $pending, $flags, $approved ) {
 		$time       = css_tc_addon()->time;
 		$day_obj    = $time->date_immutable( $date );
 		$needs      = false;
@@ -281,6 +284,7 @@ class Css_Tc_Timecard {
 			'has_long'         => $has_long,
 			'pending'          => ! empty( $day_pending ),
 			'pending_count'    => count( $day_pending ),
+			'has_approved'     => isset( $approved[ $date ] ),
 			'flagged'          => $flagged,
 			'is_today'         => ( $date === $time->site_today() ),
 		);
@@ -444,5 +448,34 @@ class Css_Tc_Timecard {
 
 		update_user_meta( (int) $user_id, self::FLAG_META, $flags );
 		return true;
+	}
+
+	/**
+	 * Remove one date from the employee's request flags. Closed periods are allowed.
+	 *
+	 * @param int    $user_id Employee.
+	 * @param string $date    Y-m-d.
+	 * @return void
+	 */
+	public function clear_flag( $user_id, $date ) {
+		$date = sanitize_text_field( (string) $date );
+		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ) {
+			return;
+		}
+
+		$flags = $this->flagged_dates( $user_id );
+		if ( ! in_array( $date, $flags, true ) ) {
+			return;
+		}
+
+		$flags = array_values(
+			array_filter(
+				$flags,
+				static function ( $item ) use ( $date ) {
+					return $item !== $date;
+				}
+			)
+		);
+		update_user_meta( (int) $user_id, self::FLAG_META, $flags );
 	}
 }

@@ -19,6 +19,7 @@ class Css_Tc_Corrections {
 
 	const POST_TYPE     = 'css_tc_correction';
 	const EMPLOYEE_NONCE = 'css_tc_employee';
+	const MANAGER_NONCE  = 'css_tc_manager_day';
 	const STATUS_PENDING  = 'pending';
 	const STATUS_APPROVED = 'approved';
 	const STATUS_REJECTED = 'rejected';
@@ -30,8 +31,10 @@ class Css_Tc_Corrections {
 
 	/**
 	 * Schema 2 adds review-time hour snapshot meta. Older reviewed posts are left alone.
+	 * Schema 3 drops day flags that remained after a correction was already reviewed.
+	 * It does not rewrite correction posts.
 	 */
-	const SCHEMA_VERSION = 2;
+	const SCHEMA_VERSION = 3;
 
 	const SNAP_DAY_TOTAL    = 'css_tc_snap_day_total';
 	const SNAP_DAY_ORIGINAL = 'css_tc_snap_day_original';
@@ -80,6 +83,9 @@ class Css_Tc_Corrections {
 		$current = (int) get_option( self::SCHEMA_OPTION, 0 );
 		if ( $current >= self::SCHEMA_VERSION ) {
 			return;
+		}
+		if ( $current > 0 && $current < 3 ) {
+			$this->clear_stale_day_flags();
 		}
 		update_option( self::SCHEMA_OPTION, self::SCHEMA_VERSION, false );
 	}
@@ -339,6 +345,36 @@ class Css_Tc_Corrections {
 	}
 
 	/**
+	 * Work dates in the period that have a correction in one of the given statuses.
+	 *
+	 * @param int          $user_id   Employee.
+	 * @param string       $start     Y-m-d inclusive.
+	 * @param string       $end       Y-m-d inclusive.
+	 * @param string|array $statuses  WP post statuses.
+	 * @return array<string,bool>
+	 */
+	public function dates_with_status( $user_id, $start, $end, $statuses ) {
+		$items = $this->query_posts(
+			array(
+				'author'         => (int) $user_id,
+				'posts_per_page' => 100,
+				'post_status'    => $statuses,
+			)
+		);
+
+		$dates = array();
+		foreach ( $items as $post ) {
+			$date = (string) get_post_meta( $post->ID, 'css_tc_work_date', true );
+			if ( '' === $date || $date < $start || $date > $end ) {
+				continue;
+			}
+			$dates[ $date ] = true;
+		}
+
+		return $dates;
+	}
+
+	/**
 	 * Submit every changed line in the current pay period.
 	 *
 	 * Validates the whole set before writing. Unchanged and blank new rows
@@ -543,6 +579,7 @@ class Css_Tc_Corrections {
 			$shift_hours['shift'],
 			$shift_hours['original']
 		);
+		css_tc_addon()->timecard->clear_flag( $user_id, $work_date );
 
 		$fresh = get_post( $post->ID );
 		return $this->to_public_row( $fresh, true );
@@ -583,6 +620,7 @@ class Css_Tc_Corrections {
 			$shift_hours['shift'],
 			$shift_hours['original']
 		);
+		css_tc_addon()->timecard->clear_flag( $user_id, $work_date );
 
 		$fresh = get_post( $post->ID );
 		return $this->to_public_row( $fresh, true );
@@ -777,6 +815,8 @@ class Css_Tc_Corrections {
 			'review_note'     => (string) get_post_meta( $post->ID, 'css_tc_review_note', true ),
 			'reviewed_at'     => $reviewed_at ? $punches->format_time( $reviewed_at ) : '',
 			'submitted_at'    => $punches->format_time( $post->post_date ),
+			'manager_edit'    => ( '1' === (string) get_post_meta( $post->ID, 'css_tc_manager_edit', true ) ),
+			'deleted_shift'   => ( '1' === (string) get_post_meta( $post->ID, 'css_tc_deleted', true ) ),
 		);
 
 		$time = css_tc_addon()->time;
@@ -994,6 +1034,304 @@ class Css_Tc_Corrections {
 		}
 		set_transient( $key, $count + 1, HOUR_IN_SECONDS );
 		return true;
+	}
+
+	/**
+	 * Save a manager's direct edits for one day. Each changed, added, or deleted
+	 * shift becomes an auto-approved correction with a 1.4.7 day snapshot.
+	 * Closed pay periods are allowed.
+	 *
+	 * @param int                            $employee_id Employee whose punches change.
+	 * @param int                            $reviewer_id Manager.
+	 * @param string                         $date        Y-m-d.
+	 * @param array<int,array<string,mixed>> $lines       Raw lines.
+	 * @param string                         $note        Optional note.
+	 * @return int|WP_Error Number of recorded edits.
+	 */
+	public function manager_edit_day( $employee_id, $reviewer_id, $date, $lines, $note = '' ) {
+		if ( ! Css_Tc_Plugin::user_can_manage() ) {
+			return new WP_Error( 'css_tc_forbidden', __( 'You do not have permission to edit timecards.', 'css-timeclock-addon' ) );
+		}
+
+		$employee_id = (int) $employee_id;
+		$reviewer_id = (int) $reviewer_id;
+		$date        = sanitize_text_field( (string) $date );
+		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ) {
+			return new WP_Error( 'css_tc_bad_date', __( 'Choose a valid day.', 'css-timeclock-addon' ) );
+		}
+
+		$allowed = false;
+		foreach ( css_tc_addon()->employees->list_for_admin() as $user ) {
+			if ( (int) $user->ID === $employee_id ) {
+				$allowed = true;
+				break;
+			}
+		}
+		if ( ! $allowed ) {
+			return new WP_Error( 'css_tc_bad_employee', __( 'That employee was not found.', 'css-timeclock-addon' ) );
+		}
+
+		$ops = $this->parse_manager_lines( $employee_id, $date, $lines );
+		if ( is_wp_error( $ops ) ) {
+			return $ops;
+		}
+		if ( empty( $ops ) ) {
+			return new WP_Error(
+				'css_tc_unchanged',
+				__( 'Change a clock-in or clock-out, add a punch, or delete a shift before saving.', 'css-timeclock-addon' )
+			);
+		}
+
+		$note  = $this->sanitize_note( $note );
+		$count = 0;
+		foreach ( $ops as $op ) {
+			$saved = $this->commit_manager_op( $employee_id, $reviewer_id, $date, $op, $note );
+			if ( is_wp_error( $saved ) ) {
+				return $saved;
+			}
+			++$count;
+		}
+
+		css_tc_addon()->timecard->clear_flag( $employee_id, $date );
+		return $count;
+	}
+
+	/**
+	 * @param int                            $employee_id Employee.
+	 * @param string                         $date        Y-m-d.
+	 * @param array<int,array<string,mixed>> $lines       Raw lines.
+	 * @return array<int,array<string,mixed>>|WP_Error
+	 */
+	private function parse_manager_lines( $employee_id, $date, $lines ) {
+		if ( ! is_array( $lines ) ) {
+			$lines = array();
+		}
+
+		$punches = css_tc_addon()->punches;
+		$ops     = array();
+		foreach ( $lines as $line ) {
+			if ( ! is_array( $line ) ) {
+				continue;
+			}
+
+			$shift_id = isset( $line['shift_id'] ) ? absint( $line['shift_id'] ) : 0;
+			$delete   = ! empty( $line['delete'] );
+			$next_day = ! empty( $line['out_next_day'] );
+			$raw_in   = isset( $line['proposed_in'] ) ? trim( (string) $line['proposed_in'] ) : '';
+			$raw_out  = isset( $line['proposed_out'] ) ? trim( (string) $line['proposed_out'] ) : '';
+
+			if ( $shift_id < 1 && '' === $raw_in && '' === $raw_out ) {
+				continue;
+			}
+
+			$original_in  = '';
+			$original_out = '';
+			if ( $shift_id > 0 ) {
+				$post = get_post( $shift_id );
+				if ( ! $post || Css_Tc_Punches::POST_TYPE !== $post->post_type || (int) $post->post_author !== $employee_id ) {
+					return new WP_Error( 'css_tc_bad_shift', __( 'That shift does not belong to this employee.', 'css-timeclock-addon' ) );
+				}
+				$original_in  = (string) get_post_meta( $shift_id, 'employee_clock_in_time', true );
+				$original_out = (string) get_post_meta( $shift_id, 'employee_clock_out_time', true );
+			}
+
+			if ( $delete && $shift_id > 0 ) {
+				$ops[] = array(
+					'action'       => 'delete',
+					'shift_id'     => $shift_id,
+					'original_in'  => $original_in,
+					'original_out' => $original_out,
+					'proposed_in'  => '',
+					'proposed_out' => '',
+					'clear_out'    => false,
+					'out_next_day' => false,
+					'missing'      => false,
+				);
+				continue;
+			}
+
+			$proposed_in  = $punches->combine_day_time( $date, $raw_in, false, $original_in );
+			$proposed_out = $punches->combine_day_time( $date, $raw_out, $next_day, $original_out );
+
+			if ( '' === $proposed_in ) {
+				return new WP_Error( 'css_tc_need_in', __( 'Each punch needs a clock-in time.', 'css-timeclock-addon' ) );
+			}
+
+			$in_day = css_tc_addon()->time->site_date_of( $proposed_in );
+			if ( $in_day !== $date ) {
+				return new WP_Error( 'css_tc_bad_date', __( 'Clock-in has to stay on the day you are editing.', 'css-timeclock-addon' ) );
+			}
+
+			if ( '' !== $proposed_out && strcmp( $proposed_out, $proposed_in ) <= 0 ) {
+				return new WP_Error( 'css_tc_order', __( 'Clock-out must be after clock-in. Check “next day” if the shift ran past midnight.', 'css-timeclock-addon' ) );
+			}
+
+			if ( $shift_id > 0 && $proposed_in === $original_in && $proposed_out === $original_out ) {
+				continue;
+			}
+
+			$ops[] = array(
+				'action'       => $shift_id > 0 ? 'edit' : 'add',
+				'shift_id'     => $shift_id,
+				'original_in'  => $original_in,
+				'original_out' => $original_out,
+				'proposed_in'  => $proposed_in,
+				'proposed_out' => $proposed_out,
+				'clear_out'    => ( '' === $proposed_out ),
+				'out_next_day' => $next_day,
+				'missing'      => ( $shift_id < 1 ),
+			);
+		}
+
+		return $ops;
+	}
+
+	/**
+	 * @param int                 $employee_id Employee.
+	 * @param int                 $reviewer_id Manager.
+	 * @param string              $date        Y-m-d.
+	 * @param array<string,mixed> $op          One parsed change.
+	 * @param string              $note        Optional note.
+	 * @return int|WP_Error Correction post ID.
+	 */
+	private function commit_manager_op( $employee_id, $reviewer_id, $date, $op, $note ) {
+		$before  = $this->fresh_day_hours( $employee_id, $date, (int) $op['shift_id'] );
+		$post_id = wp_insert_post(
+			array(
+				'post_type'   => self::POST_TYPE,
+				'post_title'  => sprintf(
+					/* translators: 1: employee name, 2: work date */
+					__( 'Edited by manager: %1$s — %2$s', 'css-timeclock-addon' ),
+					css_tc_addon()->employees->display_name( $employee_id ),
+					$date
+				),
+				'post_status' => 'private',
+				'post_author' => $employee_id,
+			),
+			true
+		);
+		if ( is_wp_error( $post_id ) ) {
+			return $post_id;
+		}
+
+		$meta = array(
+			'css_tc_work_date'    => $date,
+			'css_tc_shift_id'     => (int) $op['shift_id'],
+			'css_tc_original_in'  => (string) $op['original_in'],
+			'css_tc_original_out' => (string) $op['original_out'],
+			'css_tc_proposed_in'  => (string) $op['proposed_in'],
+			'css_tc_proposed_out' => (string) $op['proposed_out'],
+			'css_tc_clear_out'    => ! empty( $op['clear_out'] ) ? '1' : '',
+			'css_tc_missing'      => ! empty( $op['missing'] ) ? '1' : '',
+			'css_tc_out_next_day' => ! empty( $op['out_next_day'] ) ? '1' : '',
+			'css_tc_deleted'      => ( 'delete' === $op['action'] ) ? '1' : '',
+			'css_tc_reason'       => __( 'Edited by manager', 'css-timeclock-addon' ),
+			'css_tc_manager_edit' => '1',
+			'css_tc_reviewer_id'  => (int) $reviewer_id,
+			'css_tc_review_note'  => $note,
+		);
+		foreach ( $meta as $key => $value ) {
+			update_post_meta( $post_id, $key, $value );
+		}
+
+		$punches = css_tc_addon()->punches;
+		$audit   = array(
+			'correction_id' => (int) $post_id,
+			'suggested_by'  => (int) $employee_id,
+			'approved_by'   => (int) $reviewer_id,
+		);
+
+		if ( 'delete' === $op['action'] ) {
+			$removed = wp_delete_post( (int) $op['shift_id'], true );
+			if ( ! $removed ) {
+				wp_delete_post( (int) $post_id, true );
+				return new WP_Error( 'css_tc_bad_shift', __( 'That shift could not be deleted.', 'css-timeclock-addon' ) );
+			}
+			$applied_id = 0;
+		} elseif ( 'add' === $op['action'] ) {
+			$applied = $punches->create_corrected_shift( $employee_id, (string) $op['proposed_in'], (string) $op['proposed_out'], $audit );
+			if ( is_wp_error( $applied ) ) {
+				wp_delete_post( (int) $post_id, true );
+				return $applied;
+			}
+			$applied_id = (int) $applied['id'];
+		} else {
+			$applied = $punches->apply_times(
+				(int) $op['shift_id'],
+				$employee_id,
+				(string) $op['proposed_in'],
+				(string) $op['proposed_out'],
+				! empty( $op['clear_out'] ),
+				$audit
+			);
+			if ( is_wp_error( $applied ) ) {
+				wp_delete_post( (int) $post_id, true );
+				return $applied;
+			}
+			$applied_id = (int) $applied['id'];
+		}
+
+		update_post_meta( $post_id, 'css_tc_applied_shift_id', $applied_id );
+		update_post_meta( $post_id, 'css_tc_reviewed_at', $punches->current_mysql_time() );
+
+		$correction = get_post( $post_id );
+		$hours      = $correction ? $this->stored_shift_hours( $correction ) : array(
+			'shift'    => '--:--',
+			'original' => '--:--',
+		);
+		$this->store_review_snapshot(
+			(int) $post_id,
+			$this->fresh_day_hours( $employee_id, $date, (int) $op['shift_id'] ),
+			$before,
+			$hours['shift'],
+			$hours['original']
+		);
+
+		return (int) $post_id;
+	}
+
+	/**
+	 * Drop flags whose day was already reviewed and has nothing pending.
+	 * A later Request change is left alone because this runs once.
+	 *
+	 * @return void
+	 */
+	private function clear_stale_day_flags() {
+		$users = get_users(
+			array(
+				'meta_key' => Css_Tc_Timecard::FLAG_META, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+				'fields'   => array( 'ID' ),
+				'number'   => 2000,
+			)
+		);
+		if ( ! is_array( $users ) ) {
+			return;
+		}
+
+		foreach ( $users as $user ) {
+			$user_id = (int) $user->ID;
+			$flags   = css_tc_addon()->timecard->flagged_dates( $user_id );
+			$keep    = array();
+			foreach ( $flags as $date ) {
+				if ( $this->pending_for_day( $user_id, $date ) ) {
+					$keep[] = $date;
+					continue;
+				}
+				$reviewed = $this->query_posts(
+					array(
+						'author'         => $user_id,
+						'posts_per_page' => 1,
+						'post_status'    => array( 'private', 'draft' ),
+						'meta_key'       => 'css_tc_work_date',
+						'meta_value'     => $date,
+					)
+				);
+				if ( empty( $reviewed ) ) {
+					$keep[] = $date;
+				}
+			}
+			update_user_meta( $user_id, Css_Tc_Timecard::FLAG_META, $keep );
+		}
 	}
 
 	/**

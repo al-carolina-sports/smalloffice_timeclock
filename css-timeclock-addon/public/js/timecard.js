@@ -117,9 +117,60 @@
     }
   });
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", refreshAll);
-  } else {
+  function revealHashedDay() {
+    var hash = window.location.hash || "";
+    if (hash.indexOf("#day-") !== 0) {
+      return;
+    }
+    var day = document.getElementById(hash.slice(1));
+    if (!day || !day.scrollIntoView) {
+      return;
+    }
+    window.setTimeout(function () {
+      day.scrollIntoView({ block: "start" });
+    }, 0);
+  }
+
+  document.addEventListener("click", function (event) {
+    var btn = event.target && event.target.closest ? event.target.closest("[data-delete-shift]") : null;
+    if (!btn) {
+      return;
+    }
+    event.preventDefault();
+    var line = btn.closest("[data-line]");
+    var day = btn.closest("[data-day]");
+    if (!line) {
+      return;
+    }
+    var shiftInput = line.querySelector('input[name$="[shift_id]"]');
+    var shiftId = shiftInput ? parseInt(shiftInput.value, 10) : 0;
+    if (!shiftId) {
+      line.remove();
+      refreshDay(day);
+      return;
+    }
+    var message = btn.getAttribute("data-confirm") || "Delete this shift?";
+    if (!window.confirm(message)) {
+      return;
+    }
+    var flag = line.querySelector('input[name$="[delete]"]');
+    if (flag) {
+      flag.value = "1";
+    }
+    var form = btn.closest("form");
+    if (form) {
+      form.submit();
+    }
+  });
+
+  function boot() {
     refreshAll();
+    revealHashedDay();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
   }
 })();

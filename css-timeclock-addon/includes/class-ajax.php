@@ -43,6 +43,7 @@ class Css_Tc_Ajax {
 
 		add_action( 'admin_post_css_tc_submit_period', array( $self, 'submit_period' ) );
 		add_action( 'admin_post_css_tc_flag_day', array( $self, 'flag_day' ) );
+		add_action( 'admin_post_css_tc_manager_edit_day', array( $self, 'manager_edit_day' ) );
 	}
 
 	/**
@@ -463,6 +464,64 @@ class Css_Tc_Ajax {
 			set_transient( 'css_tc_period_error_' . $user_id, $result->get_error_message(), 2 * MINUTE_IN_SECONDS );
 		}
 		wp_safe_redirect( $url );
+		exit;
+	}
+
+	/**
+	 * Manager: save one day's punches immediately and record the audit.
+	 *
+	 * @return void
+	 */
+	public function manager_edit_day() {
+		if ( ! Css_Tc_Plugin::user_can_manage() ) {
+			wp_die( esc_html__( 'You do not have permission to edit timecards.', 'css-timeclock-addon' ) );
+		}
+		check_admin_referer( Css_Tc_Corrections::MANAGER_NONCE );
+
+		$employee_id = isset( $_POST['employee'] ) ? absint( $_POST['employee'] ) : 0;
+		$date        = isset( $_POST['work_date'] ) ? sanitize_text_field( wp_unslash( $_POST['work_date'] ) ) : '';
+		$period      = isset( $_POST['period'] ) ? sanitize_text_field( wp_unslash( $_POST['period'] ) ) : '';
+		$note        = isset( $_POST['manager_note'] ) ? wp_unslash( $_POST['manager_note'] ) : '';
+		$raw         = isset( $_POST['lines'] ) ? wp_unslash( $_POST['lines'] ) : array();
+		$lines       = array();
+		if ( is_array( $raw ) ) {
+			foreach ( $raw as $line ) {
+				if ( ! is_array( $line ) ) {
+					continue;
+				}
+				$lines[] = array(
+					'shift_id'     => isset( $line['shift_id'] ) ? $line['shift_id'] : 0,
+					'proposed_in'  => isset( $line['proposed_in'] ) ? $line['proposed_in'] : '',
+					'proposed_out' => isset( $line['proposed_out'] ) ? $line['proposed_out'] : '',
+					'out_next_day' => ! empty( $line['out_next_day'] ),
+					'delete'       => ! empty( $line['delete'] ),
+				);
+			}
+		}
+
+		$back = Css_Tc_Admin::timecards_url(
+			array(
+				'employee' => $employee_id,
+				'period'   => $period,
+				'edit_day' => $date,
+			)
+		);
+		$result = css_tc_addon()->corrections->manager_edit_day( $employee_id, get_current_user_id(), $date, $lines, $note );
+		if ( is_wp_error( $result ) ) {
+			set_transient( 'css_tc_manager_error_' . get_current_user_id(), $result->get_error_message(), 2 * MINUTE_IN_SECONDS );
+			wp_safe_redirect( $back );
+			exit;
+		}
+
+		wp_safe_redirect(
+			Css_Tc_Admin::timecards_url(
+				array(
+					'employee'      => $employee_id,
+					'period'        => $period,
+					'css_tc_notice' => 'edited',
+				)
+			)
+		);
 		exit;
 	}
 

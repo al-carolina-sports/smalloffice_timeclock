@@ -9,7 +9,9 @@
  * @var int                      $prev_id
  * @var int                      $next_id
  * @var array<string,mixed>|null $sheet
- * @var string                   $edit_url
+ * @var string                   $edit_day
+ * @var string                   $notice
+ * @var string                   $form_error
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -17,8 +19,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 $mode       = 'admin';
-$notice     = '';
-$form_error = '';
+$notice     = isset( $notice ) ? (string) $notice : '';
+$form_error = isset( $form_error ) ? (string) $form_error : '';
+$edit_day   = isset( $edit_day ) ? (string) $edit_day : '';
 ?>
 <div class="wrap css-tc-timecards-admin">
 	<h1 class="screen-reader-text"><?php echo esc_html__( 'Timecards', 'css-timeclock-addon' ); ?></h1>

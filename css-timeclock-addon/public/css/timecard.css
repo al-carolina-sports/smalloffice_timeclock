@@ -391,6 +391,23 @@
 	color: var(--tc-accent);
 }
 
+.css-tc-dot {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: #d97706;
+	flex: 0 0 auto;
+}
+
+.css-tc-dot--approved {
+	background: #0d7a4f;
+}
+
+.css-tc-day.is-editing {
+	box-shadow: inset 0 0 0 2px var(--tc-accent);
+}
+
 .css-tc-flag {
 	margin: 8px 0 0;
 }
@@ -427,6 +444,12 @@
 	border: 1px solid var(--tc-line);
 	border-radius: 10px;
 	background: #fff;
+	scroll-margin-top: 80px;
+}
+
+.css-tc-correct__day:target {
+	border-color: var(--tc-accent);
+	box-shadow: 0 0 0 3px rgba(29, 78, 137, 0.18);
 }
 
 .css-tc-correct__legend {
@@ -537,6 +560,44 @@
 	font: inherit;
 	font-weight: 700;
 	cursor: pointer;
+}
+
+.css-tc-manager-delete {
+	margin-left: auto;
+	border: 0;
+	background: transparent;
+	color: #991b1b;
+	font: inherit;
+	font-size: 12px;
+	font-weight: 700;
+	cursor: pointer;
+	padding: 0;
+}
+
+.css-tc-manager-note {
+	display: block;
+	margin: 0 0 12px;
+}
+
+.css-tc-manager-note span {
+	display: block;
+	margin-bottom: 4px;
+	font-size: 12px;
+	color: var(--tc-muted);
+}
+
+.css-tc-manager-note textarea {
+	width: 100%;
+	max-width: 640px;
+	box-sizing: border-box;
+	padding: 6px 8px;
+	border: 1px solid #cfd6e0;
+	border-radius: 8px;
+	font: inherit;
+}
+
+.css-tc-manager-edit {
+	margin: 0 0 18px;
 }
 
 .css-tc-correct__submit {

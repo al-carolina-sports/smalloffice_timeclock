@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.4.8
+Stable tag: 1.4.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,11 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under SMOTC.
 
 == Changelog ==
+
+= 1.4.9 =
+* Every day that already has a punch shows a pencil. On My Time Clock, while the pay period is open, the pencil opens that day's correction form. Submitting still waits for a manager. A pending day keeps the Pending badge. An approved correction shows a small dot. Closed periods do not offer the employee pencil. Request change and Cancel request stay. Cancel request is removed once that day is reviewed.
+* Timecard clock times and totals come from stored punches. A pending suggestion does not change them.
+* On SMOTC → Timecards the pencil edits that day's punches immediately: clock-in, clock-out, next day, add a punch, or delete a shift after a confirmation. Shift hours and the day total update as you type. Each change is an auto-approved correction labeled Edited by manager, with the before and after times and the day totals. Closed periods warn and can still be edited.
 
 = 1.4.8 =
 * The Corrections tab puts Original shift on the time line and Proposed shift hours on the Proposed line. Pending cards label that line Current. Approved and rejected cards label it Before. The separate shift-hours line is gone. Day totals, snapshots, and legacy cards are unchanged.
