@@ -1,5 +1,7 @@
 .css-tc-times {
 	max-width: 1180px;
+	width: 100%;
+	box-sizing: border-box;
 }
 
 .css-tc-sheet,
@@ -300,6 +302,7 @@
 
 .css-tc-pair {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
 	gap: 8px;
@@ -317,7 +320,9 @@
 	flex-wrap: nowrap;
 	align-items: baseline;
 	gap: 8px;
-	min-width: 0;
+	flex: 1 1 auto;
+	min-width: max-content;
+	max-width: 100%;
 }
 
 .css-tc-pair__times span {
@@ -489,6 +494,26 @@
 
 	.css-tc-cal__dow {
 		display: none;
+	}
+
+	.css-tc-sheet__bar {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.css-tc-sheet__period,
+	.css-tc-sheet__switcher,
+	.css-tc-sheet__switcher--self {
+		min-width: 0;
+		max-width: 100%;
+	}
+
+	.css-tc-sheet__period select,
+	.css-tc-sheet__switcher select {
+		display: block;
+		width: 100%;
+		min-width: 0;
+		max-width: 100%;
+		box-sizing: border-box;
 	}
 
 	.css-tc-cal__week {
