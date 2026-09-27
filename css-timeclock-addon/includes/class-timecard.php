@@ -398,12 +398,21 @@ class Css_Tc_Timecard {
 				);
 			}
 
+			$has_pending = false;
+			foreach ( $lines as $line ) {
+				if ( ! empty( $line['pending'] ) ) {
+					$has_pending = true;
+					break;
+				}
+			}
+
 			$days[] = array(
-				'date'       => $cursor,
-				'day_num'    => $time->date_immutable( $cursor ) ? $time->date_immutable( $cursor )->format( 'j' ) : '',
-				'weekday'    => $time->format_weekday( $cursor ),
-				'date_label' => $time->format_day_label( $cursor ),
-				'lines'      => $lines,
+				'date'        => $cursor,
+				'day_num'     => $time->date_immutable( $cursor ) ? $time->date_immutable( $cursor )->format( 'j' ) : '',
+				'weekday'     => $time->format_weekday( $cursor ),
+				'date_label'  => $time->format_day_label( $cursor ),
+				'lines'       => $lines,
+				'has_pending' => $has_pending,
 			);
 			$cursor = $time->shift_date( $cursor, 1 );
 			++$guard;

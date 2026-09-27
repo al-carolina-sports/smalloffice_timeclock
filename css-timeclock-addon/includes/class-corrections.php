@@ -457,6 +457,55 @@ class Css_Tc_Corrections {
 	}
 
 	/**
+	 * Withdraw every pending correction for one day. Punches stay as stored.
+	 *
+	 * @param int    $user_id Employee.
+	 * @param string $date    Y-m-d.
+	 * @return int|WP_Error Number removed.
+	 */
+	public function cancel_day( $user_id, $date ) {
+		$user_id = (int) $user_id;
+		$date    = sanitize_text_field( (string) $date );
+		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ) {
+			return new WP_Error( 'css_tc_bad_date', __( 'Choose a valid day.', 'css-timeclock-addon' ) );
+		}
+
+		$open = css_tc_addon()->pay_periods->assert_open_date( $date );
+		if ( is_wp_error( $open ) ) {
+			return $open;
+		}
+
+		$items = $this->query_posts(
+			array(
+				'author'         => $user_id,
+				'posts_per_page' => 40,
+				'post_status'    => 'pending',
+				'meta_key'       => 'css_tc_work_date',
+				'meta_value'     => $date,
+			)
+		);
+		if ( empty( $items ) ) {
+			return new WP_Error( 'css_tc_none', __( 'There is no pending request for that day.', 'css-timeclock-addon' ) );
+		}
+
+		$removed = 0;
+		foreach ( $items as $post ) {
+			if ( self::POST_TYPE !== $post->post_type || (int) $post->post_author !== $user_id || 'pending' !== $post->post_status ) {
+				continue;
+			}
+			if ( wp_delete_post( (int) $post->ID, true ) ) {
+				++$removed;
+			}
+		}
+		if ( $removed < 1 ) {
+			return new WP_Error( 'css_tc_none', __( 'There is no pending request for that day.', 'css-timeclock-addon' ) );
+		}
+
+		css_tc_addon()->timecard->clear_flag( $user_id, $date );
+		return $removed;
+	}
+
+	/**
 	 * Admin queue: pending first, then recently reviewed.
 	 *
 	 * @return array{pending:array<int,array<string,mixed>>,recent:array<int,array<string,mixed>>,pending_count:int}

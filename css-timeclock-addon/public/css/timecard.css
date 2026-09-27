@@ -562,6 +562,21 @@
 	cursor: pointer;
 }
 
+.css-tc-correct__cancel {
+	margin: 8px 0 0;
+}
+
+.css-tc-correct__cancel button {
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: #9a3412;
+	font: inherit;
+	font-size: 14px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
 .css-tc-manager-delete {
 	margin-left: auto;
 	border: 0;

@@ -26,7 +26,7 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 == Changelog ==
 
 = 1.4.9 =
-* Every day that already has a punch shows a pencil. On My Time Clock, while the pay period is open, the pencil opens that day's correction form. Submitting still waits for a manager. A pending day keeps the Pending badge. An approved correction shows a small dot. Closed periods do not offer the employee pencil. Request change and Cancel request stay. Cancel request is removed once that day is reviewed.
+* Every day that already has a punch shows a pencil. On My Time Clock, while the pay period is open, the pencil opens that day's correction form. Submitting still waits for a manager. The day cells do not have a Request change link. A pending day keeps the Pending badge. Cancel request is on that day's correction form and withdraws the pending suggestion without changing punches. An approved correction shows a small dot. Closed periods do not offer the employee pencil. Correct this pay period stays at the top of the timecard.
 * Timecard clock times and totals come from stored punches. A pending suggestion does not change them.
 * On SMOTC → Timecards the pencil edits that day's punches immediately: clock-in, clock-out, next day, add a punch, or delete a shift after a confirmation. Shift hours and the day total update as you type. Each change is an auto-approved correction labeled Edited by manager, with the before and after times and the day totals. Closed periods warn and can still be edited.
 

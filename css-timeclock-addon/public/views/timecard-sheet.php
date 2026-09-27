@@ -317,23 +317,6 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 								</div>
 							<?php endforeach; ?>
 						</div>
-						<?php if ( 'employee' === $mode && $is_open && empty( $day['needs_correction'] ) && ! empty( $day['shifts'] ) ) : ?>
-							<form class="css-tc-flag css-tc-no-print" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-								<?php wp_nonce_field( Css_Tc_Corrections::EMPLOYEE_NONCE ); ?>
-								<input type="hidden" name="action" value="css_tc_flag_day" />
-								<input type="hidden" name="work_date" value="<?php echo esc_attr( $day['date'] ); ?>" />
-								<input type="hidden" name="flag" value="1" />
-								<button type="submit"><?php echo esc_html__( 'Request change', 'css-timeclock-addon' ); ?></button>
-							</form>
-						<?php elseif ( 'employee' === $mode && $is_open && ! empty( $day['flagged'] ) ) : ?>
-							<form class="css-tc-flag css-tc-no-print" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-								<?php wp_nonce_field( Css_Tc_Corrections::EMPLOYEE_NONCE ); ?>
-								<input type="hidden" name="action" value="css_tc_flag_day" />
-								<input type="hidden" name="work_date" value="<?php echo esc_attr( $day['date'] ); ?>" />
-								<input type="hidden" name="flag" value="0" />
-								<button type="submit"><?php echo esc_html__( 'Cancel request', 'css-timeclock-addon' ); ?></button>
-							</form>
-						<?php endif; ?>
 					</div>
 				<?php endforeach; ?>
 			</div>

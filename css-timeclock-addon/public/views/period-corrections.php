@@ -37,6 +37,7 @@ $form_error = isset( $form_error ) ? (string) $form_error : '';
 		<?php if ( '' !== $form_error ) : ?>
 			<p class="css-tc-sheet__error"><?php echo esc_html( $form_error ); ?></p>
 		<?php endif; ?>
+		<?php $css_tc_cancel_dates = array(); ?>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="css-tc-correct__form">
 			<?php wp_nonce_field( Css_Tc_Corrections::EMPLOYEE_NONCE ); ?>
 			<input type="hidden" name="action" value="css_tc_submit_period" />
@@ -53,7 +54,11 @@ $form_error = isset( $form_error ) ? (string) $form_error : '';
 						$css_tc_day_seconds += $css_tc_span;
 					}
 				}
-				$css_tc_day_hours = css_tc_addon()->time->format_hours_hm( $css_tc_day_seconds );
+				$css_tc_day_hours   = css_tc_addon()->time->format_hours_hm( $css_tc_day_seconds );
+				$css_tc_day_pending = ! empty( $day['has_pending'] );
+				if ( $css_tc_day_pending ) {
+					$css_tc_cancel_dates[] = $day['date'];
+				}
 				?>
 				<fieldset class="css-tc-correct__day" id="day-<?php echo esc_attr( $day['date'] ); ?>" data-day>
 					<legend class="css-tc-correct__legend">
@@ -89,11 +94,23 @@ $form_error = isset( $form_error ) ? (string) $form_error : '';
 						?>
 					</template>
 					<button type="button" class="css-tc-correct__add" data-add-punch><?php echo esc_html__( 'Add punch', 'css-timeclock-addon' ); ?></button>
+					<?php if ( $css_tc_day_pending ) : ?>
+						<p class="css-tc-correct__cancel css-tc-no-print">
+							<button type="submit" form="css-tc-cancel-<?php echo esc_attr( $day['date'] ); ?>"><?php echo esc_html__( 'Cancel request', 'css-timeclock-addon' ); ?></button>
+						</p>
+					<?php endif; ?>
 				</fieldset>
 			<?php endforeach; ?>
 			<p class="css-tc-correct__submit">
 				<button type="submit" class="css-tc-print"><?php echo esc_html__( 'Submit corrections', 'css-timeclock-addon' ); ?></button>
 			</p>
 		</form>
+		<?php foreach ( $css_tc_cancel_dates as $css_tc_cancel_date ) : ?>
+			<form id="css-tc-cancel-<?php echo esc_attr( $css_tc_cancel_date ); ?>" class="css-tc-no-print" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<?php wp_nonce_field( Css_Tc_Corrections::EMPLOYEE_NONCE ); ?>
+				<input type="hidden" name="action" value="css_tc_cancel_day" />
+				<input type="hidden" name="work_date" value="<?php echo esc_attr( $css_tc_cancel_date ); ?>" />
+			</form>
+		<?php endforeach; ?>
 	<?php endif; ?>
 </div>
