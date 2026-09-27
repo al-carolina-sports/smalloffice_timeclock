@@ -4,9 +4,9 @@ Private WordPress timeclock work for Carolina Sports and Spine / BioFunctional /
 
 ## Layout
 
-- `css-timeclock-addon/` — WordPress plugin (PIN + name-list kiosks, public who’s-working board, employee timecards, supervisor-approved corrections on AIO Time Clock Lite). Version 1.4.1.
+- `css-timeclock-addon/` — WordPress plugin (PIN + name-list kiosks, public who’s-working board, employee timecards, supervisor-approved corrections on AIO Time Clock Lite). Version 1.4.2.
 - `docs/CSS-Timeclock-Whitepaper.md` — developer whitepaper
-- `dist/css-timeclock-addon.zip` — WP Engine upload zip (1.4.1 closed-period notice, long-shift flags, monitoring, UTC clock guard)
+- `dist/css-timeclock-addon.zip` — WP Engine upload zip (1.4.2 narrow-column timecard, request-change link, sub-minute and missed clock-out labels)
 
 ## Install (sandbox only)
 

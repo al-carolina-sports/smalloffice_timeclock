@@ -31,11 +31,15 @@ $edit_url   = isset( $edit_url ) ? (string) $edit_url : '';
 
 $period_options = css_tc_addon()->pay_periods->dropdown_periods( 6 );
 $monday         = css_tc_addon()->time->date_immutable( '2026-09-07' );
-$dow            = array();
+$dow = array();
 if ( $monday ) {
 	for ( $i = 0; $i < 7; $i++ ) {
-		$stamp = $monday->modify( '+' . $i . ' days' )->getTimestamp();
-		$dow[] = function_exists( 'wp_date' ) ? wp_date( 'l', $stamp ) : $monday->modify( '+' . $i . ' days' )->format( 'l' );
+		$day   = $monday->modify( '+' . $i . ' days' );
+		$stamp = $day->getTimestamp();
+		$dow[] = array(
+			'full'  => function_exists( 'wp_date' ) ? wp_date( 'l', $stamp ) : $day->format( 'l' ),
+			'short' => function_exists( 'wp_date' ) ? wp_date( 'D', $stamp ) : $day->format( 'D' ),
+		);
 	}
 }
 
@@ -154,7 +158,7 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 				<?php foreach ( $sheet['pay_codes'] as $code ) : ?>
 					<li>
 						<span><?php echo esc_html( $code['label'] ); ?></span>
-						<span><?php echo esc_html( $code['hm'] . ' HRS' ); ?></span>
+						<span><?php echo esc_html( preg_match( '/^\d+:\d{2}$/', $code['hm'] ) ? $code['hm'] . ' HRS' : $code['hm'] ); ?></span>
 					</li>
 				<?php endforeach; ?>
 			</ul>
@@ -168,7 +172,7 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 							<strong><?php echo esc_html( $week['label'] ); ?></strong>
 							<span class="css-tc-card__range"><?php echo esc_html( $week['range'] ); ?></span>
 						</span>
-						<span><?php echo esc_html( $week['hm'] . ' HRS' ); ?></span>
+						<span><?php echo esc_html( preg_match( '/^\d+:\d{2}$/', $week['hm'] ) ? $week['hm'] . ' HRS' : $week['hm'] ); ?></span>
 					</li>
 				<?php endforeach; ?>
 			</ul>
@@ -182,7 +186,10 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 	<div class="css-tc-cal">
 		<div class="css-tc-cal__dow">
 			<?php foreach ( $dow as $name ) : ?>
-				<div><?php echo esc_html( $name ); ?></div>
+				<div>
+					<span class="css-tc-dow__full"><?php echo esc_html( $name['full'] ); ?></span>
+					<span class="css-tc-dow__short"><?php echo esc_html( $name['short'] ); ?></span>
+				</div>
 			<?php endforeach; ?>
 		</div>
 		<?php foreach ( $sheet['weeks'] as $week ) : ?>
@@ -212,7 +219,10 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 					<div class="<?php echo esc_attr( $day_classes ); ?>" id="day-<?php echo esc_attr( $day['date'] ); ?>">
 						<div class="css-tc-day__top">
 							<span class="css-tc-day__num">
-								<span class="css-tc-day__dow"><?php echo esc_html( $day['weekday'] ); ?></span>
+								<span class="css-tc-day__dow">
+									<span class="css-tc-dow__full"><?php echo esc_html( $day['weekday'] ); ?></span>
+									<span class="css-tc-dow__short"><?php echo esc_html( isset( $day['weekday_short'] ) ? $day['weekday_short'] : $day['weekday'] ); ?></span>
+								</span>
 								<?php echo esc_html( $day['day_num'] ); ?>
 							</span>
 							<span class="css-tc-day__marks">
@@ -229,10 +239,16 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 								<?php endif; ?>
 							</span>
 						</div>
-						<?php if ( ! empty( $day['has_time'] ) ) : ?>
+						<?php if ( '' !== $day['hm'] || ! empty( $day['status_label'] ) ) : ?>
 							<p class="css-tc-day__hours">
-								<?php echo esc_html( $day['hm'] ); ?>
-								<span><?php echo esc_html__( 'Hours', 'css-timeclock-addon' ); ?></span>
+								<?php if ( '' !== $day['hm'] ) : ?>
+									<?php echo esc_html( $day['hm'] ); ?>
+									<?php if ( preg_match( '/^\d+:\d{2}$/', $day['hm'] ) ) : ?>
+										<span><?php echo esc_html__( 'Hours', 'css-timeclock-addon' ); ?></span>
+									<?php endif; ?>
+								<?php else : ?>
+									<span class="css-tc-day__status"><?php echo esc_html( $day['status_label'] ); ?></span>
+								<?php endif; ?>
 							</p>
 						<?php endif; ?>
 						<div class="css-tc-day__pairs">
@@ -246,6 +262,8 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 												echo esc_html( $pair['out_display'] );
 											} elseif ( ! empty( $pair['is_stale'] ) ) {
 												echo esc_html__( 'Missed clock-out', 'css-timeclock-addon' );
+											} elseif ( ! empty( $pair['is_open'] ) ) {
+												echo esc_html__( 'Still clocked in', 'css-timeclock-addon' );
 											} else {
 												echo esc_html__( 'No clock-out', 'css-timeclock-addon' );
 											}
@@ -258,13 +276,13 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 								</div>
 							<?php endforeach; ?>
 						</div>
-						<?php if ( 'employee' === $mode && $is_open && empty( $day['needs_correction'] ) ) : ?>
+						<?php if ( 'employee' === $mode && $is_open && empty( $day['needs_correction'] ) && ! empty( $day['shifts'] ) ) : ?>
 							<form class="css-tc-flag css-tc-no-print" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 								<?php wp_nonce_field( Css_Tc_Corrections::EMPLOYEE_NONCE ); ?>
 								<input type="hidden" name="action" value="css_tc_flag_day" />
 								<input type="hidden" name="work_date" value="<?php echo esc_attr( $day['date'] ); ?>" />
 								<input type="hidden" name="flag" value="1" />
-								<button type="submit"><?php echo esc_html__( 'Flag day', 'css-timeclock-addon' ); ?></button>
+								<button type="submit"><?php echo esc_html__( 'Request change', 'css-timeclock-addon' ); ?></button>
 							</form>
 						<?php elseif ( 'employee' === $mode && $is_open && ! empty( $day['flagged'] ) ) : ?>
 							<form class="css-tc-flag css-tc-no-print" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -272,7 +290,7 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 								<input type="hidden" name="action" value="css_tc_flag_day" />
 								<input type="hidden" name="work_date" value="<?php echo esc_attr( $day['date'] ); ?>" />
 								<input type="hidden" name="flag" value="0" />
-								<button type="submit"><?php echo esc_html__( 'Unflag', 'css-timeclock-addon' ); ?></button>
+								<button type="submit"><?php echo esc_html__( 'Cancel request', 'css-timeclock-addon' ); ?></button>
 							</form>
 						<?php endif; ?>
 					</div>

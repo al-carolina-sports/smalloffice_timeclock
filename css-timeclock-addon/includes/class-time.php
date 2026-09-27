@@ -278,14 +278,33 @@ class Css_Tc_Time {
 	 * @return string
 	 */
 	public function format_weekday( $date ) {
+		return $this->format_weekday_token( $date, 'l' );
+	}
+
+	/**
+	 * Short weekday (Mon, Tue) for narrow timecard columns.
+	 *
+	 * @param string $date Y-m-d.
+	 * @return string
+	 */
+	public function format_weekday_short( $date ) {
+		return $this->format_weekday_token( $date, 'D' );
+	}
+
+	/**
+	 * @param string $date   Y-m-d.
+	 * @param string $format PHP date token.
+	 * @return string
+	 */
+	private function format_weekday_token( $date, $format ) {
 		$day = $this->date_immutable( $date );
 		if ( ! $day ) {
 			return '';
 		}
 		if ( function_exists( 'wp_date' ) ) {
-			return wp_date( 'l', $day->getTimestamp() );
+			return wp_date( $format, $day->getTimestamp() );
 		}
-		return $day->format( 'l' );
+		return $day->format( $format );
 	}
 
 	/**
@@ -424,6 +443,12 @@ class Css_Tc_Time {
 		$seconds = (int) $seconds;
 		if ( $seconds < 0 ) {
 			$seconds = 0;
+		}
+		// A finished shift of a few seconds is real time. Rounding it to 0:00
+		// hides it. Anything under 30 seconds is shown as under a minute.
+		// Those seconds still add into the longer totals.
+		if ( $seconds > 0 && $seconds < 30 ) {
+			return '<1 min';
 		}
 		$rounded = (int) round( $seconds / 60 );
 		$hours   = (int) floor( $rounded / 60 );

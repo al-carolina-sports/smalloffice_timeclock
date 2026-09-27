@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.4.1
+Stable tag: 1.4.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,12 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under SMOTC.
 
 == Changelog ==
+
+= 1.4.2 =
+* The timecard follows the width of its column, not the browser window. In a narrow theme column (about 500px, as on Twenty Fifteen) each day is its own row, weekday names shorten to Mon, Tue, and clock-in and clock-out both stay visible. A medium column keeps the week grid with short names and stacks the out time under the in time. A wide column keeps the full week grid.
+* The long-shift badge wraps instead of being clipped.
+* "Flag day" was a control on every day of the open period, including empty days. It only marked that day so the correction pencil appeared. It is now "Request change", and only on days that already have punches and do not already show the pencil. "Cancel request" removes it.
+* A finished shift shorter than 30 seconds displays as "<1 min" instead of "0:00". Those seconds still count in the period total. An open shift shows "Still clocked in" while it is inside the missed clock-out window, and "Missed clock-out" after that, with the correction pencil. It is not shown as 0:00.
 
 = 1.4.1 =
 * Closed pay periods show a notice on the employee timecard and on SMOTC → Timecards, including in print: "This pay period is closed and can't be edited."
