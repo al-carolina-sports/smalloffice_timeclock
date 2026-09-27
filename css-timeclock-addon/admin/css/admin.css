@@ -168,23 +168,25 @@
 	font-weight: 700;
 }
 
-.css-tc-admin .css-tc-correction__hours {
+.css-tc-admin .css-tc-correction__pair {
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: flex-start;
 	align-items: baseline;
 	gap: 2px 12px;
+}
+
+.css-tc-admin .css-tc-correction__times {
+	min-width: 0;
+	max-width: 100%;
+}
+
+.css-tc-admin .css-tc-correction__fig {
 	font-size: 12px;
 	font-weight: 400;
 	font-style: normal;
 	line-height: normal;
 	color: #667085;
-}
-
-.css-tc-admin .css-tc-correction__hours span {
-	font: inherit;
-	font-style: normal;
-	color: inherit;
 }
 
 .css-tc-admin .css-tc-review-form {
