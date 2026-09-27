@@ -514,6 +514,67 @@ class Css_Tc_Time {
 	}
 
 	/**
+	 * Why a punch row cannot be saved, or an empty problem when it can.
+	 *
+	 * A blank new row and an existing shift with no clock-out are valid.
+	 * Clock-out earlier than clock-in is valid only when the next-day box is checked.
+	 *
+	 * @param string $in_hms    Clock-in.
+	 * @param string $out_hms   Clock-out.
+	 * @param bool   $next_day  Clock-out is the following day.
+	 * @param bool   $has_shift Row belongs to a stored shift.
+	 * @return array{message:string,short:string,seconds:int}
+	 */
+	public function line_clock_problem( $in_hms, $out_hms, $next_day = false, $has_shift = false ) {
+		$in_hms  = trim( (string) $in_hms );
+		$out_hms = trim( (string) $out_hms );
+		$none    = array(
+			'message' => '',
+			'short'   => '',
+			'seconds' => -1,
+		);
+
+		if ( '' === $in_hms && '' === $out_hms && ! $has_shift ) {
+			return $none;
+		}
+
+		if ( ( '' !== $in_hms && null === $this->hms_to_seconds( $in_hms ) ) || ( '' !== $out_hms && null === $this->hms_to_seconds( $out_hms ) ) ) {
+			return array(
+				'message' => __( 'Enter a valid clock time.', 'css-timeclock-addon' ),
+				'short'   => '',
+				'seconds' => -1,
+			);
+		}
+
+		if ( '' === $in_hms ) {
+			return array(
+				'message' => __( 'Enter a clock-in time.', 'css-timeclock-addon' ),
+				'short'   => '',
+				'seconds' => -1,
+			);
+		}
+
+		if ( '' === $out_hms ) {
+			return $none;
+		}
+
+		$seconds = $this->hms_span_seconds( $in_hms, $out_hms, $next_day );
+		if ( $seconds < 0 ) {
+			return array(
+				'message' => __( 'Clock-out is earlier than clock-in. Fix the time, or check "Clock-out is the next day" if the shift ended after midnight.', 'css-timeclock-addon' ),
+				'short'   => __( 'Clock-out is earlier than clock-in', 'css-timeclock-addon' ),
+				'seconds' => -1,
+			);
+		}
+
+		return array(
+			'message' => '',
+			'short'   => '',
+			'seconds' => $seconds,
+		);
+	}
+
+	/**
 	 * Zero-padded hours and minutes (08:30, 00:00). Missing time is --:--.
 	 *
 	 * Rounding matches format_duration(): nearest minute. A span under 30

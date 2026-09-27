@@ -358,6 +358,11 @@
 	background: #fff7f7;
 }
 
+.css-tc-pair.is-order {
+	border-color: #fecaca;
+	background: #fff7f7;
+}
+
 .css-tc-pair__flag {
 	flex: 0 0 auto;
 	color: #991b1b;
@@ -366,6 +371,15 @@
 	letter-spacing: 0.02em;
 	text-transform: uppercase;
 	white-space: nowrap;
+}
+
+.css-tc-pair__flag--order {
+	padding: 1px 6px;
+	border-radius: 999px;
+	background: #fdecec;
+	font-size: 12px;
+	letter-spacing: 0;
+	text-transform: none;
 }
 
 .css-tc-badge {
@@ -619,8 +633,63 @@
 	margin: 0 0 18px;
 }
 
+.css-tc-save {
+	padding: 8px 16px;
+	border: 0;
+	border-radius: 8px;
+	background: #1d4e89;
+	color: #fff;
+	font: inherit;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.css-tc-save:hover,
+.css-tc-save:focus {
+	background: #163e6e;
+	color: #fff;
+}
+
+.css-tc-correct__legend .css-tc-save {
+	margin-left: 8px;
+}
+
 .css-tc-correct__submit {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 12px;
 	margin-top: 8px;
+}
+
+.css-tc-save-error,
+.css-tc-line-error {
+	color: #9b1c1c;
+	font-size: 14px;
+	font-weight: 700;
+}
+
+.css-tc-save-error[hidden],
+.css-tc-line-error[hidden] {
+	display: none;
+}
+
+.css-tc-line-error {
+	grid-column: 1 / -1;
+	margin: 0;
+}
+
+.css-tc-correct__line.is-invalid {
+	border-bottom-color: #fecaca;
+}
+
+.css-tc-correct__line.is-invalid input[type="time"] {
+	border-color: #b42318;
+}
+
+.css-tc-correct__shift [data-shift-hours].is-problem {
+	color: #9b1c1c;
+	font-weight: 700;
 }
 
 .css-tc-correct__back a {

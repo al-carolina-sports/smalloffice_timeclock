@@ -537,9 +537,19 @@ class Css_Tc_Ajax {
 		$result = css_tc_addon()->corrections->manager_edit_day( $employee_id, get_current_user_id(), $date, $lines, $note );
 		if ( is_wp_error( $result ) ) {
 			set_transient( 'css_tc_manager_error_' . get_current_user_id(), $result->get_error_message(), 2 * MINUTE_IN_SECONDS );
+			set_transient(
+				'css_tc_manager_draft_' . get_current_user_id(),
+				array(
+					'date' => $date,
+					'note' => is_string( $note ) ? $note : '',
+					'lines' => $lines,
+				),
+				2 * MINUTE_IN_SECONDS
+			);
 			wp_safe_redirect( $back );
 			exit;
 		}
+		delete_transient( 'css_tc_manager_draft_' . get_current_user_id() );
 
 		wp_safe_redirect(
 			Css_Tc_Admin::timecards_url(

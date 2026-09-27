@@ -139,7 +139,7 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 	<?php if ( '' !== $notice ) : ?>
 		<p class="css-tc-sheet__notice css-tc-no-print"><?php echo esc_html( $notice ); ?></p>
 	<?php endif; ?>
-	<?php if ( '' !== $form_error ) : ?>
+	<?php if ( '' !== $form_error && ! ( 'admin' === $mode && '' !== $edit_day ) ) : ?>
 		<p class="css-tc-sheet__error css-tc-no-print"><?php echo esc_html( $form_error ); ?></p>
 	<?php endif; ?>
 
@@ -299,7 +299,7 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 						<?php endif; ?>
 						<div class="css-tc-day__pairs">
 							<?php foreach ( $day['shifts'] as $pair ) : ?>
-								<div class="css-tc-pair<?php echo ! empty( $pair['is_long'] ) ? ' is-long' : ''; ?>">
+								<div class="css-tc-pair<?php echo ! empty( $pair['is_long'] ) ? ' is-long' : ''; ?><?php echo ! empty( $pair['is_out_before_in'] ) ? ' is-order' : ''; ?>">
 									<span class="css-tc-pair__times">
 										<span><?php echo esc_html( '' !== $pair['in_display'] ? $pair['in_display'] : __( 'No clock-in', 'css-timeclock-addon' ) ); ?></span>
 										<span>
@@ -316,7 +316,9 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 											?>
 										</span>
 									</span>
-									<?php if ( ! empty( $pair['is_long'] ) ) : ?>
+									<?php if ( ! empty( $pair['is_out_before_in'] ) ) : ?>
+										<span class="css-tc-pair__flag css-tc-pair__flag--order"><?php echo esc_html__( 'Clock-out before clock-in', 'css-timeclock-addon' ); ?></span>
+									<?php elseif ( ! empty( $pair['is_long'] ) ) : ?>
 										<span class="css-tc-pair__flag"><?php echo esc_html__( 'Long shift', 'css-timeclock-addon' ); ?></span>
 									<?php endif; ?>
 								</div>
