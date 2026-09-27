@@ -187,6 +187,9 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 					</li>
 				<?php endforeach; ?>
 			</ul>
+			<?php if ( ! empty( $sheet['overtime_note'] ) ) : ?>
+				<p class="css-tc-card__range"><?php echo esc_html( $sheet['overtime_note'] ); ?></p>
+			<?php endif; ?>
 		</section>
 		<section class="css-tc-card">
 			<h2><?php echo esc_html__( 'Weekly Summary', 'css-timeclock-addon' ); ?></h2>
@@ -197,7 +200,17 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 							<strong><?php echo esc_html( $week['label'] ); ?></strong>
 							<span class="css-tc-card__range"><?php echo esc_html( $week['range'] ); ?></span>
 						</span>
-						<span><?php echo esc_html( preg_match( '/^\d+:\d{2}$/', $week['hm'] ) ? $week['hm'] . ' HRS' : $week['hm'] ); ?></span>
+						<span>
+							<?php echo esc_html( preg_match( '/^\d+:\d{2}$/', $week['hm'] ) ? $week['hm'] . ' HRS' : $week['hm'] ); ?>
+							<?php if ( ! empty( $week['overtime_seconds'] ) ) : ?>
+								<span class="css-tc-card__range">
+									<?php
+									/* translators: %s: overtime hours H:MM */
+									echo esc_html( sprintf( __( 'incl. %s OT', 'css-timeclock-addon' ), $week['overtime_hm'] ) );
+									?>
+								</span>
+							<?php endif; ?>
+						</span>
 					</li>
 				<?php endforeach; ?>
 			</ul>

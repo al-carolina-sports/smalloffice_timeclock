@@ -254,3 +254,17 @@
 .css-tc-monitor__table {
 	margin: 8px 0 16px;
 }
+
+/* Reports */
+.css-tc-report-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 16px 0; }
+.css-tc-report-filters label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; }
+.css-tc-report-table { margin-top: 8px; }
+.css-tc-report-table--narrow { max-width: 900px; }
+.css-tc-report-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.css-tc-report-table .is-overtime { color: #b32d2e; font-weight: 600; }
+.css-tc-report-table .is-attention { color: #b32d2e; }
+.css-tc-report-table tfoot th { font-weight: 600; }
+@media print {
+	#adminmenumain, #wpadminbar, #wpfooter, .css-tc-report-filters, .nav-tab-wrapper { display: none !important; }
+	#wpcontent { margin-left: 0 !important; }
+}

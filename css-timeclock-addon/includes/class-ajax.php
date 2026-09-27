@@ -283,6 +283,19 @@ class Css_Tc_Ajax {
 		$settings['long_shift_hours']       = min( 36, max( 1, isset( $_POST['long_shift_hours'] ) ? absint( $_POST['long_shift_hours'] ) : 16 ) );
 		$settings['wide_layout']            = empty( $_POST['wide_layout'] ) ? 0 : 1;
 
+		$settings['overtime_enabled'] = empty( $_POST['overtime_enabled'] ) ? 0 : 1;
+		$ot_hours = isset( $_POST['overtime_hours'] ) ? (float) sanitize_text_field( wp_unslash( $_POST['overtime_hours'] ) ) : 40;
+		$ot_weeks = isset( $_POST['overtime_weeks'] ) ? absint( $_POST['overtime_weeks'] ) : 1;
+		if ( $ot_hours < 1 || $ot_hours > 168 * Css_Tc_Overtime::MAX_WEEKS ) {
+			wp_send_json_error( array( 'message' => __( 'Overtime hours must be between 1 and 336.', 'css-timeclock-addon' ) ), 400 );
+		}
+		$period_weeks = ( 'weekly' === $settings['pay_period_length'] ) ? 1 : 2;
+		if ( $ot_weeks < 1 || $ot_weeks > Css_Tc_Overtime::MAX_WEEKS || $ot_weeks !== Css_Tc_Overtime::clamp_weeks( $ot_weeks, $period_weeks ) ) {
+			wp_send_json_error( array( 'message' => __( 'A 2-week overtime window needs a biweekly pay period.', 'css-timeclock-addon' ) ), 400 );
+		}
+		$settings['overtime_hours'] = round( $ot_hours, 2 );
+		$settings['overtime_weeks'] = $ot_weeks;
+
 		css_tc_addon()->update_settings( $settings );
 
 		wp_send_json_success(

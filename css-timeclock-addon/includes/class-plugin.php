@@ -11,12 +11,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once CSS_TC_ADDON_DIR . 'includes/class-time.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pay-codes.php';
+require_once CSS_TC_ADDON_DIR . 'includes/class-overtime.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pay-periods.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-employees.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pins.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-punches.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-corrections.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-timecard.php';
+require_once CSS_TC_ADDON_DIR . 'includes/class-reports.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-ajax.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-admin.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-branding.php';
@@ -48,6 +50,16 @@ class Css_Tc_Plugin {
 	 * @var Css_Tc_Timecard
 	 */
 	public $timecard;
+
+	/**
+	 * @var Css_Tc_Overtime
+	 */
+	public $overtime;
+
+	/**
+	 * @var Css_Tc_Reports
+	 */
+	public $reports;
 
 	/**
 	 * @var Css_Tc_Employees
@@ -83,6 +95,8 @@ class Css_Tc_Plugin {
 		$this->time        = new Css_Tc_Time();
 		$this->pay_periods = new Css_Tc_Pay_Periods();
 		$this->timecard    = new Css_Tc_Timecard();
+		$this->overtime    = new Css_Tc_Overtime();
+		$this->reports     = new Css_Tc_Reports();
 		$this->employees   = new Css_Tc_Employees();
 		$this->pins        = new Css_Tc_Pins();
 		$this->punches     = new Css_Tc_Punches();
@@ -121,6 +135,9 @@ class Css_Tc_Plugin {
 			'pay_period_anchor'       => '2026-09-07',
 			'missed_clock_out_hours'  => 16,
 			'long_shift_hours'        => 16,
+			'overtime_enabled'        => 0,
+			'overtime_hours'          => 40,
+			'overtime_weeks'          => 1,
 			'wide_layout'             => 1,
 		);
 	}
@@ -190,6 +207,7 @@ class Css_Tc_Plugin {
 		$this->corrections->maybe_upgrade_schema();
 		Css_Tc_Ajax::register();
 		Css_Tc_Admin::register();
+		$this->reports->register_hooks();
 		Css_Tc_Shortcodes::register();
 	}
 
