@@ -213,7 +213,7 @@ class Css_Tc_Admin {
 		$settings  = css_tc_addon()->get_settings();
 		$employees = css_tc_addon()->employees->list_for_admin();
 		$tab       = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'settings'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( ! in_array( $tab, array( 'settings', 'pins', 'corrections' ), true ) ) {
+		if ( ! in_array( $tab, array( 'settings', 'pins', 'locations', 'corrections' ), true ) ) {
 			$tab = 'settings';
 		}
 

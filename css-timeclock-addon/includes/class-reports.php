@@ -158,8 +158,12 @@ class Css_Tc_Reports {
 	 * @param string              $department Department filter.
 	 * @return array<string,mixed>
 	 */
-	public function period_summary( $period, $department = '' ) {
-		$time    = css_tc_addon()->time;
+	public function period_summary( $period, $department = '', $org = array() ) {
+		$time     = css_tc_addon()->time;
+		$use_org  = css_tc_addon()->organization->enabled();
+		$filtered = $use_org && $this->org_filter_active( $org );
+		$by_assignment = array();
+		$unassigned    = 0;
 		$codes   = ( new Css_Tc_Pay_Codes() )->definitions();
 		$rows    = array();
 		$totals  = array(
@@ -169,12 +173,22 @@ class Css_Tc_Reports {
 		);
 		$by_dept = array();
 
-		foreach ( $this->employees( $department ) as $user ) {
+		foreach ( $this->employees( $use_org ? '' : $department ) as $user ) {
 			$sheet = css_tc_addon()->timecard->build( (int) $user->ID, $period );
 
 			$code_seconds = array_fill_keys( array_keys( $codes ), 0 );
 			foreach ( $sheet['pay_codes'] as $code ) {
 				$code_seconds[ $code['slug'] ] = (int) $code['seconds'];
+			}
+
+			$matched = array();
+			foreach ( $sheet['segments'] as $segment ) {
+				if ( ! $filtered || $this->segment_matches( $segment, $org ) ) {
+					$matched[] = $segment;
+				}
+			}
+			if ( $filtered && empty( $matched ) ) {
+				continue;
 			}
 
 			$week_seconds = array();
@@ -201,7 +215,53 @@ class Css_Tc_Reports {
 				}
 			}
 
-			$dept_name = css_tc_addon()->employees->department( (int) $user->ID );
+			$dept_name     = css_tc_addon()->employees->department( (int) $user->ID );
+			$total_seconds = (int) $sheet['total_seconds'];
+			if ( $use_org ) {
+				$labels = array();
+				foreach ( $matched as $segment ) {
+					$label = $segment['department_id'] > 0 ? css_tc_addon()->organization->label( $segment['department_id'] ) : '';
+					$labels[ $segment['department_id'] ] = '' !== $label ? $label : ( $segment['department_id'] > 0 ? $segment['label'] : __( 'Not set', 'css-timeclock-addon' ) );
+				}
+				foreach ( $sheet['segments'] as $segment ) {
+					if ( (int) $segment['company_id'] < 1 ) {
+						$unassigned += (int) $segment['seconds'];
+					}
+				}
+				$dept_name = implode( ', ', $labels );
+				foreach ( $matched as $segment ) {
+					$key = (int) $segment['department_id'];
+					if ( ! isset( $by_assignment[ $key ] ) ) {
+						$by_assignment[ $key ] = array(
+							'name'      => $key > 0 ? ( '' !== $segment['label'] ? $segment['label'] : sprintf( /* translators: %d: department ID */ __( 'Removed department #%d', 'css-timeclock-addon' ), $key ) ) : __( 'Department not set', 'css-timeclock-addon' ),
+							'company'   => $key > 0 ? css_tc_addon()->organization->company_name( $segment['company_id'] ) : '',
+							'users'     => array(),
+							'codes'     => array_fill_keys( array_keys( $codes ), 0 ),
+							'total'     => 0,
+						);
+					}
+					$by_assignment[ $key ]['users'][ (int) $user->ID ] = true;
+					$by_assignment[ $key ]['total'] += $segment['seconds'];
+					$by_assignment[ $key ]['codes'][ Css_Tc_Pay_Codes::REGULAR ] += $segment['seconds'] - $segment['overtime'];
+					if ( isset( $by_assignment[ $key ]['codes'][ Css_Tc_Pay_Codes::OVERTIME ] ) ) {
+						$by_assignment[ $key ]['codes'][ Css_Tc_Pay_Codes::OVERTIME ] += $segment['overtime'];
+					}
+				}
+			}
+			if ( $filtered ) {
+				// Only the hours worked in the chosen company / location / department.
+				$code_seconds  = array_fill_keys( array_keys( $codes ), 0 );
+				$week_seconds  = array_fill_keys( array_keys( $week_seconds ), 0 );
+				$total_seconds = 0;
+				foreach ( $matched as $segment ) {
+					$total_seconds += $segment['seconds'];
+					$week_seconds[ $segment['week'] ] += $segment['seconds'];
+					$code_seconds[ Css_Tc_Pay_Codes::REGULAR ] += $segment['seconds'] - $segment['overtime'];
+					if ( isset( $code_seconds[ Css_Tc_Pay_Codes::OVERTIME ] ) ) {
+						$code_seconds[ Css_Tc_Pay_Codes::OVERTIME ] += $segment['overtime'];
+					}
+				}
+			}
 			$attention = array();
 			if ( $sheet['long_shift_count'] > 0 ) {
 				/* translators: %d: count */
@@ -230,7 +290,7 @@ class Css_Tc_Reports {
 				'shifts'       => $shift_count,
 				'codes'        => $code_seconds,
 				'weeks'        => $week_seconds,
-				'total'        => (int) $sheet['total_seconds'],
+				'total'        => $total_seconds,
 				'attention'    => $attention,
 				'timecard_url' => Css_Tc_Admin::timecards_url(
 					array(
@@ -265,6 +325,20 @@ class Css_Tc_Reports {
 			}
 		}
 		ksort( $by_dept, SORT_NATURAL | SORT_FLAG_CASE );
+		if ( $use_org ) {
+			$by_dept = array();
+			foreach ( $by_assignment as $id => $row ) {
+				$row['employees'] = count( $row['users'] );
+				unset( $row['users'] );
+				$by_dept[ 'd' . $id ] = $row;
+			}
+			uasort(
+				$by_dept,
+				static function ( $a, $b ) {
+					return strnatcasecmp( $a['name'], $b['name'] );
+				}
+			);
+		}
 
 		$weeks = array();
 		foreach ( $period['weeks'] as $w => $week ) {
@@ -281,9 +355,41 @@ class Css_Tc_Reports {
 			'rows'        => $rows,
 			'totals'      => $totals,
 			'departments' => array_values( $by_dept ),
+			'use_org'     => $use_org,
+			'unassigned'  => $unassigned,
+			'filtered'    => $filtered,
 			'rule_note'   => css_tc_addon()->overtime->describe(),
 			'timezone'    => function_exists( 'wp_timezone_string' ) ? wp_timezone_string() : $time->timezone()->getName(),
 		);
+	}
+
+	/**
+	 * @param array<string,int> $org company/location/dept filter.
+	 * @return bool
+	 */
+	private function org_filter_active( $org ) {
+		return ! empty( $org['company'] ) || ! empty( $org['location'] ) || ! empty( $org['dept'] );
+	}
+
+	/**
+	 * @param array<string,mixed> $segment Segment or shift row with *_id keys.
+	 * @param array<string,int>   $org     Filter.
+	 * @return bool
+	 */
+	private function segment_matches( $segment, $org ) {
+		if ( ! empty( $org['company'] ) ) {
+			$want = (int) $org['company'] < 0 ? 0 : (int) $org['company'];
+			if ( (int) $segment['company_id'] !== $want ) {
+				return false;
+			}
+		}
+		if ( ! empty( $org['location'] ) && (int) $segment['location_id'] !== (int) $org['location'] ) {
+			return false;
+		}
+		if ( ! empty( $org['dept'] ) && (int) $segment['department_id'] !== (int) $org['dept'] ) {
+			return false;
+		}
+		return true;
 	}
 
 	/**
@@ -294,17 +400,28 @@ class Css_Tc_Reports {
 	 * @param int                 $user_id    Optional single employee.
 	 * @return array<int,array<string,mixed>>
 	 */
-	public function shift_detail( $period, $department = '', $user_id = 0 ) {
-		$time = css_tc_addon()->time;
-		$rows = array();
-		foreach ( $this->employees( $department ) as $user ) {
+	public function shift_detail( $period, $department = '', $user_id = 0, $org = array() ) {
+		$time    = css_tc_addon()->time;
+		$rows    = array();
+		$use_org = css_tc_addon()->organization->enabled();
+		foreach ( $this->employees( $use_org ? '' : $department ) as $user ) {
 			if ( $user_id && (int) $user->ID !== (int) $user_id ) {
 				continue;
 			}
 			$name = css_tc_addon()->employees->display_name( (int) $user->ID );
 			$dept = css_tc_addon()->employees->department( (int) $user->ID );
 			foreach ( css_tc_addon()->timecard->shifts_for_period( (int) $user->ID, $period ) as $shift ) {
+				if ( $use_org && ! $this->segment_matches( $shift, $org ) ) {
+					continue;
+				}
 				$flags = array();
+				if ( ! empty( $shift['switched'] ) ) {
+					$flags[] = __( 'Switched', 'css-timeclock-addon' );
+				}
+				if ( ! empty( $shift['punched_at'] ) ) {
+					/* translators: %s: location name */
+					$flags[] = sprintf( __( 'Clocked in at %s', 'css-timeclock-addon' ), css_tc_addon()->organization->location_name( (int) $shift['punched_at'] ) );
+				}
 				if ( $shift['is_open'] ) {
 					$flags[] = $shift['is_stale_open'] ? __( 'Missed clock-out', 'css-timeclock-addon' ) : __( 'Clocked in', 'css-timeclock-addon' );
 				}
@@ -324,7 +441,7 @@ class Css_Tc_Reports {
 				$rows[] = array(
 					'user_id'    => (int) $user->ID,
 					'name'       => $name,
-					'department' => $dept,
+					'department' => $use_org ? (string) $shift['assignment'] : $dept,
 					'date'       => (string) $shift['work_date'],
 					'weekday'    => $time->format_weekday_short( (string) $shift['work_date'] ),
 					'in'         => (string) $shift['clock_in_clock'],
@@ -387,7 +504,17 @@ class Css_Tc_Reports {
 			$department = '';
 		}
 
+		$org = css_tc_addon()->organization;
+		$company  = isset( $source['company'] ) ? (int) $source['company'] : 0;
+		$location = isset( $source['location'] ) ? absint( $source['location'] ) : 0;
+		$dept     = isset( $source['dept'] ) ? absint( $source['dept'] ) : 0;
+
 		return array(
+			'org'        => array(
+				'company'  => ( -1 === $company || $org->company( $company ) ) ? $company : 0,
+				'location' => $org->location( $location ) ? $location : 0,
+				'dept'     => $org->department( $dept ) ? $dept : 0,
+			),
 			'report'     => $report,
 			'period'     => $period,
 			'department' => $department,
@@ -414,9 +541,9 @@ class Css_Tc_Reports {
 		$shifts      = null;
 		if ( $filters['period'] ) {
 			if ( 'shifts' === $filters['report'] ) {
-				$shifts = $this->shift_detail( $filters['period'], $filters['department'], $filters['employee'] );
+				$shifts = $this->shift_detail( $filters['period'], $filters['department'], $filters['employee'], $filters['org'] );
 			} else {
-				$summary = $this->period_summary( $filters['period'], $filters['department'] );
+				$summary = $this->period_summary( $filters['period'], $filters['department'], $filters['org'] );
 			}
 		}
 		$csv_url = wp_nonce_url(
@@ -427,6 +554,9 @@ class Css_Tc_Reports {
 					'period'     => $filters['period'] ? $filters['period']['start'] : '',
 					'department' => $filters['department'],
 					'employee'   => $filters['employee'],
+					'company'    => $filters['org']['company'],
+					'location'   => $filters['org']['location'],
+					'dept'       => $filters['org']['dept'],
 				),
 				admin_url( 'admin-post.php' )
 			),
@@ -453,12 +583,19 @@ class Css_Tc_Reports {
 		}
 		$period = $filters['period'];
 		$lines  = 'shifts' === $filters['report']
-			? $this->shift_csv_lines( $this->shift_detail( $period, $filters['department'], $filters['employee'] ) )
-			: $this->summary_csv_lines( $this->period_summary( $period, $filters['department'] ) );
+			? $this->shift_csv_lines( $this->shift_detail( $period, $filters['department'], $filters['employee'], $filters['org'] ) )
+			: $this->summary_csv_lines( $this->period_summary( $period, $filters['department'], $filters['org'] ) );
 
+		$company_slug = '';
+		if ( $filters['org']['company'] > 0 ) {
+			$company_slug = '-' . sanitize_title( css_tc_addon()->organization->company_name( $filters['org']['company'] ) );
+		} elseif ( -1 === $filters['org']['company'] ) {
+			$company_slug = '-no-company';
+		}
 		$name = sprintf(
-			'timeclock-%s-%s-to-%s.csv',
+			'timeclock-%s%s-%s-to-%s.csv',
 			'shifts' === $filters['report'] ? 'shifts' : 'pay-period',
+			$company_slug,
 			$period['start'],
 			$period['end']
 		);
@@ -480,7 +617,7 @@ class Css_Tc_Reports {
 	 * @return array<int,array<int,string>>
 	 */
 	private function summary_csv_lines( $summary ) {
-		$head = array( 'Employee', 'Department', 'Shifts' );
+		$head = array( 'Employee', ! empty( $summary['use_org'] ) ? 'Worked in' : 'Department', 'Shifts' );
 		foreach ( $summary['codes'] as $def ) {
 			$head[] = $def['label'] . ' (hours)';
 		}
@@ -511,7 +648,7 @@ class Css_Tc_Reports {
 	 * @return array<int,array<int,string>>
 	 */
 	private function shift_csv_lines( $rows ) {
-		$lines = array( array( 'Employee', 'Department', 'Date', 'Day', 'Clock in', 'Clock out', 'Out next day', 'Hours', 'IP in', 'IP out', 'Source', 'Flags' ) );
+		$lines = array( array( 'Employee', 'Worked in', 'Date', 'Day', 'Clock in', 'Clock out', 'Out next day', 'Hours', 'IP in', 'IP out', 'Source', 'Flags' ) );
 		foreach ( $rows as $row ) {
 			$lines[] = array(
 				$row['name'],

@@ -126,6 +126,9 @@ $status = isset( $item['status'] ) ? (string) $item['status'] : 'pending';
 			</span>
 		<?php endif; ?>
 	</p>
+	<?php if ( ! empty( $item['department_change'] ) ) : ?>
+		<p><strong><?php echo esc_html__( 'Department:', 'css-timeclock-addon' ); ?></strong> <?php echo esc_html( $item['department_change'] ); ?></p>
+	<?php endif; ?>
 	<p>
 		<?php echo esc_html__( 'Reason:', 'css-timeclock-addon' ); ?>
 		<?php

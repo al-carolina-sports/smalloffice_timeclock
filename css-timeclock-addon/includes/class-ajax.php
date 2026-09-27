@@ -107,7 +107,59 @@ class Css_Tc_Ajax {
 				'is_clocked_in' => $open['is_clocked_in'],
 				'clock_in_time' => $open['clock_in_time'],
 				'next_action'   => $open['is_clocked_in'] ? 'clock_out' : 'clock_in',
+				'assign'        => $this->assignment_context( $user_id, $open ),
 			)
+		);
+	}
+
+	/**
+	 * Department choices for the kiosk after a PIN.
+	 *
+	 * The location comes from the kiosk page, else the office network. When
+	 * the employee has no department at that location (or it is unknown),
+	 * every assigned department is offered and grouped by location.
+	 *
+	 * @param int                 $user_id Employee.
+	 * @param array<string,mixed> $open    open_shift_for() result.
+	 * @return array<string,mixed>
+	 */
+	private function assignment_context( $user_id, $open ) {
+		$org = css_tc_addon()->organization;
+		if ( ! $org->enabled() ) {
+			return array( 'enabled' => false );
+		}
+		$page     = isset( $_POST['location'] ) ? absint( $_POST['location'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$location = $org->resolve_location( $page );
+		$current  = array(
+			'department_id' => 0,
+			'location_id'   => 0,
+			'label'         => '',
+		);
+		if ( ! empty( $open['is_clocked_in'] ) ) {
+			$current = $org->shift_assignment( (int) $open['open_shift_id'] );
+		}
+
+		$here    = $org->choices( $user_id, (int) $location['id'] );
+		$here_ok = ! empty( $here );
+		$choices = $here_ok ? $here : $org->choices( $user_id, 0 );
+
+		$switch = array();
+		foreach ( $choices as $choice ) {
+			if ( (int) $choice['department_id'] !== (int) $current['department_id'] ) {
+				$switch[] = $choice;
+			}
+		}
+
+		return array(
+			'enabled'       => true,
+			'location'      => $location,
+			'at_location'   => $here_ok,
+			'choices'       => $choices,
+			'switch'        => $switch,
+			'current'       => (string) $current['label'],
+			'away'          => ! empty( $open['is_clocked_in'] ) && (int) $location['id'] > 0 && (int) $current['location_id'] > 0 && (int) $current['location_id'] !== (int) $location['id'],
+			'needs_choice'  => count( $choices ) > 1,
+			'single_choice' => 1 === count( $choices ) ? (int) $choices[0]['department_id'] : 0,
 		);
 	}
 
@@ -142,7 +194,7 @@ class Css_Tc_Ajax {
 		$user_id    = isset( $_POST['user_id'] ) ? absint( $_POST['user_id'] ) : 0;
 		$clock_act  = isset( $_POST['clock_action'] ) ? sanitize_key( wp_unslash( $_POST['clock_action'] ) ) : '';
 
-		if ( ! in_array( $clock_act, array( 'clock_in', 'clock_out' ), true ) ) {
+		if ( ! in_array( $clock_act, array( 'clock_in', 'clock_out', 'switch' ), true ) ) {
 			wp_send_json_error( array( 'message' => __( 'Unknown clock action.', 'css-timeclock-addon' ) ), 400 );
 		}
 
@@ -166,10 +218,41 @@ class Css_Tc_Ajax {
 
 		css_tc_addon()->pins->record_success();
 
+		$department_id = 0;
+		$org           = css_tc_addon()->organization;
+		if ( 'clock_out' !== $clock_act && $org->enabled() ) {
+			$context       = $this->assignment_context( $user_id, css_tc_addon()->punches->open_shift_for( $user_id ) );
+			$department_id = isset( $_POST['department_id'] ) ? absint( $_POST['department_id'] ) : 0;
+			if ( $department_id < 1 && $context['single_choice'] > 0 && 'clock_in' === $clock_act ) {
+				$department_id = (int) $context['single_choice'];
+			}
+			$allowed = array_map( 'intval', wp_list_pluck( $context['choices'], 'department_id' ) );
+			// Employees with no departments keep clocking in unassigned; they
+			// cannot name a department. Everyone else must pick one of theirs.
+			if ( empty( $allowed ) ? $department_id > 0 : ! in_array( $department_id, $allowed, true ) ) {
+				wp_send_json_error( array( 'message' => __( 'Choose one of your departments.', 'css-timeclock-addon' ) ), 400 );
+			}
+			if ( 'switch' === $clock_act && $department_id < 1 ) {
+				wp_send_json_error( array( 'message' => __( 'Choose where you are switching to.', 'css-timeclock-addon' ) ), 400 );
+			}
+		} elseif ( 'switch' === $clock_act ) {
+			wp_send_json_error( array( 'message' => __( 'Switching departments is turned off.', 'css-timeclock-addon' ) ), 400 );
+		}
+
 		if ( 'clock_in' === $clock_act ) {
-			$result = css_tc_addon()->punches->clock_in( $user_id, $source );
+			$result = css_tc_addon()->punches->clock_in( $user_id, $source, $department_id );
+		} elseif ( 'switch' === $clock_act ) {
+			$result = css_tc_addon()->punches->switch_to( $user_id, $source, $department_id );
 		} else {
 			$result = css_tc_addon()->punches->clock_out( $user_id, $source );
+		}
+
+		if ( ! is_wp_error( $result ) && 'clock_out' !== $clock_act && $department_id > 0 && ! empty( $context['location']['id'] ) ) {
+			$dept = $org->department( $department_id );
+			if ( $dept && (int) $dept['location_id'] !== (int) $context['location']['id'] ) {
+				// Clocked into another office's department from here. Keep a note for the manager.
+				update_post_meta( (int) $result['shift_id'], 'css_tc_punched_at_location', (int) $context['location']['id'] );
+			}
 		}
 
 		if ( is_wp_error( $result ) ) {
@@ -295,6 +378,9 @@ class Css_Tc_Ajax {
 		}
 		$settings['overtime_hours'] = round( $ot_hours, 2 );
 		$settings['overtime_weeks'] = $ot_weeks;
+		$scope = isset( $_POST['overtime_scope'] ) ? sanitize_key( wp_unslash( $_POST['overtime_scope'] ) ) : 'combined';
+		$settings['overtime_scope']      = ( 'per_company' === $scope ) ? 'per_company' : 'combined';
+		$settings['assignments_enabled'] = empty( $_POST['assignments_enabled'] ) ? 0 : 1;
 
 		css_tc_addon()->update_settings( $settings );
 
@@ -440,6 +526,7 @@ class Css_Tc_Ajax {
 					'correction_id' => isset( $line['correction_id'] ) ? $line['correction_id'] : 0,
 					'proposed_in'   => isset( $line['proposed_in'] ) ? $line['proposed_in'] : '',
 					'proposed_out'  => isset( $line['proposed_out'] ) ? $line['proposed_out'] : '',
+					'department_id' => isset( $line['department_id'] ) ? $line['department_id'] : 0,
 					'out_next_day'  => ! empty( $line['out_next_day'] ),
 					'missing_punch' => ! empty( $line['missing_punch'] ),
 					'reason'        => isset( $line['reason'] ) ? $line['reason'] : '',
@@ -536,6 +623,7 @@ class Css_Tc_Ajax {
 					'proposed_out' => isset( $line['proposed_out'] ) ? $line['proposed_out'] : '',
 					'out_next_day' => ! empty( $line['out_next_day'] ),
 					'delete'       => ! empty( $line['delete'] ),
+					'department_id' => isset( $line['department_id'] ) ? $line['department_id'] : 0,
 				);
 			}
 		}

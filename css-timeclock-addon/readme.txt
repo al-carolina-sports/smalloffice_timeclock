@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.5.0
+Stable tag: 1.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,16 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under SMOTC.
 
 == Changelog ==
+
+= 1.6.0 =
+* Companies, locations and departments. SMOTC → Locations & departments sets up companies (employers, one payroll each), locations (offices, with their office network IP addresses) and departments (inside a location, owned by one company). "Import AIO departments" builds this from AIO department names written as Location-Department (for example Raleigh-CSS) and assigns employees.
+* Employee assignments on the user profile: tick every department an employee can clock into and mark one as home.
+* Kiosk department picker, turned on by "Ask which department at clock-in, and allow Switch" in Kiosk settings (off by default, so single-site installs see no change). The location comes from the kiosk page (shortcode attribute location="Raleigh"), else the office network, so a desk computer on the office network works when a tablet is down; otherwise the employee picks. Employees only see their assigned departments, home first; with one choice the question is skipped.
+* Switch: a clocked-in employee can move to another company, location or department in one tap. The open shift ends and the new one starts at the same second. Entering a PIN at a different office while still clocked in offers "Switch to <location>". Missed clock-out and long-shift checks count from the start of the chain. Travel between offices stays in the first segment.
+* A per-employee punch lock stops two taps or two kiosks from opening two shifts.
+* Timecards show company · department · location on every segment, hours by company, and overtime per company. Managers can change a segment's department in the day editor; employees can request a department change as a correction. Both are recorded.
+* Overtime setting "With more than one company": add up hours across companies (default; overtime is charged to the company whose hours crossed the limit) or count each company separately.
+* Reports filter and total by company, location and department. Filtering by company gives that company's payroll CSV. Shift detail shows where each segment was worked, switches, and clock-ins made from another office. Real Time Monitoring and the who's-working board show where people are working.
 
 = 1.5.0 =
 * Overtime setting under SMOTC settings: "Hours worked after X hours per 1 or 2 weeks are overtime." Off by default. US federal overtime is 40 hours per 1 week; other countries or averaging rules can use a different number of hours or a 2-week window (biweekly pay period only). Weeks are the pay period's Monday–Sunday weeks. Timecards show Overtime as its own pay code, with the overtime included in each week's total.

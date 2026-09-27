@@ -23,6 +23,8 @@ $css_tc_period = $filters['period'];
 $css_tc_hm     = static function ( $seconds ) use ( $css_tc_time ) {
 	return (int) $seconds > 0 ? $css_tc_time->format_duration( (int) $seconds ) : '0:00';
 };
+$css_tc_org     = css_tc_addon()->organization;
+$css_tc_use_org = $css_tc_org->enabled();
 $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 	return add_query_arg(
 		array(
@@ -30,6 +32,9 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 			'report'     => $report,
 			'period'     => $filters['period'] ? $filters['period']['start'] : '',
 			'department' => $filters['department'],
+			'company'    => $filters['org']['company'],
+			'location'   => $filters['org']['location'],
+			'dept'       => $filters['org']['dept'],
 		),
 		admin_url( Css_Tc_Plugin::aio_is_active() ? 'admin.php' : 'options-general.php' )
 	);
@@ -54,6 +59,36 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 				<?php endforeach; ?>
 			</select>
 		</label>
+		<?php if ( $css_tc_use_org ) : ?>
+			<label>
+				<?php echo esc_html__( 'Company', 'css-timeclock-addon' ); ?>
+				<select name="company">
+					<option value="0"><?php echo esc_html__( 'All companies', 'css-timeclock-addon' ); ?></option>
+					<?php foreach ( $css_tc_org->companies() as $css_tc_row ) : ?>
+						<option value="<?php echo esc_attr( (string) (int) $css_tc_row['id'] ); ?>" <?php selected( $filters['org']['company'], (int) $css_tc_row['id'] ); ?>><?php echo esc_html( $css_tc_row['name'] ); ?></option>
+					<?php endforeach; ?>
+					<option value="-1" <?php selected( $filters['org']['company'], -1 ); ?>><?php echo esc_html__( 'No company (department not set)', 'css-timeclock-addon' ); ?></option>
+				</select>
+			</label>
+			<label>
+				<?php echo esc_html__( 'Location', 'css-timeclock-addon' ); ?>
+				<select name="location">
+					<option value="0"><?php echo esc_html__( 'All locations', 'css-timeclock-addon' ); ?></option>
+					<?php foreach ( $css_tc_org->locations() as $css_tc_row ) : ?>
+						<option value="<?php echo esc_attr( (string) (int) $css_tc_row['id'] ); ?>" <?php selected( $filters['org']['location'], (int) $css_tc_row['id'] ); ?>><?php echo esc_html( $css_tc_row['name'] ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<label>
+				<?php echo esc_html__( 'Department', 'css-timeclock-addon' ); ?>
+				<select name="dept">
+					<option value="0"><?php echo esc_html__( 'All departments', 'css-timeclock-addon' ); ?></option>
+					<?php foreach ( $css_tc_org->departments() as $css_tc_row ) : ?>
+						<option value="<?php echo esc_attr( (string) (int) $css_tc_row['id'] ); ?>" <?php selected( $filters['org']['dept'], (int) $css_tc_row['id'] ); ?>><?php echo esc_html( $css_tc_org->label( (int) $css_tc_row['id'] ) ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+		<?php else : ?>
 		<label>
 			<?php echo esc_html__( 'Department', 'css-timeclock-addon' ); ?>
 			<select name="department">
@@ -64,6 +99,7 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 				<option value="<?php echo esc_attr( Css_Tc_Reports::NONE_DEPT ); ?>" <?php selected( $filters['department'], Css_Tc_Reports::NONE_DEPT ); ?>><?php echo esc_html__( 'No department', 'css-timeclock-addon' ); ?></option>
 			</select>
 		</label>
+		<?php endif; ?>
 		<?php if ( 'shifts' === $filters['report'] ) : ?>
 			<label>
 				<?php echo esc_html__( 'Employee', 'css-timeclock-addon' ); ?>
@@ -98,11 +134,27 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 			?>
 		</p>
 
+		<?php if ( ! empty( $summary['unassigned'] ) ) : ?>
+			<div class="notice notice-warning inline"><p>
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: %s: hours H:MM */
+						__( '%s of hours in this pay period have no department, so they are not in any company’s totals. Set the department on those shifts from the timecard (choose Company: No company to list them), or run Import AIO departments.', 'css-timeclock-addon' ),
+						$css_tc_hm( $summary['unassigned'] )
+					)
+				);
+				?>
+			</p></div>
+		<?php endif; ?>
+		<?php if ( ! empty( $summary['filtered'] ) ) : ?>
+			<p class="description"><?php echo esc_html__( 'Only hours worked in the chosen company, location or department are counted. Overtime follows the overtime setting: hours in other companies can still push these hours into overtime.', 'css-timeclock-addon' ); ?></p>
+		<?php endif; ?>
 		<table class="widefat striped css-tc-report-table">
 			<thead>
 				<tr>
 					<th><?php echo esc_html__( 'Employee', 'css-timeclock-addon' ); ?></th>
-					<th><?php echo esc_html__( 'Department', 'css-timeclock-addon' ); ?></th>
+					<th><?php echo $css_tc_use_org ? esc_html__( 'Worked in', 'css-timeclock-addon' ) : esc_html__( 'Department', 'css-timeclock-addon' ); ?></th>
 					<?php foreach ( $summary['weeks'] as $week ) : ?>
 						<th class="num" title="<?php echo esc_attr( $week['range'] ); ?>"><?php echo esc_html( $week['label'] ); ?></th>
 					<?php endforeach; ?>
@@ -153,7 +205,7 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 		</table>
 
 		<?php if ( count( $summary['departments'] ) > 0 ) : ?>
-			<h2><?php echo esc_html__( 'By department', 'css-timeclock-addon' ); ?></h2>
+			<h2><?php echo $css_tc_use_org ? esc_html__( 'By company · department · location', 'css-timeclock-addon' ) : esc_html__( 'By department', 'css-timeclock-addon' ); ?></h2>
 			<table class="widefat striped css-tc-report-table css-tc-report-table--narrow">
 				<thead>
 					<tr>
@@ -197,7 +249,7 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 			<thead>
 				<tr>
 					<th><?php echo esc_html__( 'Employee', 'css-timeclock-addon' ); ?></th>
-					<th><?php echo esc_html__( 'Department', 'css-timeclock-addon' ); ?></th>
+					<th><?php echo $css_tc_use_org ? esc_html__( 'Worked in', 'css-timeclock-addon' ) : esc_html__( 'Department', 'css-timeclock-addon' ); ?></th>
 					<th><?php echo esc_html__( 'Date', 'css-timeclock-addon' ); ?></th>
 					<th><?php echo esc_html__( 'In', 'css-timeclock-addon' ); ?></th>
 					<th><?php echo esc_html__( 'Out', 'css-timeclock-addon' ); ?></th>

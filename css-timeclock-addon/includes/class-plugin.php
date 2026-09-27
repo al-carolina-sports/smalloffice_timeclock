@@ -14,6 +14,7 @@ require_once CSS_TC_ADDON_DIR . 'includes/class-pay-codes.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-overtime.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pay-periods.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-employees.php';
+require_once CSS_TC_ADDON_DIR . 'includes/class-organization.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pins.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-punches.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-corrections.php';
@@ -62,6 +63,11 @@ class Css_Tc_Plugin {
 	public $reports;
 
 	/**
+	 * @var Css_Tc_Organization
+	 */
+	public $organization;
+
+	/**
 	 * @var Css_Tc_Employees
 	 */
 	public $employees;
@@ -97,6 +103,7 @@ class Css_Tc_Plugin {
 		$this->timecard    = new Css_Tc_Timecard();
 		$this->overtime    = new Css_Tc_Overtime();
 		$this->reports     = new Css_Tc_Reports();
+		$this->organization = new Css_Tc_Organization();
 		$this->employees   = new Css_Tc_Employees();
 		$this->pins        = new Css_Tc_Pins();
 		$this->punches     = new Css_Tc_Punches();
@@ -138,6 +145,8 @@ class Css_Tc_Plugin {
 			'overtime_enabled'        => 0,
 			'overtime_hours'          => 40,
 			'overtime_weeks'          => 1,
+			'overtime_scope'          => 'combined',
+			'assignments_enabled'     => 0,
 			'wide_layout'             => 1,
 		);
 	}
@@ -208,6 +217,7 @@ class Css_Tc_Plugin {
 		Css_Tc_Ajax::register();
 		Css_Tc_Admin::register();
 		$this->reports->register_hooks();
+		$this->organization->register_hooks();
 		Css_Tc_Shortcodes::register();
 	}
 

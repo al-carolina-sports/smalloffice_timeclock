@@ -31,6 +31,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<a href="<?php echo esc_url( $base_url . '&tab=pins' ); ?>" class="nav-tab <?php echo 'pins' === $tab ? 'nav-tab-active' : ''; ?>">
 			<?php echo esc_html__( 'Employee PINs', 'css-timeclock-addon' ); ?>
 		</a>
+		<a href="<?php echo esc_url( $base_url . '&tab=locations' ); ?>" class="nav-tab <?php echo 'locations' === $tab ? 'nav-tab-active' : ''; ?>">
+			<?php echo esc_html__( 'Locations & departments', 'css-timeclock-addon' ); ?>
+		</a>
 		<a href="<?php echo esc_url( $base_url . '&tab=corrections' ); ?>" class="nav-tab <?php echo 'corrections' === $tab ? 'nav-tab-active' : ''; ?>">
 			<?php echo esc_html__( 'Corrections', 'css-timeclock-addon' ); ?>
 			<?php if ( ! empty( $queue['pending_count'] ) ) : ?>
@@ -40,6 +43,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	</nav>
 
 	<div class="css-tc-notice" hidden></div>
+
+	<?php if ( 'locations' === $tab ) : ?>
+		<?php include CSS_TC_ADDON_DIR . 'admin/views/organization-tab.php'; ?>
+	<?php endif; ?>
 
 	<?php if ( 'settings' === $tab ) : ?>
 		<form class="css-tc-settings-form" method="post" action="">
@@ -198,7 +205,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 							</select>
 							<?php echo esc_html__( 'are overtime.', 'css-timeclock-addon' ); ?>
 						</p>
+						<p>
+							<label for="overtime_scope"><?php echo esc_html__( 'With more than one company:', 'css-timeclock-addon' ); ?></label>
+							<select name="overtime_scope" id="overtime_scope">
+								<option value="combined" <?php selected( isset( $settings['overtime_scope'] ) ? $settings['overtime_scope'] : 'combined', 'combined' ); ?>><?php echo esc_html__( 'Add up hours across all companies', 'css-timeclock-addon' ); ?></option>
+								<option value="per_company" <?php selected( isset( $settings['overtime_scope'] ) ? $settings['overtime_scope'] : 'combined', 'per_company' ); ?>><?php echo esc_html__( 'Count each company separately', 'css-timeclock-addon' ); ?></option>
+							</select>
+						</p>
+						<p class="description"><?php echo esc_html__( 'When hours are added up across companies, overtime is charged to the company whose hours crossed the limit. Companies under common ownership may have to add hours up; check with your payroll provider.', 'css-timeclock-addon' ); ?></p>
 						<p class="description"><?php echo esc_html__( 'Weeks are the pay period’s Monday–Sunday weeks. US federal overtime is 40 hours per 1 week. A 2-week window needs a biweekly pay period. The timecard and reports show Overtime as its own pay code; pay rates are set in your payroll system.', 'css-timeclock-addon' ); ?></p>
+					</td>
+				</tr>
+				<tr id="assignments_enabled">
+					<th scope="row"><?php echo esc_html__( 'Departments at clock-in', 'css-timeclock-addon' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="assignments_enabled" value="1" <?php checked( ! empty( $settings['assignments_enabled'] ) ); ?> />
+							<?php echo esc_html__( 'Ask which department at clock-in, and allow Switch', 'css-timeclock-addon' ); ?>
+						</label>
+						<p class="description"><?php echo esc_html__( 'Uses the companies, locations and departments on the Locations & departments tab. Employees only see departments assigned on their profile. The kiosk page location (shortcode attribute location="Raleigh") or the office network decides the location; otherwise the employee picks it. With one choice, the question is skipped.', 'css-timeclock-addon' ); ?></p>
 					</td>
 				</tr>
 				<tr>

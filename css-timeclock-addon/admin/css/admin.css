@@ -268,3 +268,10 @@
 	#adminmenumain, #wpadminbar, #wpfooter, .css-tc-report-filters, .nav-tab-wrapper { display: none !important; }
 	#wpcontent { margin-left: 0 !important; }
 }
+
+/* Locations & departments */
+.css-tc-org__table { max-width: 1000px; margin-bottom: 8px; }
+.css-tc-org__row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.css-tc-org__row input[type=text] { min-width: 220px; }
+.css-tc-org__del { width: 90px; text-align: right; vertical-align: middle; }
+.css-tc-org__table .num { text-align: right; width: 90px; }

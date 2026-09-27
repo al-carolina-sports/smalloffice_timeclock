@@ -187,6 +187,21 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 					</li>
 				<?php endforeach; ?>
 			</ul>
+			<?php if ( isset( $sheet['by_company'] ) && count( $sheet['by_company'] ) > 1 ) : ?>
+				<ul class="css-tc-code-list css-tc-code-list--companies">
+					<?php foreach ( $sheet['by_company'] as $css_tc_co ) : ?>
+						<li>
+							<span><?php echo esc_html( $css_tc_co['name'] ); ?></span>
+							<span>
+								<?php echo esc_html( css_tc_addon()->time->format_duration( $css_tc_co['total'] ) . ' HRS' ); ?>
+								<?php if ( $css_tc_co['overtime'] > 0 ) : ?>
+									<span class="css-tc-card__range"><?php echo esc_html( sprintf( /* translators: %s: overtime H:MM */ __( 'incl. %s OT', 'css-timeclock-addon' ), css_tc_addon()->time->format_duration( $css_tc_co['overtime'] ) ) ); ?></span>
+								<?php endif; ?>
+							</span>
+						</li>
+					<?php endforeach; ?>
+				</ul>
+			<?php endif; ?>
 			<?php if ( ! empty( $sheet['overtime_note'] ) ) : ?>
 				<p class="css-tc-card__range"><?php echo esc_html( $sheet['overtime_note'] ); ?></p>
 			<?php endif; ?>
@@ -362,6 +377,9 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 											?>
 										</span>
 									</span>
+									<?php if ( ! empty( $pair['assignment'] ) ) : ?>
+										<span class="css-tc-pair__where"><?php echo esc_html( ( ! empty( $pair['switched'] ) ? '↳ ' : '' ) . $pair['assignment'] ); ?></span>
+									<?php endif; ?>
 									<?php if ( ! empty( $pair['is_out_before_in'] ) ) : ?>
 										<span class="css-tc-pair__flag css-tc-pair__flag--order"><?php echo esc_html__( 'Clock-out before clock-in', 'css-timeclock-addon' ); ?></span>
 									<?php elseif ( ! empty( $pair['is_long'] ) ) : ?>
