@@ -197,6 +197,24 @@
 	margin-top: 10px;
 }
 
+@media (max-width: 782px) {
+	.css-tc-admin .css-tc-review-form {
+		max-width: 100%;
+	}
+
+	.css-tc-admin .css-tc-review-form label {
+		flex: 1 1 100%;
+		max-width: 100%;
+		min-width: 0;
+	}
+
+	.css-tc-admin .css-tc-review-form input.regular-text {
+		width: 100%;
+		max-width: 100%;
+		box-sizing: border-box;
+	}
+}
+
 .css-tc-admin .css-tc-pill-pending {
 	background: #fff4e5;
 	color: #9a3412;
