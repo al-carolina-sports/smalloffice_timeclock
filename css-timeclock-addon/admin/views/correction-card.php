@@ -16,33 +16,35 @@ $status = isset( $item['status'] ) ? (string) $item['status'] : 'pending';
 <article class="css-tc-correction" data-correction-id="<?php echo esc_attr( (string) (int) $item['id'] ); ?>" data-status="<?php echo esc_attr( $status ); ?>">
 	<header>
 		<strong><?php echo esc_html( isset( $item['employee'] ) ? $item['employee'] : '' ); ?></strong>
-		<span><?php echo esc_html( isset( $item['work_date'] ) ? $item['work_date'] : '' ); ?></span>
-		<?php if ( isset( $item['day_total_hours'] ) ) : ?>
-			<strong class="css-tc-correction__total">
-				<?php
-				echo esc_html(
-					sprintf(
-						/* translators: %s: hours and minutes, zero-padded */
-						__( 'Total hours: %s', 'css-timeclock-addon' ),
-						$item['day_total_hours']
-					)
-				);
-				?>
-			</strong>
-			<?php if ( isset( $item['day_original_hours'] ) && $item['day_original_hours'] !== $item['day_total_hours'] ) : ?>
-				<span class="description">
+		<span class="css-tc-correction__when">
+			<span><?php echo esc_html( isset( $item['work_date'] ) ? $item['work_date'] : '' ); ?></span>
+			<?php if ( isset( $item['day_total_hours'] ) ) : ?>
+				<strong class="css-tc-correction__total">
 					<?php
 					echo esc_html(
 						sprintf(
-							/* translators: %s: hours and minutes before this suggestion */
-							__( 'Original day: %s', 'css-timeclock-addon' ),
-							$item['day_original_hours']
+							/* translators: %s: hours and minutes, zero-padded */
+							__( 'Total hours: %s', 'css-timeclock-addon' ),
+							$item['day_total_hours']
 						)
 					);
 					?>
-				</span>
+				</strong>
+				<?php if ( isset( $item['day_original_hours'] ) && $item['day_original_hours'] !== $item['day_total_hours'] ) : ?>
+					<span class="description">
+						<?php
+						echo esc_html(
+							sprintf(
+								/* translators: %s: hours and minutes before this suggestion */
+								__( 'Original day: %s', 'css-timeclock-addon' ),
+								$item['day_original_hours']
+							)
+						);
+						?>
+					</span>
+				<?php endif; ?>
 			<?php endif; ?>
-		<?php endif; ?>
+		</span>
 		<span class="css-tc-pill css-tc-pill-<?php echo esc_attr( $status ); ?>"><?php echo esc_html( ucfirst( $status ) ); ?></span>
 	</header>
 	<p>
