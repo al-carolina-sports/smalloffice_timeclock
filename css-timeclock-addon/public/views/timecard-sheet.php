@@ -44,6 +44,9 @@ if ( $monday ) {
 }
 
 $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
+$css_tc_check = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" fill="currentColor"/><path fill="#fff" d="M10.2 15.4 7.1 12.3l-1.1 1.1 4.2 4.2 8-8-1.1-1.1z"/></svg>';
+$css_tc_lock  = '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M10 2a4 4 0 0 0-4 4v2H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-1V6a4 4 0 0 0-4-4zm-2 6V6a2 2 0 1 1 4 0v2H8z"/></svg>';
+$css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M5 3v18h2v-6h11l-2.2-4L18 7H7V3H5z"/></svg>';
 ?>
 <div class="css-tc-sheet">
 	<div class="css-tc-sheet__bar css-tc-no-print">
@@ -203,7 +206,7 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 
 	<div class="css-tc-cal-head">
 		<h2><?php echo esc_html__( 'Day Summary', 'css-timeclock-addon' ); ?></h2>
-		<p class="css-tc-pencil-legend"><?php echo esc_html__( 'Red pencil: edit · Green: changes completed · Gray: pay period closed', 'css-timeclock-addon' ); ?></p>
+		<p class="css-tc-pencil-legend"><?php echo esc_html__( 'Blue pencil: edit · Green check: changes completed · Amber: pending request · Red: needs attention · Gray lock: pay period closed', 'css-timeclock-addon' ); ?></p>
 	</div>
 
 	<div class="css-tc-cal">
@@ -235,21 +238,27 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 					if ( 'admin' === $mode && $edit_day === $day['date'] ) {
 						$day_classes .= ' is-editing';
 					}
-					$in_period     = ! empty( $day['in_period'] );
-					$is_future     = ( $day['date'] > css_tc_addon()->time->site_today() );
-					$pencil_state  = '';
-					$pencil_label  = '';
-					$correct_href  = '';
+					$in_period    = ! empty( $day['in_period'] );
+					$is_future    = ( $day['date'] > css_tc_addon()->time->site_today() );
+					$correct_href = '';
+					$show_pencil  = false;
+					$show_check   = false;
+					$show_lock    = false;
+					$css_tc_attention = ! empty( $day['has_long'] );
+					if ( ! empty( $day['shifts'] ) && is_array( $day['shifts'] ) ) {
+						foreach ( $day['shifts'] as $css_tc_mark_pair ) {
+							if ( ! empty( $css_tc_mark_pair['is_stale'] ) || ! empty( $css_tc_mark_pair['is_out_before_in'] ) || ! empty( $css_tc_mark_pair['is_long'] ) ) {
+								$css_tc_attention = true;
+								break;
+							}
+						}
+					}
 					if ( $in_period && ! $is_future ) {
 						if ( ! $is_open ) {
-							$pencil_state = 'closed';
-							$pencil_label = __( 'Pay period closed', 'css-timeclock-addon' );
-						} elseif ( ! empty( $day['has_approved'] ) ) {
-							$pencil_state = 'done';
-							$pencil_label = __( 'Changes completed', 'css-timeclock-addon' );
+							$show_lock = true;
 						} else {
-							$pencil_state = 'edit';
-							$pencil_label = __( 'Edit', 'css-timeclock-addon' );
+							$show_pencil = true;
+							$show_check  = ! empty( $day['has_approved'] );
 						}
 						$css_tc_can_open = ( 'admin' === $mode ) || ( 'employee' === $mode && $is_open );
 						if ( $css_tc_can_open && 'employee' === $mode ) {
@@ -279,29 +288,31 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 									<span class="css-tc-badge css-tc-badge--long"><?php echo esc_html__( 'Long shift', 'css-timeclock-addon' ); ?></span>
 								<?php endif; ?>
 								<?php if ( ! empty( $day['pending'] ) ) : ?>
-									<span class="css-tc-badge"><?php echo esc_html__( 'Pending', 'css-timeclock-addon' ); ?></span>
+									<span class="css-tc-badge css-tc-badge--pending" title="<?php echo esc_attr__( 'Pending request', 'css-timeclock-addon' ); ?>"><?php echo esc_html__( 'Pending', 'css-timeclock-addon' ); ?></span>
 								<?php endif; ?>
-								<?php if ( ! empty( $day['pending'] ) ) : ?>
-									<span class="css-tc-dot" title="<?php echo esc_attr__( 'Pending correction', 'css-timeclock-addon' ); ?>">
-										<span class="screen-reader-text"><?php echo esc_html__( 'Pending correction', 'css-timeclock-addon' ); ?></span>
+								<?php if ( $css_tc_attention && $in_period && ! $is_future ) : ?>
+									<span class="css-tc-attention" role="img" title="<?php echo esc_attr__( 'Needs attention', 'css-timeclock-addon' ); ?>" aria-label="<?php echo esc_attr__( 'Needs attention', 'css-timeclock-addon' ); ?>">
+										<?php echo $css_tc_flag; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?>
 									</span>
 								<?php endif; ?>
-								<?php if ( '' !== $pencil_state ) : ?>
-									<?php
-									$css_tc_pencil_class = 'css-tc-edit';
-									if ( 'done' === $pencil_state ) {
-										$css_tc_pencil_class .= ' css-tc-edit--done';
-									} elseif ( 'closed' === $pencil_state ) {
-										$css_tc_pencil_class .= ' css-tc-edit--closed';
-									}
-									?>
+								<?php if ( $show_check ) : ?>
+									<span class="css-tc-check" role="img" title="<?php echo esc_attr__( 'Changes completed', 'css-timeclock-addon' ); ?>" aria-label="<?php echo esc_attr__( 'Changes completed', 'css-timeclock-addon' ); ?>">
+										<?php echo $css_tc_check; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?>
+									</span>
+								<?php endif; ?>
+								<?php if ( $show_pencil && '' !== $correct_href ) : ?>
+									<a class="css-tc-edit" href="<?php echo esc_url( $correct_href ); ?>" title="<?php echo esc_attr__( 'Edit', 'css-timeclock-addon' ); ?>" aria-label="<?php echo esc_attr__( 'Edit', 'css-timeclock-addon' ); ?>">
+										<?php echo $pencil; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?>
+									</a>
+								<?php endif; ?>
+								<?php if ( $show_lock ) : ?>
 									<?php if ( '' !== $correct_href ) : ?>
-										<a class="<?php echo esc_attr( $css_tc_pencil_class ); ?>" href="<?php echo esc_url( $correct_href ); ?>" title="<?php echo esc_attr( $pencil_label ); ?>" aria-label="<?php echo esc_attr( $pencil_label ); ?>">
-											<?php echo $pencil; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?>
+										<a class="css-tc-lock" href="<?php echo esc_url( $correct_href ); ?>" title="<?php echo esc_attr__( 'Pay period closed', 'css-timeclock-addon' ); ?>" aria-label="<?php echo esc_attr__( 'Pay period closed', 'css-timeclock-addon' ); ?>">
+											<?php echo $css_tc_lock; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?>
 										</a>
 									<?php else : ?>
-										<span class="<?php echo esc_attr( $css_tc_pencil_class ); ?>" role="img" title="<?php echo esc_attr( $pencil_label ); ?>" aria-label="<?php echo esc_attr( $pencil_label ); ?>">
-											<?php echo $pencil; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?>
+										<span class="css-tc-lock" role="img" title="<?php echo esc_attr__( 'Pay period closed', 'css-timeclock-addon' ); ?>" aria-label="<?php echo esc_attr__( 'Pay period closed', 'css-timeclock-addon' ); ?>">
+											<?php echo $css_tc_lock; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?>
 										</span>
 									<?php endif; ?>
 								<?php endif; ?>

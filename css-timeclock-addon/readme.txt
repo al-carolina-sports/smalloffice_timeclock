@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.4.10
+Stable tag: 1.4.11
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,9 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under SMOTC.
 
 == Changelog ==
+
+= 1.4.11 =
+* Day status icons on My Time Clock and SMOTC → Timecards follow a standard color scheme. A blue pencil means the day can be edited. A green check means a correction was approved or a manager already edited that day, and the blue pencil stays beside it while the period is open. Amber is a pending request. Red is only a real problem: missed clock-out, clock-out before clock-in, or a shift over 16 hours. A gray lock means the pay period is closed. Employees cannot click the lock. Managers still open the closed-period warning. Future days have no icon. The legend under Day Summary reads: Blue pencil: edit · Green check: changes completed · Amber: pending request · Red: needs attention · Gray lock: pay period closed.
 
 = 1.4.10 =
 * On SMOTC → Timecards, Save changes is a primary button under the punches and next to the day heading. It stays enabled. An invalid row is not saved. Invalid means the clock-out is earlier than the clock-in with next day unchecked, a missing clock-in, or a time that cannot be read. That row and the button say what to fix. For an earlier clock-out the message is: Clock-out is earlier than clock-in. Fix the time, or check "Clock-out is the next day" if the shift ended after midnight. Shift hours shows that problem instead of --:--.
