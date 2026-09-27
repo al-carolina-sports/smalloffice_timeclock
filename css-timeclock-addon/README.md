@@ -9,7 +9,7 @@ WP Engine upload zip (plugin wrapped in a `css-timeclock-addon/` folder):
 
 Add-on for **All in One Time Clock Lite** (Codebangers, slug `aio-time-clock-lite`). It adds shared-tablet kiosks so employees can clock in and out **without a WordPress login**, plus a logged-in employee times page with supervisor-approved corrections.
 
-This plugin does **not** fork or edit AIO Lite. It writes the same `shift` posts and meta AIO already uses, so **SMOTC → Real Time Monitoring** still shows who is working. In wp-admin the menu and this plugin are labeled **SMOTC**, and AIO Lite is labeled **SMOTC Core**.
+This plugin does **not** fork or edit AIO Lite. It writes the same `shift` posts and meta AIO already uses. **SMOTC → Real Time Monitoring** is the addon’s screen: fresh open shifts only, times in the site timezone. In wp-admin the menu and this plugin are labeled **SMOTC**, and AIO Lite is labeled **SMOTC Core**.
 
 | Requirement | Status |
 | --- | --- |

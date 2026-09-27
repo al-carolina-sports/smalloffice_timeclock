@@ -22,6 +22,9 @@ if ( ! empty( $line['is_stale'] ) ) {
 if ( ! empty( $line['is_missing_in'] ) ) {
 	$notes[] = __( 'No clock-in', 'css-timeclock-addon' );
 }
+if ( ! empty( $line['is_long'] ) ) {
+	$notes[] = __( 'Long shift', 'css-timeclock-addon' );
+}
 if ( ! empty( $line['pending'] ) ) {
 	$notes[] = __( 'Pending review', 'css-timeclock-addon' );
 }

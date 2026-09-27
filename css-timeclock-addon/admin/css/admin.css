@@ -190,3 +190,11 @@
 		width: 100%;
 	}
 }
+
+.css-tc-monitor__lead {
+	max-width: 720px;
+}
+
+.css-tc-monitor__table {
+	margin: 8px 0 16px;
+}

@@ -101,6 +101,31 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 		<?php echo esc_html( $sheet['employee_name'] . ' — ' . $period['label'] ); ?>
 	</p>
 
+	<?php if ( ! $is_open ) : ?>
+		<p class="css-tc-banner css-tc-banner--closed" role="status">
+			<?php echo esc_html__( 'This pay period is closed and can\'t be edited.', 'css-timeclock-addon' ); ?>
+		</p>
+	<?php endif; ?>
+	<?php if ( ! empty( $sheet['long_shift_count'] ) ) : ?>
+		<p class="css-tc-banner css-tc-banner--long" role="status">
+			<?php
+			echo esc_html(
+				sprintf(
+					/* translators: 1: number of long shifts, 2: hour limit */
+					_n(
+						'%1$d shift is longer than %2$d hours. Those hours are still included in the totals.',
+						'%1$d shifts are longer than %2$d hours. Those hours are still included in the totals.',
+						(int) $sheet['long_shift_count'],
+						'css-timeclock-addon'
+					),
+					(int) $sheet['long_shift_count'],
+					(int) $sheet['long_shift_max']
+				)
+			);
+			?>
+		</p>
+	<?php endif; ?>
+
 	<?php if ( '' !== $notice ) : ?>
 		<p class="css-tc-sheet__notice css-tc-no-print"><?php echo esc_html( $notice ); ?></p>
 	<?php endif; ?>
@@ -112,8 +137,6 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 		<p class="css-tc-sheet__actions css-tc-no-print">
 			<a class="css-tc-print" href="<?php echo esc_url( Css_Tc_Shortcodes::correct_url() ); ?>"><?php echo esc_html__( 'Correct this pay period', 'css-timeclock-addon' ); ?></a>
 		</p>
-	<?php elseif ( 'employee' === $mode ) : ?>
-		<p class="css-tc-sheet__closed"><?php echo esc_html__( 'This pay period is closed. Times are display-only.', 'css-timeclock-addon' ); ?></p>
 	<?php endif; ?>
 
 	<div class="css-tc-cards">
@@ -176,6 +199,9 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 					if ( ! empty( $day['needs_correction'] ) ) {
 						$day_classes .= ' needs-correction';
 					}
+					if ( ! empty( $day['has_long'] ) ) {
+						$day_classes .= ' is-long';
+					}
 					$correct_href = '';
 					if ( ! empty( $day['needs_correction'] ) && 'employee' === $mode ) {
 						$correct_href = Css_Tc_Shortcodes::correct_url( $day['date'] );
@@ -185,8 +211,14 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 					?>
 					<div class="<?php echo esc_attr( $day_classes ); ?>" id="day-<?php echo esc_attr( $day['date'] ); ?>">
 						<div class="css-tc-day__top">
-							<span class="css-tc-day__num"><?php echo esc_html( $day['day_num'] ); ?></span>
+							<span class="css-tc-day__num">
+								<span class="css-tc-day__dow"><?php echo esc_html( $day['weekday'] ); ?></span>
+								<?php echo esc_html( $day['day_num'] ); ?>
+							</span>
 							<span class="css-tc-day__marks">
+								<?php if ( ! empty( $day['has_long'] ) ) : ?>
+									<span class="css-tc-badge css-tc-badge--long"><?php echo esc_html__( 'Long shift', 'css-timeclock-addon' ); ?></span>
+								<?php endif; ?>
 								<?php if ( ! empty( $day['pending'] ) ) : ?>
 									<span class="css-tc-badge"><?php echo esc_html__( 'Pending', 'css-timeclock-addon' ); ?></span>
 								<?php endif; ?>
@@ -205,21 +237,24 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 						<?php endif; ?>
 						<div class="css-tc-day__pairs">
 							<?php foreach ( $day['shifts'] as $pair ) : ?>
-								<div class="css-tc-pair">
-									<span><?php echo esc_html( '' !== $pair['in_display'] ? $pair['in_display'] : __( 'No clock-in', 'css-timeclock-addon' ) ); ?></span>
-									<span>
-										<?php
-										if ( '' !== $pair['out_display'] ) {
-											echo esc_html( $pair['out_display'] );
-										} elseif ( ! empty( $pair['is_stale'] ) ) {
-											echo esc_html__( 'Missed clock-out', 'css-timeclock-addon' );
-										} elseif ( ! empty( $pair['is_open'] ) ) {
-											echo esc_html__( 'No clock-out', 'css-timeclock-addon' );
-										} else {
-											echo esc_html__( 'No clock-out', 'css-timeclock-addon' );
-										}
-										?>
+								<div class="css-tc-pair<?php echo ! empty( $pair['is_long'] ) ? ' is-long' : ''; ?>">
+									<span class="css-tc-pair__times">
+										<span><?php echo esc_html( '' !== $pair['in_display'] ? $pair['in_display'] : __( 'No clock-in', 'css-timeclock-addon' ) ); ?></span>
+										<span>
+											<?php
+											if ( '' !== $pair['out_display'] ) {
+												echo esc_html( $pair['out_display'] );
+											} elseif ( ! empty( $pair['is_stale'] ) ) {
+												echo esc_html__( 'Missed clock-out', 'css-timeclock-addon' );
+											} else {
+												echo esc_html__( 'No clock-out', 'css-timeclock-addon' );
+											}
+											?>
+										</span>
 									</span>
+									<?php if ( ! empty( $pair['is_long'] ) ) : ?>
+										<span class="css-tc-pair__flag"><?php echo esc_html__( 'Long shift', 'css-timeclock-addon' ); ?></span>
+									<?php endif; ?>
 								</div>
 							<?php endforeach; ?>
 						</div>

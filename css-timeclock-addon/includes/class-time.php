@@ -28,9 +28,13 @@
  * - Display, calendar days, and correction form parsing use wp_timezone().
  *   Form values are site-local and are converted back to UTC before save.
  *
- * Limitation: a punch created by AIO's own clock AFTER the site timezone
- * leaves UTC is a site-local naive string. This addon will read it as UTC.
- * Kiosk punches and approved corrections stay on the UTC contract above.
+ * AIO's own clock AJAX (aio_time_clock_lite_js clock_in / clock_out) still
+ * calls getCurrentTime(), which is site-local once the timezone leaves UTC.
+ * Css_Tc_Punches rewrites those two writes to UTC before they are stored.
+ * The front-end page that embeds [show_aio_time_clock_lite], including
+ * /time-clock/, redirects to an SMOTC kiosk. Kiosk punches and approved
+ * corrections are written in UTC directly and are not converted again.
+ * Punches AIO already saved as Eastern wall-clock strings are not rewritten.
  *
  * @package CssTimeclockAddon
  */
@@ -97,6 +101,30 @@ class Css_Tc_Time {
 		}
 
 		return $dt;
+	}
+
+	/**
+	 * Read a naive Y-m-d H:i:s as a site-local wall clock and return UTC storage.
+	 *
+	 * AIO's clock AJAX stores wp_date(), which is Eastern after the site
+	 * timezone leaves UTC. Empty and non-datetime values are left alone.
+	 *
+	 * @param mixed $mysql Candidate meta value.
+	 * @return string|null UTC Y-m-d H:i:s, or null when $mysql is not a datetime.
+	 */
+	public function site_naive_to_utc( $mysql ) {
+		$mysql = trim( (string) $mysql );
+		if ( ! preg_match( '/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})$/', $mysql, $m ) ) {
+			return null;
+		}
+
+		$dt     = DateTimeImmutable::createFromFormat( '!Y-m-d H:i:s', $m[1] . ' ' . $m[2], $this->timezone() );
+		$errors = DateTimeImmutable::getLastErrors();
+		if ( ! $dt || ( is_array( $errors ) && ( ! empty( $errors['warning_count'] ) || ! empty( $errors['error_count'] ) ) ) ) {
+			return null;
+		}
+
+		return $this->format_stored( $dt );
 	}
 
 	/**

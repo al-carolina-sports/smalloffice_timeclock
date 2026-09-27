@@ -25,6 +25,78 @@ class Css_Tc_Punches {
 	const ROSTER_CACHE_TTL = 8; // Unused: public_board() skips the transient until a cache is proven necessary.
 
 	/**
+	 * True while an AIO clock write is being stored as UTC, so the filter
+	 * does not convert that second write again.
+	 *
+	 * @var bool
+	 */
+	private $normalizing_clock_meta = false;
+
+	/**
+	 * Rewrite AIO's clock-in/clock-out AJAX times from site-local to UTC.
+	 *
+	 * @return void
+	 */
+	public function register_hooks() {
+		add_filter( 'add_post_metadata', array( $this, 'normalize_aio_clock_meta' ), 10, 5 );
+		add_filter( 'update_post_metadata', array( $this, 'normalize_aio_clock_meta' ), 10, 5 );
+	}
+
+	/**
+	 * @param mixed  $check      Short-circuit value.
+	 * @param int    $object_id  Post ID.
+	 * @param string $meta_key   Meta key.
+	 * @param mixed  $meta_value Meta value.
+	 * @return mixed
+	 */
+	public function normalize_aio_clock_meta( $check, $object_id, $meta_key, $meta_value ) {
+		if ( null !== $check || $this->normalizing_clock_meta ) {
+			return $check;
+		}
+		if ( ! in_array( (string) $meta_key, array( 'employee_clock_in_time', 'employee_clock_out_time' ), true ) ) {
+			return $check;
+		}
+		if ( ! $this->request_is_aio_clock_punch() ) {
+			return $check;
+		}
+
+		$post = get_post( (int) $object_id );
+		if ( ! $post || self::POST_TYPE !== $post->post_type ) {
+			return $check;
+		}
+
+		$utc = css_tc_addon()->time->site_naive_to_utc( $meta_value );
+		if ( null === $utc || $utc === trim( (string) $meta_value ) ) {
+			return $check;
+		}
+
+		$this->normalizing_clock_meta = true;
+		update_post_meta( (int) $object_id, (string) $meta_key, $utc );
+		$this->normalizing_clock_meta = false;
+
+		return true;
+	}
+
+	/**
+	 * AIO Lite's logged-in clock widget (action aio_time_clock_lite_js).
+	 *
+	 * @return bool
+	 */
+	public function request_is_aio_clock_punch() {
+		$doing_ajax = function_exists( 'wp_doing_ajax' ) && wp_doing_ajax();
+		$action     = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : '';
+		$clock      = isset( $_POST['clock_action'] ) ? sanitize_key( wp_unslash( $_POST['clock_action'] ) ) : '';
+		$is         = $doing_ajax && 'aio_time_clock_lite_js' === $action && in_array( $clock, array( 'clock_in', 'clock_out' ), true );
+
+		/**
+		 * Whether the current request is AIO's clock-in or clock-out AJAX.
+		 *
+		 * @param bool $is Detected from the request.
+		 */
+		return (bool) apply_filters( 'css_tc_is_aio_clock_punch', $is );
+	}
+
+	/**
 	 * @param int $user_id Employee user ID.
 	 * @return array{open_shift_id:int,is_clocked_in:bool,clock_in_time:?string}
 	 */
@@ -212,6 +284,17 @@ class Css_Tc_Punches {
 	}
 
 	/**
+	 * Finished shifts longer than this are flagged. Hours still count.
+	 *
+	 * @return int
+	 */
+	public function long_shift_hours() {
+		$settings = css_tc_addon()->get_settings();
+		$hours    = isset( $settings['long_shift_hours'] ) ? (int) $settings['long_shift_hours'] : 16;
+		return min( 36, max( 1, $hours ) );
+	}
+
+	/**
 	 * @param mixed $clock_in Stored clock-in.
 	 * @return bool
 	 */
@@ -266,6 +349,100 @@ class Css_Tc_Punches {
 		wp_reset_postdata();
 
 		return $map;
+	}
+
+	/**
+	 * Real Time Monitoring rows. Fresh open shifts are "working". Older open
+	 * shifts are missed clock-outs and are not counted as working. Times are
+	 * formatted in the site timezone.
+	 *
+	 * @return array{working:array<int,array<string,mixed>>,missed:array<int,array<string,mixed>>,max_hours:int,timezone:string}
+	 */
+	public function monitoring_snapshot() {
+		$query = new WP_Query(
+			array(
+				'post_type'      => self::POST_TYPE,
+				'post_status'    => array( 'publish', 'private' ),
+				'posts_per_page' => 300,
+				'orderby'        => 'ID',
+				'order'          => 'DESC',
+				'no_found_rows'  => true,
+			)
+		);
+
+		$working = array();
+		$missed  = array();
+		$fresh   = array();
+
+		if ( $query->have_posts() ) {
+			foreach ( $query->posts as $post ) {
+				$author = (int) $post->post_author;
+				if ( $author < 1 || isset( $fresh[ $author ] ) ) {
+					continue;
+				}
+
+				$clock_in  = get_post_meta( $post->ID, 'employee_clock_in_time', true );
+				$clock_out = get_post_meta( $post->ID, 'employee_clock_out_time', true );
+				if ( ! $this->is_open_shift_meta( $clock_in, $clock_out ) ) {
+					continue;
+				}
+
+				$row = $this->monitoring_row( $post, (string) $clock_in );
+				if ( $this->is_stale_open_shift( $clock_in ) ) {
+					if ( ! isset( $missed[ $author ] ) ) {
+						$missed[ $author ] = $row;
+					}
+					continue;
+				}
+
+				$working[ $author ] = $row;
+				$fresh[ $author ]   = true;
+				unset( $missed[ $author ] );
+			}
+		}
+
+		wp_reset_postdata();
+
+		$by_name = static function ( $a, $b ) {
+			return strcasecmp( (string) $a['name'], (string) $b['name'] );
+		};
+		$working = array_values( $working );
+		$missed  = array_values( $missed );
+		usort( $working, $by_name );
+		usort( $missed, $by_name );
+
+		$tz = function_exists( 'wp_timezone_string' ) ? wp_timezone_string() : css_tc_addon()->time->timezone()->getName();
+
+		return array(
+			'working'   => $working,
+			'missed'    => $missed,
+			'max_hours' => $this->missed_clock_out_hours(),
+			'timezone'  => $tz ? $tz : 'UTC',
+		);
+	}
+
+	/**
+	 * @param WP_Post $post     Open shift.
+	 * @param string  $clock_in Stored UTC clock-in.
+	 * @return array<string,mixed>
+	 */
+	private function monitoring_row( $post, $clock_in ) {
+		$time    = css_tc_addon()->time;
+		$author  = (int) $post->post_author;
+		$ip      = (string) get_post_meta( $post->ID, 'ip_address_in', true );
+		$started = $time->parse_stored( $clock_in );
+		$age     = $started ? max( 0, time() - $started->getTimestamp() ) : 0;
+
+		return array(
+			'shift_id'  => (int) $post->ID,
+			'user_id'   => $author,
+			'name'      => css_tc_addon()->employees->display_name( $author ),
+			'department'=> css_tc_addon()->employees->department( $author ),
+			'clock_in'  => $time->format_site( $clock_in, 'F j, Y, g:i A' ),
+			'elapsed'   => $time->format_duration( $age ),
+			'ip'        => $ip,
+			'edit_url'  => get_edit_post_link( $post->ID, 'raw' ),
+		);
 	}
 
 	/**
@@ -521,6 +698,7 @@ class Css_Tc_Punches {
 		$out_day       = $has_out ? $time->site_date_of( $clock_out ) : '';
 		$work_date     = '' !== $in_day ? $in_day : $out_day;
 		$seconds       = ( $has_in && $has_out ) ? $time->elapsed_seconds( $clock_in, $clock_out ) : -1;
+		$is_long       = ( $seconds > ( $this->long_shift_hours() * HOUR_IN_SECONDS ) );
 
 		return array(
 			'id'              => (int) $post->ID,
@@ -541,6 +719,7 @@ class Css_Tc_Punches {
 			'is_open'         => $is_open,
 			'is_stale_open'   => $is_stale,
 			'is_missing_in'   => $is_missing_in,
+			'is_long'         => $is_long,
 		);
 	}
 

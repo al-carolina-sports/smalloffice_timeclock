@@ -289,6 +289,7 @@ Optional commercial shortcut: AIO **Pro** (~$40/year) documents PIN/QR/locations
 | --- | --- | --- |
 | 1.0 | 2026-09-19 | Initial whitepaper for developer sharing; reflects Phase 1 live on carolinaspodev. |
 | 1.4 | 2026-09-25 | Add-on 1.4.0 timecards, pay periods, closed-period enforcement, and the UTC storage contract. |
+| 1.4.1 | 2026-09-27 | Closed-period notice, long-shift flags, SMOTC Real Time Monitoring, and AIO clock times stored as UTC. |
 
 ---
 
@@ -305,6 +306,7 @@ Settings on the SMOTC screen:
 | Length | Biweekly (or weekly) |
 | Anchor | Monday `2026-09-07` |
 | Missed clock-out | 16 hours |
+| Long shift | 16 hours (still counted in totals; flagged only) |
 
 Weeks are Monday–Sunday. With the default anchor, 2026-09-07 through 2026-09-20 is one period and 2026-09-21 through 2026-10-04 is the next. The dropdown lists the current period, the previous period, and older periods. Only the current period accepts corrections. Past periods are display-only in the UI, and `Css_Tc_Corrections::submit()`, `submit_period()`, and `approve()` reject any change whose clock-in day is outside that open period.
 
@@ -314,19 +316,27 @@ Counted time is **Regular**. `css_tc_pay_codes` can register more codes (Holiday
 
 ### Corrections
 
-An edit icon appears on a current-period day that has an open shift, a missed clock-out, a clock-out without a clock-in, a pending suggestion, or a day the employee flagged. The icon opens a form for the **entire** current pay period (every day, extra punches, a reason per change). Each changed line is a `css_tc_correction` post. Approve and reject are unchanged: approve writes `employee_clock_in_time` / `employee_clock_out_time` or creates a shift. The timecard shows a Pending badge until review.
+A closed period shows “This pay period is closed and can't be edited.” above the summaries, on the employee page and on SMOTC → Timecards, and that notice prints with the sheet.
+
+A finished shift longer than the long-shift setting (default 16 hours) is badged on the day and on the punch line, and counted in a warning above the cards. Those hours stay in the pay-period, pay-code, and weekly totals. The correction pencil appears only while the period is open. Nothing rewrites the stored times.
+
+An edit icon appears on a current-period day that has an open shift, a missed clock-out, a clock-out without a clock-in, a long shift, a pending suggestion, or a day the employee flagged. The icon opens a form for the **entire** current pay period (every day, extra punches, a reason per change). Each changed line is a `css_tc_correction` post. Approve and reject are unchanged: approve writes `employee_clock_in_time` / `employee_clock_out_time` or creates a shift. The timecard shows a Pending badge until review.
 
 ### How AIO Lite 2.1.0 stores times
 
 `AIO_Time_Clock_Lite_Actions::getCurrentTime()` saves `employee_clock_in_time` and `employee_clock_out_time` with `wp_date( 'Y-m-d H:i:s' )`: a naive wall clock in `wp_timezone()`, with no offset in post meta. Display (`cleanDate()`) is `date( $format, strtotime( $stored ) )`. WordPress forces PHP’s default timezone to UTC, so `strtotime` and `date` both treat that naive string as UTC and the digits are shown unchanged.
 
-On carolinaspodev the site timezone is UTC, so every existing punch string **is** the UTC instant. A 5:05 PM America/New_York punch is stored as `21:05:00` and, while the site timezone stays UTC, every screen shows 9:05 PM.
+On carolinaspodev the site timezone was UTC while those punches were stored, so every existing punch string **is** the UTC instant. A 5:05 PM America/New_York punch is stored as `21:05:00`. While the site timezone stayed UTC, every screen showed 9:05 PM.
 
 This add-on keeps the meta format (`Y-m-d H:i:s`, no rewrite of old rows) and treats those strings as **UTC instants**. New kiosk punches and approved corrections are written in UTC (`DateTimeImmutable` / the same digits `wp_date()` produced while the site was UTC). Displays, correction inputs, and calendar days use `wp_timezone()`. After an admin sets the site timezone to `America/New_York`, `21:05:00` still means 21:05 UTC and renders as 5:05:00 PM Eastern on the same calendar day. Storage does **not** switch to `wp_date()` at that point: `wp_date()` would start writing Eastern wall clocks and the old UTC rows would be misread.
 
 Form fields accept `H:i` or `H:i:s`. When seconds are omitted and the hour and minute match the stored punch, the original seconds are kept.
 
-Limitation: a punch created by AIO’s own clock **after** the site timezone leaves UTC is a site-local naive string. This add-on reads every stored string as UTC. Kiosk punches and approved corrections stay on the UTC contract.
+On carolinaspodev the timezone is now `America/New_York`. Strings already stored while the site was UTC remain UTC instants and display as Eastern. Add-on 1.4.1 does not rewrite those rows.
+
+AIO’s clock page (`/time-clock/`, shortcode `[show_aio_time_clock_lite]`) redirects to an SMOTC kiosk. If `admin-ajax.php?action=aio_time_clock_lite_js` still runs `clock_in` or `clock_out`, the addon converts that `wp_date()` value from the site timezone to UTC before it is stored. Kiosk punches and approved corrections are written in UTC and are not converted a second time. Punches AIO already saved as Eastern wall clocks, before this version, are still misread as UTC until someone corrects them on the timecard.
+
+SMOTC replaces the callback for **SMOTC → Real Time Monitoring** (`admin.php?page=aio-monitoring-sub`) without editing AIO. Fresh open shifts are “working now,” with clock-in shown in the site timezone. Open shifts older than the missed clock-out limit are a separate list and are not included in the working count.
 
 ### Missed clock-out
 

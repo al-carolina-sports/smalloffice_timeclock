@@ -32,6 +32,91 @@ class Css_Tc_Shortcodes {
 		add_shortcode( 'css_tc_name_kiosk', array( __CLASS__, 'name_kiosk' ) );
 		add_shortcode( 'css_tc_my_times', array( __CLASS__, 'my_times' ) );
 		add_filter( 'body_class', array( __CLASS__, 'body_class' ) );
+		add_action( 'template_redirect', array( __CLASS__, 'redirect_aio_clock_page' ) );
+	}
+
+	/**
+	 * Send AIO's logged-in clock page to an SMOTC kiosk.
+	 *
+	 * AIO's widget stores wp_date() (site-local). After the site timezone leaves
+	 * UTC those strings are not UTC. The kiosk already writes UTC. The AJAX
+	 * action is still normalized if something calls it directly.
+	 *
+	 * @return void
+	 */
+	public static function redirect_aio_clock_page() {
+		if ( is_admin() || wp_doing_ajax() || ! is_singular( 'page' ) ) {
+			return;
+		}
+
+		$post = get_queried_object();
+		if ( ! $post instanceof WP_Post || ! self::is_aio_clock_page( $post ) ) {
+			return;
+		}
+
+		$target = self::preferred_kiosk_url();
+		$here   = get_permalink( $post );
+		if ( ! $target || ! $here ) {
+			return;
+		}
+		if ( untrailingslashit( $target ) === untrailingslashit( $here ) ) {
+			return;
+		}
+
+		wp_safe_redirect( $target );
+		exit;
+	}
+
+	/**
+	 * @param WP_Post $post Page being viewed.
+	 * @return bool
+	 */
+	public static function is_aio_clock_page( $post ) {
+		if ( 'time-clock' === $post->post_name ) {
+			return true;
+		}
+		return has_shortcode( (string) $post->post_content, 'show_aio_time_clock_lite' );
+	}
+
+	/**
+	 * Name kiosk when it is enabled, otherwise the PIN kiosk.
+	 *
+	 * @return string
+	 */
+	public static function preferred_kiosk_url() {
+		$settings = css_tc_addon()->get_settings();
+		$name_on  = ! empty( $settings['name_kiosk_enabled'] );
+		$pin_on   = ! empty( $settings['pin_kiosk_enabled'] );
+
+		if ( $name_on ) {
+			$url = self::page_url( isset( $settings['name_kiosk_page_id'] ) ? (int) $settings['name_kiosk_page_id'] : 0, 'name-time-clock' );
+			if ( $url ) {
+				return $url;
+			}
+		}
+		if ( $pin_on || ! $name_on ) {
+			$url = self::page_url( isset( $settings['pin_kiosk_page_id'] ) ? (int) $settings['pin_kiosk_page_id'] : 0, 'pin-time-clock' );
+			if ( $url ) {
+				return $url;
+			}
+		}
+
+		return home_url( '/name-time-clock/' );
+	}
+
+	/**
+	 * @param int    $page_id  Saved page ID.
+	 * @param string $slug     Fallback slug.
+	 * @return string
+	 */
+	private static function page_url( $page_id, $slug ) {
+		if ( $page_id > 0 ) {
+			$link = get_permalink( $page_id );
+			if ( $link ) {
+				return (string) $link;
+			}
+		}
+		return home_url( '/' . $slug . '/' );
 	}
 
 	/**
