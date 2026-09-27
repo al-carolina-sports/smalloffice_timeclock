@@ -52,20 +52,91 @@
     return hours * 3600 + minutes * 60 + seconds;
   }
 
-  function spanSeconds(line) {
+  function formMessages(form) {
+    function read(name, fallback) {
+      if (form && form.getAttribute) {
+        var value = form.getAttribute(name);
+        if (value) {
+          return value;
+        }
+      }
+      return fallback;
+    }
+    return {
+      order: read("data-msg-order", 'Clock-out is earlier than clock-in. Fix the time, or check "Clock-out is the next day" if the shift ended after midnight.'),
+      short: read("data-msg-order-short", "Clock-out is earlier than clock-in"),
+      missing: read("data-msg-missing", "Enter a clock-in time."),
+      bad: read("data-msg-bad-time", "Enter a valid clock time."),
+      longTpl: read("data-msg-long", "This shift is %s long. Save anyway?")
+    };
+  }
+
+  function badInput(input) {
+    return !!(input && input.validity && input.validity.badInput);
+  }
+
+  function describeLine(line) {
+    var msgs = formMessages(line.closest("form"));
     var inn = line.querySelector('input[name$="[proposed_in]"]');
     var out = line.querySelector('input[name$="[proposed_out]"]');
     var next = line.querySelector('input[name$="[out_next_day]"]');
-    var inSec = hmsToSeconds(inn ? inn.value : "");
-    var outSec = hmsToSeconds(out ? out.value : "");
-    if (inSec === null || outSec === null) {
-      return -1;
+    var del = line.querySelector('input[name$="[delete]"]');
+    var shift = line.querySelector('input[name$="[shift_id]"]');
+    var blank = { kind: "", problem: "", seconds: -1, hoursText: "--:--" };
+    if (inn && inn.disabled) {
+      return blank;
     }
-    var diff = outSec - inSec;
+    if (del && del.value === "1") {
+      return blank;
+    }
+    if (badInput(inn) || badInput(out)) {
+      return { kind: "time", problem: msgs.bad, seconds: -1, hoursText: "--:--" };
+    }
+    var inVal = inn ? (inn.value || "").trim() : "";
+    var outVal = out ? (out.value || "").trim() : "";
+    var shiftId = shift ? parseInt(shift.value, 10) || 0 : 0;
+    if (!shiftId && inVal === "" && outVal === "") {
+      return blank;
+    }
+    if ((inVal !== "" && hmsToSeconds(inVal) === null) || (outVal !== "" && hmsToSeconds(outVal) === null)) {
+      return { kind: "time", problem: msgs.bad, seconds: -1, hoursText: "--:--" };
+    }
+    if (inVal === "") {
+      return { kind: "in", problem: msgs.missing, seconds: -1, hoursText: "--:--" };
+    }
+    if (outVal === "") {
+      return blank;
+    }
+    var diff = hmsToSeconds(outVal) - hmsToSeconds(inVal);
     if (next && next.checked) {
       diff += 86400;
     }
-    return diff < 0 ? -1 : diff;
+    if (diff < 0) {
+      return { kind: "order", problem: msgs.order, seconds: -1, hoursText: msgs.short };
+    }
+    return { kind: "", problem: "", seconds: diff, hoursText: formatHours(diff) };
+  }
+
+  function setLineError(line, message) {
+    var el = line.querySelector("[data-line-error]");
+    if (!el) {
+      return;
+    }
+    el.textContent = message || "";
+    if (message) {
+      el.hidden = false;
+      line.classList.add("is-invalid");
+    } else {
+      el.hidden = true;
+      line.classList.remove("is-invalid");
+    }
+  }
+
+  function setSaveErrors(form, message) {
+    form.querySelectorAll("[data-save-error]").forEach(function (el) {
+      el.textContent = message || "";
+      el.hidden = !message;
+    });
   }
 
   function formatHours(seconds) {
@@ -84,13 +155,21 @@
     }
     var total = 0;
     day.querySelectorAll("[data-line]").forEach(function (line) {
-      var seconds = spanSeconds(line);
+      var state = describeLine(line);
       var slot = line.querySelector("[data-shift-hours]");
       if (slot) {
-        slot.textContent = formatHours(seconds);
+        slot.textContent = state.hoursText;
+        if (state.kind === "order") {
+          slot.classList.add("is-problem");
+        } else {
+          slot.classList.remove("is-problem");
+        }
       }
-      if (seconds >= 0) {
-        total += seconds;
+      if (line.classList.contains("is-invalid")) {
+        setLineError(line, state.problem);
+      }
+      if (state.seconds >= 0) {
+        total += state.seconds;
       }
     });
     var daySlot = day.querySelector("[data-day-total]");
@@ -160,6 +239,70 @@
     var form = btn.closest("form");
     if (form) {
       form.submit();
+    }
+  });
+
+  document.addEventListener("submit", function (event) {
+    var form = event.target;
+    if (!form || !form.getAttribute) {
+      return;
+    }
+    var manager = form.hasAttribute("data-manager-edit");
+    var employee = form.classList && form.classList.contains("css-tc-correct__form");
+    if (!manager && !employee) {
+      return;
+    }
+
+    var problems = [];
+    var seen = {};
+    form.querySelectorAll("[data-line]").forEach(function (line) {
+      var state = describeLine(line);
+      if (state.problem) {
+        setLineError(line, state.problem);
+        if (!seen[state.problem]) {
+          seen[state.problem] = true;
+          problems.push(state.problem);
+        }
+      } else {
+        setLineError(line, "");
+      }
+    });
+    if (problems.length) {
+      event.preventDefault();
+      setSaveErrors(form, problems.join(" "));
+      var first = form.querySelector(".css-tc-correct__line.is-invalid");
+      if (first && first.scrollIntoView) {
+        first.scrollIntoView({ block: "nearest" });
+      }
+      return;
+    }
+
+    setSaveErrors(form, "");
+    if (!manager) {
+      return;
+    }
+
+    var limit = parseFloat(form.getAttribute("data-long-hours") || "16");
+    if (!isFinite(limit) || limit <= 0) {
+      limit = 16;
+    }
+    var maxSeconds = limit * 3600;
+    var longs = [];
+    form.querySelectorAll("[data-line]").forEach(function (line) {
+      var state = describeLine(line);
+      if (state.seconds > maxSeconds) {
+        longs.push(state.seconds);
+      }
+    });
+    var msgs = formMessages(form);
+    var i;
+    for (i = 0; i < longs.length; i++) {
+      var label = formatHours(longs[i]);
+      var text = msgs.longTpl.indexOf("%s") >= 0 ? msgs.longTpl.replace("%s", label) : "This shift is " + label + " long. Save anyway?";
+      if (!window.confirm(text)) {
+        event.preventDefault();
+        return;
+      }
     }
   });
 

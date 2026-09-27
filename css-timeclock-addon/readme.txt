@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.4.9
+Stable tag: 1.4.10
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,14 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under SMOTC.
 
 == Changelog ==
+
+= 1.4.10 =
+* On SMOTC → Timecards, Save changes is a primary button under the punches and next to the day heading. It stays enabled. An invalid row is not saved. Invalid means the clock-out is earlier than the clock-in with next day unchecked, a missing clock-in, or a time that cannot be read. That row and the button say what to fix. For an earlier clock-out the message is: Clock-out is earlier than clock-in. Fix the time, or check "Clock-out is the next day" if the shift ended after midnight. Shift hours shows that problem instead of --:--.
+* A manager can save a shift longer than 16 hours after confirming the length (This shift is 18:20 long. Save anyway?). The times are stored as entered. The timecard keeps the long-shift flag and does not turn that shift back into a missed clock-out. The 16-hour missed clock-out rule still applies only to an open shift with no clock-out. Entering a clock-out on a missed clock-out clears that state.
+* A successful save returns to the timecard with a green Saved notice. The day and pay-period totals include the new times. If the server rejects the save, the editor stays open, shows the reason in red, and keeps the times that were typed.
+* A stored shift whose clock-out is before its clock-in shows a red Clock-out before clock-in flag on My Time Clock and on SMOTC → Timecards. Those shifts count as 0 in the totals. The manager editor opens that row with the error already visible.
+* The employee correction form on My Time Clock uses the same messages when a request cannot be submitted. It does not ask to confirm a shift over 16 hours.
+* The day pencil is red, green, or gray on My Time Clock and on SMOTC → Timecards. Red means the day can be edited. Green means an approved correction or a manager edit is already on that day, and it stays clickable while the period is open. Gray means the pay period has ended. Employees cannot click a gray pencil. Managers can, and the closed-period warning is unchanged. Future days have no pencil. The green approved dot is gone. A pending request still shows the Pending badge. Under Day Summary: Red pencil: edit · Green: changes completed · Gray: pay period closed.
 
 = 1.4.9 =
 * Today and earlier days in the pay period show a pencil, including a day with no punches. On My Time Clock, while the pay period is open, the pencil opens that day's correction form. An empty day can request a new shift: clock-in, clock-out, next day, and Reason (optional). Submitting still waits for a manager. Days after today have no pencil, and those fields stay closed. The day cells do not have a Request change link. A pending day keeps the Pending badge. Cancel request is on that day's correction form and withdraws the pending suggestion without changing punches. An approved correction shows a small dot. Closed periods do not offer the employee pencil. Correct this pay period stays at the top of the timecard. Today is the site timezone, Eastern time.

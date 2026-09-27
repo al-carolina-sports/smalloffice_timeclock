@@ -38,7 +38,7 @@ $form_error = isset( $form_error ) ? (string) $form_error : '';
 			<p class="css-tc-sheet__error"><?php echo esc_html( $form_error ); ?></p>
 		<?php endif; ?>
 		<?php $css_tc_cancel_dates = array(); ?>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="css-tc-correct__form">
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="css-tc-correct__form" novalidate data-msg-order="<?php echo esc_attr__( 'Clock-out is earlier than clock-in. Fix the time, or check "Clock-out is the next day" if the shift ended after midnight.', 'css-timeclock-addon' ); ?>" data-msg-order-short="<?php echo esc_attr__( 'Clock-out is earlier than clock-in', 'css-timeclock-addon' ); ?>" data-msg-missing="<?php echo esc_attr__( 'Enter a clock-in time.', 'css-timeclock-addon' ); ?>" data-msg-bad-time="<?php echo esc_attr__( 'Enter a valid clock time.', 'css-timeclock-addon' ); ?>">
 			<?php wp_nonce_field( Css_Tc_Corrections::EMPLOYEE_NONCE ); ?>
 			<input type="hidden" name="action" value="css_tc_submit_period" />
 			<?php foreach ( $form['days'] as $day ) : ?>
@@ -108,6 +108,7 @@ $form_error = isset( $form_error ) ? (string) $form_error : '';
 			<?php endforeach; ?>
 			<p class="css-tc-correct__submit">
 				<button type="submit" class="css-tc-print"><?php echo esc_html__( 'Submit corrections', 'css-timeclock-addon' ); ?></button>
+				<span class="css-tc-save-error" data-save-error role="alert" hidden></span>
 			</p>
 		</form>
 		<?php foreach ( $css_tc_cancel_dates as $css_tc_cancel_date ) : ?>

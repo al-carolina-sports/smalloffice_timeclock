@@ -244,8 +244,9 @@ class Css_Tc_Timecard {
 				'is_open'       => ! empty( $shift['is_open'] ),
 				'is_stale'      => ! empty( $shift['is_stale_open'] ),
 				'is_missing_in' => ! empty( $shift['is_missing_in'] ),
-				'is_long'       => ! empty( $shift['is_long'] ),
-				'out_next_day'  => ! empty( $shift['out_next_day'] ),
+				'is_long'          => ! empty( $shift['is_long'] ),
+				'is_out_before_in' => ! empty( $shift['is_out_before_in'] ),
+				'out_next_day'     => ! empty( $shift['out_next_day'] ),
 			);
 		}
 

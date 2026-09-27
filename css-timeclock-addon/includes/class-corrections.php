@@ -774,8 +774,14 @@ class Css_Tc_Corrections {
 			}
 		}
 
-		$proposed_in  = $punches->combine_day_time( $date, isset( $input['proposed_in'] ) ? $input['proposed_in'] : '', false, $original_in );
-		$proposed_out = $punches->combine_day_time( $date, isset( $input['proposed_out'] ) ? $input['proposed_out'] : '', $out_next_day, $original_out );
+		$raw_in  = isset( $input['proposed_in'] ) ? trim( (string) $input['proposed_in'] ) : '';
+		$raw_out = isset( $input['proposed_out'] ) ? trim( (string) $input['proposed_out'] ) : '';
+		if ( ( '' !== $raw_in && null === css_tc_addon()->time->hms_to_seconds( $raw_in ) ) || ( '' !== $raw_out && null === css_tc_addon()->time->hms_to_seconds( $raw_out ) ) ) {
+			return new WP_Error( 'css_tc_bad_time', __( 'Enter a valid clock time.', 'css-timeclock-addon' ) );
+		}
+
+		$proposed_in  = $punches->combine_day_time( $date, $raw_in, false, $original_in );
+		$proposed_out = $punches->combine_day_time( $date, $raw_out, $out_next_day, $original_out );
 
 		// Blank inputs on an existing shift mean "leave this time", not "clear it".
 		if ( $shift_id > 0 && '' === $proposed_in && '' !== $original_in ) {
@@ -786,15 +792,15 @@ class Css_Tc_Corrections {
 		}
 
 		if ( $shift_id < 1 && ! $missing && '' === $proposed_in ) {
-			return new WP_Error( 'css_tc_need_in', __( 'Add a clock-in time, or mark this as a missing punch.', 'css-timeclock-addon' ) );
+			return new WP_Error( 'css_tc_need_in', __( 'Enter a clock-in time.', 'css-timeclock-addon' ) );
 		}
 
 		if ( '' === $proposed_in && '' === $proposed_out && ! $missing && ! $clear_out ) {
 			return new WP_Error( 'css_tc_empty', __( 'Propose a clock-in or clock-out time, or mark a missing punch.', 'css-timeclock-addon' ) );
 		}
 
-		if ( '' !== $proposed_in && '' !== $proposed_out && strcmp( $proposed_out, $proposed_in ) <= 0 ) {
-			return new WP_Error( 'css_tc_order', __( 'Clock-out must be after clock-in. Check “next day” if the shift ran past midnight.', 'css-timeclock-addon' ) );
+		if ( '' !== $proposed_in && '' !== $proposed_out && strcmp( $proposed_out, $proposed_in ) < 0 ) {
+			return new WP_Error( 'css_tc_order', __( 'Clock-out is earlier than clock-in. Fix the time, or check "Clock-out is the next day" if the shift ended after midnight.', 'css-timeclock-addon' ) );
 		}
 
 		if ( $shift_id > 0 && $proposed_in === $original_in && $proposed_out === $original_out && ! $missing && ! $clear_out ) {
@@ -813,7 +819,7 @@ class Css_Tc_Corrections {
 		}
 
 		if ( $shift_id < 1 && '' === $proposed_in ) {
-			return new WP_Error( 'css_tc_need_in', __( 'A missing punch still needs a proposed clock-in time so a supervisor can apply it.', 'css-timeclock-addon' ) );
+			return new WP_Error( 'css_tc_need_in', __( 'Enter a clock-in time.', 'css-timeclock-addon' ) );
 		}
 		if ( $shift_id < 1 && '' !== $proposed_in ) {
 			$missing = true;
@@ -1216,11 +1222,15 @@ class Css_Tc_Corrections {
 				continue;
 			}
 
+			if ( ( '' !== $raw_in && null === css_tc_addon()->time->hms_to_seconds( $raw_in ) ) || ( '' !== $raw_out && null === css_tc_addon()->time->hms_to_seconds( $raw_out ) ) ) {
+				return new WP_Error( 'css_tc_bad_time', __( 'Enter a valid clock time.', 'css-timeclock-addon' ) );
+			}
+
 			$proposed_in  = $punches->combine_day_time( $date, $raw_in, false, $original_in );
 			$proposed_out = $punches->combine_day_time( $date, $raw_out, $next_day, $original_out );
 
 			if ( '' === $proposed_in ) {
-				return new WP_Error( 'css_tc_need_in', __( 'Each punch needs a clock-in time.', 'css-timeclock-addon' ) );
+				return new WP_Error( 'css_tc_need_in', __( 'Enter a clock-in time.', 'css-timeclock-addon' ) );
 			}
 
 			$in_day = css_tc_addon()->time->site_date_of( $proposed_in );
@@ -1228,8 +1238,8 @@ class Css_Tc_Corrections {
 				return new WP_Error( 'css_tc_bad_date', __( 'Clock-in has to stay on the day you are editing.', 'css-timeclock-addon' ) );
 			}
 
-			if ( '' !== $proposed_out && strcmp( $proposed_out, $proposed_in ) <= 0 ) {
-				return new WP_Error( 'css_tc_order', __( 'Clock-out must be after clock-in. Check “next day” if the shift ran past midnight.', 'css-timeclock-addon' ) );
+			if ( '' !== $proposed_out && strcmp( $proposed_out, $proposed_in ) < 0 ) {
+				return new WP_Error( 'css_tc_order', __( 'Clock-out is earlier than clock-in. Fix the time, or check "Clock-out is the next day" if the shift ended after midnight.', 'css-timeclock-addon' ) );
 			}
 
 			if ( $shift_id > 0 && $proposed_in === $original_in && $proposed_out === $original_out ) {

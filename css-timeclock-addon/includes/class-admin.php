@@ -316,8 +316,13 @@ class Css_Tc_Admin {
 		$notice     = '';
 		$form_error = '';
 		if ( isset( $_GET['css_tc_notice'] ) && 'edited' === sanitize_key( wp_unslash( $_GET['css_tc_notice'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$notice = __( 'Day saved. The edit is under Recently reviewed on the Corrections tab, labeled Edited by manager.', 'css-timeclock-addon' );
+			$notice = __( 'Saved.', 'css-timeclock-addon' );
 		}
+		$manager_draft = get_transient( 'css_tc_manager_draft_' . get_current_user_id() );
+		if ( ! is_array( $manager_draft ) ) {
+			$manager_draft = array();
+		}
+		delete_transient( 'css_tc_manager_draft_' . get_current_user_id() );
 		$stored_error = (string) get_transient( 'css_tc_manager_error_' . get_current_user_id() );
 		if ( '' !== $stored_error ) {
 			delete_transient( 'css_tc_manager_error_' . get_current_user_id() );

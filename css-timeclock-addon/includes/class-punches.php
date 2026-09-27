@@ -730,8 +730,9 @@ class Css_Tc_Punches {
 		$in_day        = $has_in ? $time->site_date_of( $clock_in ) : '';
 		$out_day       = $has_out ? $time->site_date_of( $clock_out ) : '';
 		$work_date     = '' !== $in_day ? $in_day : $out_day;
-		$seconds       = ( $has_in && $has_out ) ? $time->elapsed_seconds( $clock_in, $clock_out ) : -1;
-		$is_long       = ( $seconds > ( $this->long_shift_hours() * HOUR_IN_SECONDS ) );
+		$seconds          = ( $has_in && $has_out ) ? $time->elapsed_seconds( $clock_in, $clock_out ) : -1;
+		$is_out_before_in = ( $has_in && $has_out && $seconds < 0 );
+		$is_long          = ( $seconds > ( $this->long_shift_hours() * HOUR_IN_SECONDS ) );
 
 		return array(
 			'id'              => (int) $post->ID,
@@ -748,11 +749,12 @@ class Css_Tc_Punches {
 			'work_date'       => $work_date,
 			'out_next_day'    => ( $has_in && $has_out && $out_day !== $in_day ),
 			'time_total'      => $seconds >= 0 ? $time->format_duration( $seconds ) : '',
-			'seconds'         => $seconds >= 0 ? $seconds : 0,
-			'is_open'         => $is_open,
-			'is_stale_open'   => $is_stale,
-			'is_missing_in'   => $is_missing_in,
-			'is_long'         => $is_long,
+			'seconds'           => $seconds >= 0 ? $seconds : 0,
+			'is_open'           => $is_open,
+			'is_stale_open'     => $is_stale,
+			'is_missing_in'     => $is_missing_in,
+			'is_long'           => $is_long,
+			'is_out_before_in'  => $is_out_before_in,
 		);
 	}
 
