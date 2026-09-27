@@ -24,6 +24,21 @@ class Css_Tc_Corrections {
 	const STATUS_REJECTED = 'rejected';
 
 	/**
+	 * Option that records the correction meta schema. Bumping it does not rewrite posts.
+	 */
+	const SCHEMA_OPTION = 'css_tc_correction_schema';
+
+	/**
+	 * Schema 2 adds review-time hour snapshot meta. Older reviewed posts are left alone.
+	 */
+	const SCHEMA_VERSION = 2;
+
+	const SNAP_DAY_TOTAL    = 'css_tc_snap_day_total';
+	const SNAP_DAY_ORIGINAL = 'css_tc_snap_day_original';
+	const SNAP_SHIFT_HOURS  = 'css_tc_snap_shift_hours';
+	const SNAP_SHIFT_ORIGINAL = 'css_tc_snap_shift_original';
+
+	/**
 	 * Shifts for a user and pay period, reused while building the review list.
 	 *
 	 * @var array<string,array<int,array<string,mixed>>>
@@ -52,6 +67,49 @@ class Css_Tc_Corrections {
 				'capability_type'     => 'post',
 			)
 		);
+		$this->register_snapshot_meta();
+	}
+
+	/**
+	 * Declare snapshot meta and record the schema version. Does not read or write correction posts.
+	 *
+	 * @return void
+	 */
+	public function maybe_upgrade_schema() {
+		$this->register_snapshot_meta();
+		$current = (int) get_option( self::SCHEMA_OPTION, 0 );
+		if ( $current >= self::SCHEMA_VERSION ) {
+			return;
+		}
+		update_option( self::SCHEMA_OPTION, self::SCHEMA_VERSION, false );
+	}
+
+	/**
+	 * @return void
+	 */
+	private function register_snapshot_meta() {
+		$keys = array(
+			self::SNAP_DAY_TOTAL,
+			self::SNAP_DAY_ORIGINAL,
+			self::SNAP_SHIFT_HOURS,
+			self::SNAP_SHIFT_ORIGINAL,
+		);
+		foreach ( $keys as $key ) {
+			if ( registered_meta_key_exists( 'post', $key, self::POST_TYPE ) ) {
+				continue;
+			}
+			register_post_meta(
+				self::POST_TYPE,
+				$key,
+				array(
+					'type'              => 'string',
+					'single'            => true,
+					'show_in_rest'      => false,
+					'default'           => '',
+					'sanitize_callback' => 'sanitize_text_field',
+				)
+			);
+		}
 	}
 
 	/**
@@ -438,8 +496,11 @@ class Css_Tc_Corrections {
 			return $open;
 		}
 
-		$row     = $this->to_public_row( $post, true );
-		$user_id = (int) $post->post_author;
+		$user_id   = (int) $post->post_author;
+		$work_date = (string) get_post_meta( $post->ID, 'css_tc_work_date', true );
+		$shift_id  = (int) get_post_meta( $post->ID, 'css_tc_shift_id', true );
+		$before_day = $this->fresh_day_hours( $user_id, $work_date, $shift_id );
+		$shift_hours = $this->stored_shift_hours( $post );
 		$punches = css_tc_addon()->punches;
 		$audit   = array(
 			'correction_id' => (int) $post->ID,
@@ -449,7 +510,6 @@ class Css_Tc_Corrections {
 
 		$proposed_in  = (string) get_post_meta( $post->ID, 'css_tc_proposed_in', true );
 		$proposed_out = (string) get_post_meta( $post->ID, 'css_tc_proposed_out', true );
-		$shift_id     = (int) get_post_meta( $post->ID, 'css_tc_shift_id', true );
 		$clear_out    = ( '' === $proposed_out && '1' === (string) get_post_meta( $post->ID, 'css_tc_clear_out', true ) );
 
 		if ( $shift_id > 0 ) {
@@ -476,6 +536,13 @@ class Css_Tc_Corrections {
 		update_post_meta( $post->ID, 'css_tc_reviewed_at', $punches->current_mysql_time() );
 		update_post_meta( $post->ID, 'css_tc_review_note', $this->sanitize_note( $note ) );
 		update_post_meta( $post->ID, 'css_tc_applied_shift_id', (int) $applied['id'] );
+		$this->store_review_snapshot(
+			(int) $post->ID,
+			$this->fresh_day_hours( $user_id, $work_date, $shift_id ),
+			$before_day,
+			$shift_hours['shift'],
+			$shift_hours['original']
+		);
 
 		$fresh = get_post( $post->ID );
 		return $this->to_public_row( $fresh, true );
@@ -493,6 +560,12 @@ class Css_Tc_Corrections {
 			return $post;
 		}
 
+		$user_id     = (int) $post->post_author;
+		$work_date   = (string) get_post_meta( $post->ID, 'css_tc_work_date', true );
+		$shift_id    = (int) get_post_meta( $post->ID, 'css_tc_shift_id', true );
+		$before_day  = $this->fresh_day_hours( $user_id, $work_date, $shift_id );
+		$shift_hours = $this->stored_shift_hours( $post );
+
 		wp_update_post(
 			array(
 				'ID'          => (int) $post->ID,
@@ -503,6 +576,13 @@ class Css_Tc_Corrections {
 		update_post_meta( $post->ID, 'css_tc_reviewer_id', (int) $reviewer_id );
 		update_post_meta( $post->ID, 'css_tc_reviewed_at', css_tc_addon()->punches->current_mysql_time() );
 		update_post_meta( $post->ID, 'css_tc_review_note', $this->sanitize_note( $note ) );
+		$this->store_review_snapshot(
+			(int) $post->ID,
+			$this->fresh_day_hours( $user_id, $work_date, $shift_id ),
+			$before_day,
+			$shift_hours['shift'],
+			$shift_hours['original']
+		);
 
 		$fresh = get_post( $post->ID );
 		return $this->to_public_row( $fresh, true );
@@ -702,23 +782,99 @@ class Css_Tc_Corrections {
 		$time = css_tc_addon()->time;
 		$proposed_seconds = ( '' !== $proposed_in && '' !== $proposed_out ) ? $time->elapsed_seconds( $proposed_in, $proposed_out ) : -1;
 		$original_seconds = ( '' !== $original_in && '' !== $original_out ) ? $time->elapsed_seconds( $original_in, $original_out ) : -1;
-		$row['proposed_hours'] = $time->format_hours_hm( $proposed_seconds );
-		$row['original_hours'] = $time->format_hours_hm( $original_seconds );
 
-		if ( $for_admin ) {
-			$row['employee']         = css_tc_addon()->employees->display_name( (int) $post->post_author );
-			$row['employee_id']      = (int) $post->post_author;
-			$row['reviewer']         = $reviewer_id ? css_tc_addon()->employees->display_name( $reviewer_id ) : '';
-			$row['applied_shift_id'] = (int) get_post_meta( $post->ID, 'css_tc_applied_shift_id', true );
-			$row['day_total_hours']  = $time->format_hours_hm(
+		if ( ! $for_admin ) {
+			$row['proposed_hours'] = $time->format_hours_hm( $proposed_seconds );
+			$row['original_hours'] = $time->format_hours_hm( $original_seconds );
+			return $row;
+		}
+
+		$row['employee']         = css_tc_addon()->employees->display_name( (int) $post->post_author );
+		$row['employee_id']      = (int) $post->post_author;
+		$row['reviewer']         = $reviewer_id ? css_tc_addon()->employees->display_name( $reviewer_id ) : '';
+		$row['applied_shift_id'] = (int) get_post_meta( $post->ID, 'css_tc_applied_shift_id', true );
+
+		if ( self::STATUS_PENDING === $status ) {
+			$row['proposed_hours']     = $time->format_hours_hm( $proposed_seconds );
+			$row['original_hours']     = $time->format_hours_hm( $original_seconds );
+			$row['day_total_hours']    = $time->format_hours_hm(
 				$this->review_day_seconds( (int) $post->post_author, $row['work_date'], $row['shift_id'], $proposed_seconds )
 			);
 			$row['day_original_hours'] = $time->format_hours_hm(
 				$this->review_day_seconds( (int) $post->post_author, $row['work_date'], $row['shift_id'], null )
 			);
+			return $row;
+		}
+
+		if ( metadata_exists( 'post', $post->ID, self::SNAP_DAY_TOTAL ) ) {
+			$row['day_total_hours']    = (string) get_post_meta( $post->ID, self::SNAP_DAY_TOTAL, true );
+			$row['day_original_hours'] = (string) get_post_meta( $post->ID, self::SNAP_DAY_ORIGINAL, true );
+			$row['proposed_hours']     = (string) get_post_meta( $post->ID, self::SNAP_SHIFT_HOURS, true );
+			$row['original_hours']     = (string) get_post_meta( $post->ID, self::SNAP_SHIFT_ORIGINAL, true );
+			return $row;
+		}
+
+		$row['day_totals_unrecorded'] = true;
+		if ( $proposed_seconds >= 0 ) {
+			$row['proposed_hours'] = $time->format_hours_hm( $proposed_seconds );
+		}
+		if ( $original_seconds >= 0 ) {
+			$row['original_hours'] = $time->format_hours_hm( $original_seconds );
 		}
 
 		return $row;
+	}
+
+	/**
+	 * Day total from shifts as they are stored right now. Clears the request cache first.
+	 *
+	 * @param int    $user_id   Employee.
+	 * @param string $work_date Y-m-d.
+	 * @param int    $shift_id  Shift this correction edits.
+	 * @return string
+	 */
+	private function fresh_day_hours( $user_id, $work_date, $shift_id ) {
+		$this->day_shift_cache = array();
+		return css_tc_addon()->time->format_hours_hm(
+			$this->review_day_seconds( (int) $user_id, (string) $work_date, (int) $shift_id, null )
+		);
+	}
+
+	/**
+	 * Shift lengths from the times stored on the correction, not from the live shift.
+	 *
+	 * @param WP_Post $post Correction post.
+	 * @return array{shift:string,original:string}
+	 */
+	private function stored_shift_hours( $post ) {
+		$time         = css_tc_addon()->time;
+		$proposed_in  = (string) get_post_meta( $post->ID, 'css_tc_proposed_in', true );
+		$proposed_out = (string) get_post_meta( $post->ID, 'css_tc_proposed_out', true );
+		$original_in  = (string) get_post_meta( $post->ID, 'css_tc_original_in', true );
+		$original_out = (string) get_post_meta( $post->ID, 'css_tc_original_out', true );
+		$proposed     = ( '' !== $proposed_in && '' !== $proposed_out ) ? $time->elapsed_seconds( $proposed_in, $proposed_out ) : -1;
+		$original     = ( '' !== $original_in && '' !== $original_out ) ? $time->elapsed_seconds( $original_in, $original_out ) : -1;
+		return array(
+			'shift'    => $time->format_hours_hm( $proposed ),
+			'original' => $time->format_hours_hm( $original ),
+		);
+	}
+
+	/**
+	 * Freeze the card at the moment of approval or rejection.
+	 *
+	 * @param int    $post_id        Correction post ID.
+	 * @param string $day_total      Total hours after the decision.
+	 * @param string $day_original   Day total before the decision.
+	 * @param string $shift_hours    Proposed shift length.
+	 * @param string $shift_original Stored shift length.
+	 * @return void
+	 */
+	private function store_review_snapshot( $post_id, $day_total, $day_original, $shift_hours, $shift_original ) {
+		update_post_meta( (int) $post_id, self::SNAP_DAY_TOTAL, $day_total );
+		update_post_meta( (int) $post_id, self::SNAP_DAY_ORIGINAL, $day_original );
+		update_post_meta( (int) $post_id, self::SNAP_SHIFT_HOURS, $shift_hours );
+		update_post_meta( (int) $post_id, self::SNAP_SHIFT_ORIGINAL, $shift_original );
 	}
 
 	/**

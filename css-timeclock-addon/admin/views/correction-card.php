@@ -18,7 +18,9 @@ $status = isset( $item['status'] ) ? (string) $item['status'] : 'pending';
 		<strong><?php echo esc_html( isset( $item['employee'] ) ? $item['employee'] : '' ); ?></strong>
 		<span class="css-tc-correction__when">
 			<span><?php echo esc_html( isset( $item['work_date'] ) ? $item['work_date'] : '' ); ?></span>
-			<?php if ( isset( $item['day_total_hours'] ) ) : ?>
+			<?php if ( ! empty( $item['day_totals_unrecorded'] ) ) : ?>
+				<span class="description"><?php echo esc_html__( 'Day totals not recorded', 'css-timeclock-addon' ); ?></span>
+			<?php elseif ( isset( $item['day_total_hours'] ) ) : ?>
 				<strong class="css-tc-correction__total">
 					<?php
 					echo esc_html(
@@ -62,8 +64,9 @@ $status = isset( $item['status'] ) ? (string) $item['status'] : 'pending';
 			<span class="description"><?php echo esc_html__( '(missing punch)', 'css-timeclock-addon' ); ?></span>
 		<?php endif; ?>
 	</p>
-	<?php if ( isset( $item['proposed_hours'] ) ) : ?>
+	<?php if ( isset( $item['proposed_hours'] ) || isset( $item['original_hours'] ) ) : ?>
 		<p class="css-tc-correction__hours">
+			<?php if ( isset( $item['proposed_hours'] ) ) : ?>
 			<span>
 				<?php
 				echo esc_html(
@@ -75,6 +78,7 @@ $status = isset( $item['status'] ) ? (string) $item['status'] : 'pending';
 				);
 				?>
 			</span>
+			<?php endif; ?>
 			<?php if ( isset( $item['original_hours'] ) ) : ?>
 				<span>
 					<?php

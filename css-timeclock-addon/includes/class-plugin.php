@@ -187,6 +187,7 @@ class Css_Tc_Plugin {
 
 	public function register_runtime() {
 		$this->corrections->register();
+		$this->corrections->maybe_upgrade_schema();
 		Css_Tc_Ajax::register();
 		Css_Tc_Admin::register();
 		Css_Tc_Shortcodes::register();
@@ -266,6 +267,7 @@ class Css_Tc_Plugin {
 		}
 
 		Css_Tc_Shortcodes::create_public_pages();
+		css_tc_addon()->corrections->maybe_upgrade_schema();
 	}
 
 	/**
