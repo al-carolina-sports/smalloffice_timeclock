@@ -49,7 +49,7 @@ if ( ! empty( $line['pending'] ) ) {
 		<span><?php echo esc_html__( 'Clock-out is the next day', 'css-timeclock-addon' ); ?></span>
 	</label>
 	<label class="css-tc-correct__reason">
-		<span><?php echo esc_html__( 'Reason', 'css-timeclock-addon' ); ?></span>
+		<span><?php echo esc_html__( 'Reason (optional)', 'css-timeclock-addon' ); ?></span>
 		<textarea name="lines[<?php echo esc_attr( $key ); ?>][reason]" rows="2" maxlength="500"><?php echo esc_textarea( (string) $line['reason'] ); ?></textarea>
 	</label>
 </div>

@@ -27,7 +27,7 @@ $form_error = isset( $form_error ) ? (string) $form_error : '';
 			echo esc_html(
 				sprintf(
 					/* translators: 1: employee name, 2: pay period label */
-					__( '%1$s — %2$s. Change any day, add a missing punch, and give each change a reason. Past pay periods cannot be changed.', 'css-timeclock-addon' ),
+					__( '%1$s — %2$s. Change any day or add a missing punch. A reason is optional. Past pay periods cannot be changed.', 'css-timeclock-addon' ),
 					$form['name'],
 					$form['period']['label']
 				)
