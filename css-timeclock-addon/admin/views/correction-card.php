@@ -49,42 +49,31 @@ $status = isset( $item['status'] ) ? (string) $item['status'] : 'pending';
 		</span>
 		<span class="css-tc-pill css-tc-pill-<?php echo esc_attr( $status ); ?>"><?php echo esc_html( ucfirst( $status ) ); ?></span>
 	</header>
-	<p>
-		<?php echo esc_html__( 'Current:', 'css-timeclock-addon' ); ?>
-		<?php echo esc_html( ( isset( $item['original_in'] ) && $item['original_in'] ) ? $item['original_in'] : '—' ); ?>
-		→
-		<?php echo esc_html( ( isset( $item['original_out'] ) && $item['original_out'] ) ? $item['original_out'] : '—' ); ?>
-	</p>
-	<p>
-		<?php echo esc_html__( 'Proposed:', 'css-timeclock-addon' ); ?>
-		<?php echo esc_html( ( isset( $item['proposed_in'] ) && $item['proposed_in'] ) ? $item['proposed_in'] : '—' ); ?>
-		→
-		<?php echo esc_html( ( isset( $item['proposed_out'] ) && $item['proposed_out'] ) ? $item['proposed_out'] : '—' ); ?>
-		<?php if ( ! empty( $item['missing_punch'] ) ) : ?>
-			<span class="description"><?php echo esc_html__( '(missing punch)', 'css-timeclock-addon' ); ?></span>
-		<?php endif; ?>
-	</p>
-	<?php if ( isset( $item['proposed_hours'] ) || isset( $item['original_hours'] ) ) : ?>
-		<p class="css-tc-correction__hours">
-			<?php if ( isset( $item['proposed_hours'] ) ) : ?>
-			<span>
+	<?php
+	$css_tc_has_current = ( ! empty( $item['original_in'] ) || ! empty( $item['original_out'] ) );
+	$css_tc_original_hours = isset( $item['original_hours'] ) ? (string) $item['original_hours'] : '';
+	$css_tc_show_original  = isset( $item['original_hours'] ) && ( $css_tc_has_current || '--:--' !== $css_tc_original_hours );
+	?>
+	<?php if ( $css_tc_has_current ) : ?>
+		<p class="css-tc-correction__pair">
+			<span class="css-tc-correction__times">
 				<?php
 				echo esc_html(
-					sprintf(
-						/* translators: %s: hours and minutes, or --:-- when clock-out is missing */
-						__( 'Shift hours: %s', 'css-timeclock-addon' ),
-						$item['proposed_hours']
-					)
+					'pending' === $status
+						? __( 'Current:', 'css-timeclock-addon' )
+						: __( 'Before:', 'css-timeclock-addon' )
 				);
 				?>
+				<?php echo esc_html( ! empty( $item['original_in'] ) ? $item['original_in'] : '—' ); ?>
+				→
+				<?php echo esc_html( ! empty( $item['original_out'] ) ? $item['original_out'] : '—' ); ?>
 			</span>
-			<?php endif; ?>
 			<?php if ( isset( $item['original_hours'] ) ) : ?>
-				<span>
+				<span class="css-tc-correction__fig">
 					<?php
 					echo esc_html(
 						sprintf(
-							/* translators: %s: hours and minutes of the stored shift */
+							/* translators: %s: hours and minutes of the stored shift, or --:-- */
 							__( 'Original shift: %s', 'css-timeclock-addon' ),
 							$item['original_hours']
 						)
@@ -94,6 +83,43 @@ $status = isset( $item['status'] ) ? (string) $item['status'] : 'pending';
 			<?php endif; ?>
 		</p>
 	<?php endif; ?>
+	<p class="css-tc-correction__pair">
+		<span class="css-tc-correction__times">
+			<?php echo esc_html__( 'Proposed:', 'css-timeclock-addon' ); ?>
+			<?php echo esc_html( ! empty( $item['proposed_in'] ) ? $item['proposed_in'] : '—' ); ?>
+			→
+			<?php echo esc_html( ! empty( $item['proposed_out'] ) ? $item['proposed_out'] : '—' ); ?>
+			<?php if ( ! empty( $item['missing_punch'] ) ) : ?>
+				<span class="description"><?php echo esc_html__( '(missing punch)', 'css-timeclock-addon' ); ?></span>
+			<?php endif; ?>
+		</span>
+		<?php if ( isset( $item['proposed_hours'] ) ) : ?>
+			<span class="css-tc-correction__fig">
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: %s: hours and minutes of the proposed shift, or --:-- */
+						__( 'Proposed shift hours: %s', 'css-timeclock-addon' ),
+						$item['proposed_hours']
+					)
+				);
+				?>
+			</span>
+		<?php endif; ?>
+		<?php if ( ! $css_tc_has_current && $css_tc_show_original ) : ?>
+			<span class="css-tc-correction__fig">
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: %s: hours and minutes of the stored shift, or --:-- */
+						__( 'Original shift: %s', 'css-timeclock-addon' ),
+						$item['original_hours']
+					)
+				);
+				?>
+			</span>
+		<?php endif; ?>
+	</p>
 	<p>
 		<?php echo esc_html__( 'Reason:', 'css-timeclock-addon' ); ?>
 		<?php
