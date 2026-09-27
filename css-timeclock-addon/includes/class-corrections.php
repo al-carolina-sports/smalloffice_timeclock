@@ -31,10 +31,11 @@ class Css_Tc_Corrections {
 
 	/**
 	 * Schema 2 adds review-time hour snapshot meta. Older reviewed posts are left alone.
-	 * Schema 3 drops day flags that remained after a correction was already reviewed.
-	 * It does not rewrite correction posts.
+	 * Schema 3 dropped day flags only when a reviewed correction already existed.
+	 * Schema 4 drops every flagged date that has no pending correction.
+	 * It writes user meta only and does not rewrite correction posts or shifts.
 	 */
-	const SCHEMA_VERSION = 3;
+	const SCHEMA_VERSION = 4;
 
 	const SNAP_DAY_TOTAL    = 'css_tc_snap_day_total';
 	const SNAP_DAY_ORIGINAL = 'css_tc_snap_day_original';
@@ -74,7 +75,8 @@ class Css_Tc_Corrections {
 	}
 
 	/**
-	 * Declare snapshot meta and record the schema version. Does not read or write correction posts.
+	 * Declare snapshot meta and, once, drop day flags that have no pending correction.
+	 * Does not rewrite correction posts or shifts.
 	 *
 	 * @return void
 	 */
@@ -84,8 +86,8 @@ class Css_Tc_Corrections {
 		if ( $current >= self::SCHEMA_VERSION ) {
 			return;
 		}
-		if ( $current > 0 && $current < 3 ) {
-			$this->clear_stale_day_flags();
+		if ( $current > 0 && $current < 4 ) {
+			$this->clear_flags_without_pending();
 		}
 		update_option( self::SCHEMA_OPTION, self::SCHEMA_VERSION, false );
 	}
@@ -501,7 +503,7 @@ class Css_Tc_Corrections {
 			return new WP_Error( 'css_tc_none', __( 'There is no pending request for that day.', 'css-timeclock-addon' ) );
 		}
 
-		css_tc_addon()->timecard->clear_flag( $user_id, $date );
+		css_tc_addon()->timecard->clear_flag_if_no_pending( $user_id, $date );
 		return $removed;
 	}
 
@@ -628,7 +630,7 @@ class Css_Tc_Corrections {
 			$shift_hours['shift'],
 			$shift_hours['original']
 		);
-		css_tc_addon()->timecard->clear_flag( $user_id, $work_date );
+		css_tc_addon()->timecard->clear_flag_if_no_pending( $user_id, $work_date );
 
 		$fresh = get_post( $post->ID );
 		return $this->to_public_row( $fresh, true );
@@ -669,7 +671,7 @@ class Css_Tc_Corrections {
 			$shift_hours['shift'],
 			$shift_hours['original']
 		);
-		css_tc_addon()->timecard->clear_flag( $user_id, $work_date );
+		css_tc_addon()->timecard->clear_flag_if_no_pending( $user_id, $work_date );
 
 		$fresh = get_post( $post->ID );
 		return $this->to_public_row( $fresh, true );
@@ -1141,7 +1143,7 @@ class Css_Tc_Corrections {
 			++$count;
 		}
 
-		css_tc_addon()->timecard->clear_flag( $employee_id, $date );
+		css_tc_addon()->timecard->clear_flag_if_no_pending( $employee_id, $date );
 		return $count;
 	}
 
@@ -1340,12 +1342,12 @@ class Css_Tc_Corrections {
 	}
 
 	/**
-	 * Drop flags whose day was already reviewed and has nothing pending.
-	 * A later Request change is left alone because this runs once.
+	 * Remove flagged dates that have no pending correction.
+	 * Writes css_tc_flagged_dates only. Does not update correction posts or shifts.
 	 *
 	 * @return void
 	 */
-	private function clear_stale_day_flags() {
+	private function clear_flags_without_pending() {
 		$users = get_users(
 			array(
 				'meta_key' => Css_Tc_Timecard::FLAG_META, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
@@ -1364,20 +1366,10 @@ class Css_Tc_Corrections {
 			foreach ( $flags as $date ) {
 				if ( $this->pending_for_day( $user_id, $date ) ) {
 					$keep[] = $date;
-					continue;
 				}
-				$reviewed = $this->query_posts(
-					array(
-						'author'         => $user_id,
-						'posts_per_page' => 1,
-						'post_status'    => array( 'private', 'draft' ),
-						'meta_key'       => 'css_tc_work_date',
-						'meta_value'     => $date,
-					)
-				);
-				if ( empty( $reviewed ) ) {
-					$keep[] = $date;
-				}
+			}
+			if ( $keep === $flags ) {
+				continue;
 			}
 			update_user_meta( $user_id, Css_Tc_Timecard::FLAG_META, $keep );
 		}

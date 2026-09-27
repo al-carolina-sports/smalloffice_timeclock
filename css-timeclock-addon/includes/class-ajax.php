@@ -448,6 +448,9 @@ class Css_Tc_Ajax {
 	/**
 	 * Logged-in employee: flag a day in the current pay period.
 	 *
+	 * Kept so a cached Request change form does not fail. The timecard
+	 * ignores css_tc_flagged_dates. A pending correction drives the badge.
+	 *
 	 * @return void
 	 */
 	public function flag_day() {
