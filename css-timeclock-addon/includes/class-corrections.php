@@ -747,7 +747,7 @@ class Css_Tc_Corrections {
 		if ( $date > css_tc_addon()->time->site_today() ) {
 			return new WP_Error(
 				'css_tc_future',
-				__( 'You can correct a day through today. Later days open when they arrive.', 'css-timeclock-addon' )
+				__( 'You can change a day through today. Later days open when they arrive.', 'css-timeclock-addon' )
 			);
 		}
 
@@ -1099,7 +1099,7 @@ class Css_Tc_Corrections {
 	/**
 	 * Save a manager's direct edits for one day. Each changed, added, or deleted
 	 * shift becomes an auto-approved correction with a 1.4.7 day snapshot.
-	 * Closed pay periods are allowed.
+	 * Closed pay periods are allowed. Days after today are not.
 	 *
 	 * @param int                            $employee_id Employee whose punches change.
 	 * @param int                            $reviewer_id Manager.
@@ -1118,6 +1118,12 @@ class Css_Tc_Corrections {
 		$date        = sanitize_text_field( (string) $date );
 		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ) {
 			return new WP_Error( 'css_tc_bad_date', __( 'Choose a valid day.', 'css-timeclock-addon' ) );
+		}
+		if ( $date > css_tc_addon()->time->site_today() ) {
+			return new WP_Error(
+				'css_tc_future',
+				__( 'You can change a day through today. Later days open when they arrive.', 'css-timeclock-addon' )
+			);
 		}
 
 		$allowed = false;

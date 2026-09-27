@@ -31,6 +31,8 @@ $time     = css_tc_addon()->time;
 	</p>
 	<?php if ( ! $edit_row ) : ?>
 		<p class="css-tc-sheet__error"><?php echo esc_html__( 'That day is not in this pay period.', 'css-timeclock-addon' ); ?></p>
+	<?php elseif ( $edit_day > css_tc_addon()->time->site_today() ) : ?>
+		<p class="css-tc-sheet__error"><?php echo esc_html__( 'This day hasn\'t happened yet.', 'css-timeclock-addon' ); ?></p>
 	<?php else : ?>
 		<?php
 		$css_tc_edit_lines = $edit_row['shifts'];

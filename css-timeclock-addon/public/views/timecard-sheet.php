@@ -240,9 +240,9 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 					$edit_label   = empty( $day['shifts'] )
 						? __( 'Add a shift', 'css-timeclock-addon' )
 						: __( 'Correct this day', 'css-timeclock-addon' );
-					if ( $in_period && 'employee' === $mode && $is_open && ! $is_future ) {
+					if ( $in_period && ! $is_future && 'employee' === $mode && $is_open ) {
 						$correct_href = Css_Tc_Shortcodes::correct_url( $day['date'] );
-					} elseif ( $in_period && 'admin' === $mode ) {
+					} elseif ( $in_period && ! $is_future && 'admin' === $mode ) {
 						$correct_href = Css_Tc_Admin::timecards_url(
 							array(
 								'employee' => $user_id,
