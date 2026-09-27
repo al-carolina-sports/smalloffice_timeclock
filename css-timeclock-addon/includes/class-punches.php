@@ -427,22 +427,55 @@ class Css_Tc_Punches {
 	 * @return array<string,mixed>
 	 */
 	private function monitoring_row( $post, $clock_in ) {
-		$time    = css_tc_addon()->time;
-		$author  = (int) $post->post_author;
-		$ip      = (string) get_post_meta( $post->ID, 'ip_address_in', true );
-		$started = $time->parse_stored( $clock_in );
-		$age     = $started ? max( 0, time() - $started->getTimestamp() ) : 0;
+		$time      = css_tc_addon()->time;
+		$author    = (int) $post->post_author;
+		$ip        = (string) get_post_meta( $post->ID, 'ip_address_in', true );
+		$started   = $time->parse_stored( $clock_in );
+		$age       = $started ? max( 0, time() - $started->getTimestamp() ) : 0;
+		$work_date = $time->site_date_of( $clock_in );
 
 		return array(
-			'shift_id'  => (int) $post->ID,
-			'user_id'   => $author,
-			'name'      => css_tc_addon()->employees->display_name( $author ),
-			'department'=> css_tc_addon()->employees->department( $author ),
-			'clock_in'  => $time->format_site( $clock_in, 'F j, Y, g:i A' ),
-			'elapsed'   => $time->format_duration( $age ),
-			'ip'        => $ip,
-			'edit_url'  => get_edit_post_link( $post->ID, 'raw' ),
+			'shift_id'     => (int) $post->ID,
+			'user_id'      => $author,
+			'name'         => css_tc_addon()->employees->display_name( $author ),
+			'department'   => css_tc_addon()->employees->department( $author ),
+			'clock_in'     => $time->format_site( $clock_in, 'F j, Y, g:i A' ),
+			'elapsed'      => $time->format_duration( $age ),
+			'ip'           => $ip,
+			'work_date'    => $work_date,
+			'timecard_url' => $this->monitoring_timecard_url( $author, $work_date ),
 		);
+	}
+
+	/**
+	 * SMOTC timecard for this punch. The shift post type has no editor, so
+	 * get_edit_post_link() is empty and the monitoring Shift cell was blank.
+	 *
+	 * @param int    $user_id   Employee.
+	 * @param string $work_date Site-local Y-m-d of the clock-in.
+	 * @return string
+	 */
+	private function monitoring_timecard_url( $user_id, $work_date ) {
+		$user_id = (int) $user_id;
+		if ( $user_id < 1 ) {
+			return '';
+		}
+
+		$args = array(
+			'employee' => $user_id,
+		);
+		if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $work_date ) ) {
+			$period = css_tc_addon()->pay_periods->period_for_date( $work_date );
+			if ( $period && ! empty( $period['start'] ) ) {
+				$args['period'] = (string) $period['start'];
+			}
+		}
+
+		$url = Css_Tc_Admin::timecards_url( $args );
+		if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $work_date ) ) {
+			$url .= '#day-' . $work_date;
+		}
+		return $url;
 	}
 
 	/**

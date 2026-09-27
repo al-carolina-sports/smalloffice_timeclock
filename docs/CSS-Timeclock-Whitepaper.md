@@ -343,7 +343,7 @@ On carolinaspodev the timezone is now `America/New_York`. Strings already stored
 
 AIO’s clock page (`/time-clock/`, shortcode `[show_aio_time_clock_lite]`) redirects to an SMOTC kiosk. If `admin-ajax.php?action=aio_time_clock_lite_js` still runs `clock_in` or `clock_out`, the addon converts that `wp_date()` value from the site timezone to UTC before it is stored. Kiosk punches and approved corrections are written in UTC and are not converted a second time. Punches AIO already saved as Eastern wall clocks, before this version, are still misread as UTC until someone corrects them on the timecard.
 
-SMOTC replaces the callback for **SMOTC → Real Time Monitoring** (`admin.php?page=aio-monitoring-sub`) without editing AIO. Fresh open shifts are “working now,” with clock-in shown in the site timezone. Open shifts older than the missed clock-out limit are a separate list and are not included in the working count.
+SMOTC replaces the callback for **SMOTC → Real Time Monitoring** (`admin.php?page=aio-monitoring-sub`) without editing AIO. Fresh open shifts are “working now,” with clock-in shown in the site timezone. Open shifts older than the missed clock-out limit are a separate list and are not included in the working count. The Shift column links to that employee’s SMOTC timecard for the clock-in’s pay period and day (`#day-YYYY-MM-DD`). AIO’s `shift` post type has no edit screen, so `get_edit_post_link()` was empty and the cell was blank.
 
 ### Missed clock-out
 

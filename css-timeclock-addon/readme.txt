@@ -30,6 +30,7 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 * The long-shift badge wraps instead of being clipped.
 * "Flag day" was a control on every day of the open period, including empty days. It only marked that day so the correction pencil appeared. It is now "Request change", and only on days that already have punches and do not already show the pencil. "Cancel request" removes it.
 * A finished shift shorter than 30 seconds displays as "<1 min" instead of "0:00". Those seconds still count in the period total. An open shift shows "Still clocked in" while it is inside the missed clock-out window, and "Missed clock-out" after that, with the correction pencil. It is not shown as 0:00.
+* Real Time Monitoring's Shift column opens that employee's SMOTC timecard on the punch's pay period and day. The shift post type has no edit screen, so the old edit link was blank.
 
 = 1.4.1 =
 * Closed pay periods show a notice on the employee timecard and on SMOTC → Timecards, including in print: "This pay period is closed and can't be edited."
