@@ -290,6 +290,7 @@ Optional commercial shortcut: AIO **Pro** (~$40/year) documents PIN/QR/locations
 | 1.0 | 2026-09-19 | Initial whitepaper for developer sharing; reflects Phase 1 live on carolinaspodev. |
 | 1.4 | 2026-09-25 | Add-on 1.4.0 timecards, pay periods, closed-period enforcement, and the UTC storage contract. |
 | 1.4.1 | 2026-09-27 | Closed-period notice, long-shift flags, SMOTC Real Time Monitoring, and AIO clock times stored as UTC. |
+| 1.4.2 | 2026-09-27 | Timecard layout follows the content column. Request change replaces Flag day. Sub-minute shifts and missed clock-outs are labeled. |
 
 ---
 
@@ -322,6 +323,12 @@ A finished shift longer than the long-shift setting (default 16 hours) is badged
 
 An edit icon appears on a current-period day that has an open shift, a missed clock-out, a clock-out without a clock-in, a long shift, a pending suggestion, or a day the employee flagged. The icon opens a form for the **entire** current pay period (every day, extra punches, a reason per change). Each changed line is a `css_tc_correction` post. Approve and reject are unchanged: approve writes `employee_clock_in_time` / `employee_clock_out_time` or creates a shift. The timecard shows a Pending badge until review.
 
+**Flag day** (1.4.0–1.4.1) posted `css_tc_flag_day` and stored the date in user meta `css_tc_flagged_dates`. That made `needs_correction` true so the pencil appeared. The button was rendered on every day of the open period that did not already need a correction, including days with no punches, and the label was easy to misread as a status. In 1.4.2 the same action is labeled **Request change** and is shown only on days that already have punches and do not already show the pencil. **Cancel request** clears the flag. **Correct this pay period** is still the way to add a missing shift on an empty day.
+
+The day grid uses container queries on `.css-tc-sheet`, so a wide browser with a narrow theme column (Twenty Fifteen is about 630px, and columns around 500px) does not keep seven clipped cells. At 680px and under, each day is one row, the weekday is Mon/Tue, and both clock times stay on the row (wrapping to a second line only if they must). Between that and 1040px the week grid stays, with short weekday names and the clock-out stacked under the clock-in. Wider sheets keep the full names and a single in–out line. The long-shift badge is allowed to wrap.
+
+A finished shift under 30 seconds displays as `<1 min` on that day. The raw seconds still add into the pay-period total, which is rounded to the nearest minute. An open shift does not display as `0:00`: inside the missed clock-out window it says **Still clocked in**, and after that **Missed clock-out**, and the pencil is available while the period is open.
+
 ### How AIO Lite 2.1.0 stores times
 
 `AIO_Time_Clock_Lite_Actions::getCurrentTime()` saves `employee_clock_in_time` and `employee_clock_out_time` with `wp_date( 'Y-m-d H:i:s' )`: a naive wall clock in `wp_timezone()`, with no offset in post meta. Display (`cleanDate()`) is `date( $format, strtotime( $stored ) )`. WordPress forces PHP’s default timezone to UTC, so `strtotime` and `date` both treat that naive string as UTC and the digits are shown unchanged.
@@ -336,7 +343,7 @@ On carolinaspodev the timezone is now `America/New_York`. Strings already stored
 
 AIO’s clock page (`/time-clock/`, shortcode `[show_aio_time_clock_lite]`) redirects to an SMOTC kiosk. If `admin-ajax.php?action=aio_time_clock_lite_js` still runs `clock_in` or `clock_out`, the addon converts that `wp_date()` value from the site timezone to UTC before it is stored. Kiosk punches and approved corrections are written in UTC and are not converted a second time. Punches AIO already saved as Eastern wall clocks, before this version, are still misread as UTC until someone corrects them on the timecard.
 
-SMOTC replaces the callback for **SMOTC → Real Time Monitoring** (`admin.php?page=aio-monitoring-sub`) without editing AIO. Fresh open shifts are “working now,” with clock-in shown in the site timezone. Open shifts older than the missed clock-out limit are a separate list and are not included in the working count.
+SMOTC replaces the callback for **SMOTC → Real Time Monitoring** (`admin.php?page=aio-monitoring-sub`) without editing AIO. Fresh open shifts are “working now,” with clock-in shown in the site timezone. Open shifts older than the missed clock-out limit are a separate list and are not included in the working count. The Shift column links to that employee’s SMOTC timecard for the clock-in’s pay period and day (`#day-YYYY-MM-DD`). AIO’s `shift` post type has no edit screen, so `get_edit_post_link()` was empty and the cell was blank.
 
 ### Missed clock-out
 

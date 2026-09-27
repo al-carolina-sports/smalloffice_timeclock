@@ -17,7 +17,7 @@ $notes = array();
 if ( ! empty( $line['is_stale'] ) ) {
 	$notes[] = __( 'Missed clock-out', 'css-timeclock-addon' );
 } elseif ( ! empty( $line['is_open'] ) ) {
-	$notes[] = __( 'No clock-out', 'css-timeclock-addon' );
+	$notes[] = __( 'Still clocked in', 'css-timeclock-addon' );
 }
 if ( ! empty( $line['is_missing_in'] ) ) {
 	$notes[] = __( 'No clock-in', 'css-timeclock-addon' );

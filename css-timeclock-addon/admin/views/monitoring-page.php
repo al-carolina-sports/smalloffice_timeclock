@@ -21,7 +21,7 @@ $tz      = isset( $snapshot['timezone'] ) ? (string) $snapshot['timezone'] : '';
  * @return void
  */
 $css_tc_monitor_row = static function ( $row ) {
-	$edit = isset( $row['edit_url'] ) ? (string) $row['edit_url'] : '';
+	$timecard = isset( $row['timecard_url'] ) ? (string) $row['timecard_url'] : '';
 	?>
 	<tr>
 		<td><?php echo esc_html( (string) $row['name'] ); ?></td>
@@ -30,8 +30,10 @@ $css_tc_monitor_row = static function ( $row ) {
 		<td><?php echo esc_html( (string) $row['elapsed'] ); ?></td>
 		<td><?php echo esc_html( '' !== (string) $row['ip'] ? (string) $row['ip'] : '—' ); ?></td>
 		<td>
-			<?php if ( '' !== $edit ) : ?>
-				<a href="<?php echo esc_url( $edit ); ?>"><?php echo esc_html__( 'Edit shift', 'css-timeclock-addon' ); ?></a>
+			<?php if ( '' !== $timecard ) : ?>
+				<a href="<?php echo esc_url( $timecard ); ?>"><?php echo esc_html__( 'Open timecard', 'css-timeclock-addon' ); ?></a>
+			<?php else : ?>
+				<?php echo esc_html( '—' ); ?>
 			<?php endif; ?>
 		</td>
 	</tr>

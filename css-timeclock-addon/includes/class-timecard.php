@@ -213,6 +213,9 @@ class Css_Tc_Timecard {
 		$day_obj    = $time->date_immutable( $date );
 		$needs      = false;
 		$has_long   = false;
+		$open_fresh = false;
+		$open_stale = false;
+		$missing_in = false;
 		$pairs      = array();
 
 		foreach ( $shifts as $shift ) {
@@ -221,6 +224,14 @@ class Css_Tc_Timecard {
 			}
 			if ( ! empty( $shift['is_long'] ) ) {
 				$has_long = true;
+			}
+			if ( ! empty( $shift['is_open'] ) && ! empty( $shift['is_stale_open'] ) ) {
+				$open_stale = true;
+			} elseif ( ! empty( $shift['is_open'] ) ) {
+				$open_fresh = true;
+			}
+			if ( ! empty( $shift['is_missing_in'] ) ) {
+				$missing_in = true;
 			}
 			$pairs[] = array(
 				'id'            => (int) $shift['id'],
@@ -244,16 +255,27 @@ class Css_Tc_Timecard {
 		}
 
 		$in_period = ( $date >= $period['start'] && $date <= $period['end'] );
+		$hm        = $seconds > 0 ? $time->format_duration( $seconds ) : '';
+		$status    = '';
+		if ( $open_fresh ) {
+			$status = __( 'Still clocked in', 'css-timeclock-addon' );
+		} elseif ( $open_stale ) {
+			$status = __( 'Missed clock-out', 'css-timeclock-addon' );
+		} elseif ( $missing_in ) {
+			$status = __( 'No clock-in', 'css-timeclock-addon' );
+		}
 
 		return array(
 			'date'             => $date,
 			'day_num'          => $day_obj ? $day_obj->format( 'j' ) : '',
 			'weekday'          => $time->format_weekday( $date ),
+			'weekday_short'    => $time->format_weekday_short( $date ),
 			'date_label'       => $time->format_day_label( $date ),
 			'in_period'        => $in_period,
 			'seconds'          => (int) $seconds,
-			'hm'               => $seconds > 0 ? $time->format_duration( $seconds ) : '',
-			'has_time'         => $seconds > 0,
+			'hm'               => $hm,
+			'status_label'     => $status,
+			'has_time'         => ( '' !== $hm || '' !== $status ),
 			'shifts'           => $pairs,
 			'needs_correction' => $needs && ! empty( $period['is_open'] ),
 			'has_long'         => $has_long,
