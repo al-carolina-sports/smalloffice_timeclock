@@ -182,6 +182,26 @@ if ( ! defined( 'ABSPATH' ) ) {
 					</td>
 				</tr>
 				<tr>
+					<th scope="row"><?php echo esc_html__( 'Overtime', 'css-timeclock-addon' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="overtime_enabled" value="1" <?php checked( ! empty( $settings['overtime_enabled'] ) ); ?> />
+							<?php echo esc_html__( 'Calculate overtime', 'css-timeclock-addon' ); ?>
+						</label>
+						<p>
+							<?php echo esc_html__( 'Hours worked after', 'css-timeclock-addon' ); ?>
+							<input name="overtime_hours" id="overtime_hours" type="number" min="1" max="336" step="0.25" value="<?php echo esc_attr( (string) ( isset( $settings['overtime_hours'] ) ? $settings['overtime_hours'] : 40 ) ); ?>" class="small-text" />
+							<?php echo esc_html__( 'hours per', 'css-timeclock-addon' ); ?>
+							<select name="overtime_weeks" id="overtime_weeks">
+								<option value="1" <?php selected( isset( $settings['overtime_weeks'] ) ? (int) $settings['overtime_weeks'] : 1, 1 ); ?>><?php echo esc_html__( '1 week', 'css-timeclock-addon' ); ?></option>
+								<option value="2" <?php selected( isset( $settings['overtime_weeks'] ) ? (int) $settings['overtime_weeks'] : 1, 2 ); ?>><?php echo esc_html__( '2 weeks', 'css-timeclock-addon' ); ?></option>
+							</select>
+							<?php echo esc_html__( 'are overtime.', 'css-timeclock-addon' ); ?>
+						</p>
+						<p class="description"><?php echo esc_html__( 'Weeks are the pay period’s Monday–Sunday weeks. US federal overtime is 40 hours per 1 week. A 2-week window needs a biweekly pay period. The timecard and reports show Overtime as its own pay code; pay rates are set in your payroll system.', 'css-timeclock-addon' ); ?></p>
+					</td>
+				</tr>
+				<tr>
 					<th scope="row"><label for="missed_clock_out_hours"><?php echo esc_html__( 'Missed clock-out', 'css-timeclock-addon' ); ?></label></th>
 					<td>
 						<input name="missed_clock_out_hours" id="missed_clock_out_hours" type="number" min="1" max="36" value="<?php echo esc_attr( (string) ( isset( $settings['missed_clock_out_hours'] ) ? $settings['missed_clock_out_hours'] : 16 ) ); ?>" class="small-text" />

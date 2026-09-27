@@ -90,10 +90,38 @@ class Css_Tc_Timecard {
 			);
 		}
 
+		// Overtime: hours past the configured threshold per window of weeks.
+		// Worked seconds of every code count toward the threshold; the
+		// overtime itself is taken out of Regular.
+		$rule = css_tc_addon()->overtime->rule();
+		$overtime_total = 0;
+		if ( $rule['enabled'] ) {
+			$per_week = Css_Tc_Overtime::split(
+				wp_list_pluck( $week_rows, 'seconds' ),
+				$rule['threshold_seconds'],
+				$rule['weeks']
+			);
+			foreach ( $week_rows as $i => $week_row ) {
+				$ot = isset( $per_week[ $i ] ) ? (int) $per_week[ $i ] : 0;
+				$week_rows[ $i ]['overtime_seconds'] = $ot;
+				$week_rows[ $i ]['overtime_hm']      = css_tc_addon()->time->format_duration( $ot );
+				$overtime_total += $ot;
+			}
+			$overtime_total = min( $overtime_total, (int) $buckets[ Css_Tc_Pay_Codes::REGULAR ] );
+			$buckets[ Css_Tc_Pay_Codes::REGULAR ] -= $overtime_total;
+			$buckets[ Css_Tc_Pay_Codes::OVERTIME ] = $overtime_total;
+		} else {
+			foreach ( $week_rows as $i => $week_row ) {
+				$week_rows[ $i ]['overtime_seconds'] = 0;
+				$week_rows[ $i ]['overtime_hm']      = '';
+			}
+		}
+
 		$pay_rows = array();
 		foreach ( $defs as $slug => $def ) {
 			$seconds = isset( $buckets[ $slug ] ) ? (int) $buckets[ $slug ] : 0;
-			if ( Css_Tc_Pay_Codes::REGULAR !== $slug && $seconds < 1 ) {
+			$always  = ( Css_Tc_Pay_Codes::REGULAR === $slug || Css_Tc_Pay_Codes::OVERTIME === $slug );
+			if ( ! $always && $seconds < 1 ) {
 				continue;
 			}
 			$pay_rows[] = array(
@@ -125,6 +153,9 @@ class Css_Tc_Timecard {
 			'pay_codes'        => $pay_rows,
 			'weeks'            => $week_rows,
 			'long_shift_count' => $long_count,
+			'overtime_seconds' => $overtime_total,
+			'overtime_rule'    => $rule,
+			'overtime_note'    => css_tc_addon()->overtime->describe( $rule ),
 			'long_shift_max'   => css_tc_addon()->punches->long_shift_hours(),
 		);
 	}

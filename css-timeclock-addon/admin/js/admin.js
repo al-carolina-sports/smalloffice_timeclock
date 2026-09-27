@@ -62,6 +62,9 @@
         missed_clock_out_hours: form.missed_clock_out_hours ? form.missed_clock_out_hours.value : 16,
         long_shift_hours: form.long_shift_hours ? form.long_shift_hours.value : 16,
         wide_layout: form.wide_layout && form.wide_layout.checked ? 1 : 0,
+        overtime_enabled: form.overtime_enabled && form.overtime_enabled.checked ? 1 : 0,
+        overtime_hours: form.overtime_hours ? form.overtime_hours.value : 40,
+        overtime_weeks: form.overtime_weeks ? form.overtime_weeks.value : 1,
       };
       post("css_tc_save_settings", data)
         .then(function (result) {

@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.4.11
+Stable tag: 1.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,10 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under SMOTC.
 
 == Changelog ==
+
+= 1.5.0 =
+* Overtime setting under SMOTC settings: "Hours worked after X hours per 1 or 2 weeks are overtime." Off by default. US federal overtime is 40 hours per 1 week; other countries or averaging rules can use a different number of hours or a 2-week window (biweekly pay period only). Weeks are the pay period's Monday–Sunday weeks. Timecards show Overtime as its own pay code, with the overtime included in each week's total.
+* SMOTC → Reports replaces AIO Lite's Reports screen, which printed stored UTC times as local time (4 to 5 hours late in Eastern time). Two prebuilt reports, both filterable by pay period and department and downloadable as CSV: Pay period summary (hours per employee by week, Regular, Overtime, total in H:MM and decimal hours, and items that need attention such as long shifts, missed clock-outs and pending requests, plus totals by department) and Shift detail (every shift in site time with clock-in and clock-out IP addresses and flags). The report defaults to the last finished pay period.
 
 = 1.4.11 =
 * Day status icons on My Time Clock and SMOTC → Timecards follow a standard color scheme. A blue pencil means the day can be edited. A green check means a correction was approved or a manager already edited that day, and the blue pencil stays beside it while the period is open. Amber is a pending request. Red is only a real problem: missed clock-out, clock-out before clock-in, or a shift over 16 hours. A gray lock means the pay period is closed. Employees cannot click the lock. Managers still open the closed-period warning. Future days have no icon. The legend under Day Summary reads: Blue pencil: edit · Green check: changes completed · Amber: pending request · Red: needs attention · Gray lock: pay period closed.
