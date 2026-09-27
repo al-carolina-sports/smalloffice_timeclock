@@ -86,6 +86,7 @@ class Css_Tc_Plugin {
 		$this->employees   = new Css_Tc_Employees();
 		$this->pins        = new Css_Tc_Pins();
 		$this->punches     = new Css_Tc_Punches();
+		$this->punches->register_hooks();
 		$this->corrections = new Css_Tc_Corrections();
 
 		add_action( 'plugins_loaded', array( $this, 'load_textdomain' ) );
@@ -119,6 +120,7 @@ class Css_Tc_Plugin {
 			'pay_period_length'       => 'biweekly',
 			'pay_period_anchor'       => '2026-09-07',
 			'missed_clock_out_hours'  => 16,
+			'long_shift_hours'        => 16,
 		);
 	}
 

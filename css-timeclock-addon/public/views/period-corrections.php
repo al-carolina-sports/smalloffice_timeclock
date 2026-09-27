@@ -65,6 +65,7 @@ $form_error = isset( $form_error ) ? (string) $form_error : '';
 							'is_open'       => false,
 							'is_stale'      => false,
 							'is_missing_in' => false,
+							'is_long'       => false,
 							'pending'       => false,
 						);
 						include CSS_TC_ADDON_DIR . 'public/views/correction-line.php';

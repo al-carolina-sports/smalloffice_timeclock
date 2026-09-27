@@ -60,6 +60,7 @@
         pay_period_length: form.pay_period_length ? form.pay_period_length.value : "biweekly",
         pay_period_anchor: form.pay_period_anchor ? form.pay_period_anchor.value : "2026-09-07",
         missed_clock_out_hours: form.missed_clock_out_hours ? form.missed_clock_out_hours.value : 16,
+        long_shift_hours: form.long_shift_hours ? form.long_shift_hours.value : 16,
       };
       post("css_tc_save_settings", data)
         .then(function (result) {

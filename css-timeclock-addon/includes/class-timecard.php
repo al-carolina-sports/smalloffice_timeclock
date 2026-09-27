@@ -103,15 +103,28 @@ class Css_Tc_Timecard {
 			);
 		}
 
+		$long_count = 0;
+		foreach ( $week_rows as $week_row ) {
+			foreach ( $week_row['days'] as $day_row ) {
+				foreach ( $day_row['shifts'] as $pair ) {
+					if ( ! empty( $pair['is_long'] ) ) {
+						++$long_count;
+					}
+				}
+			}
+		}
+
 		return array(
-			'user_id'        => $user_id,
-			'employee_name'  => css_tc_addon()->employees->display_name( $user_id ),
-			'initials'       => css_tc_addon()->employees->initials( $user_id ),
-			'period'         => $period,
-			'total_seconds'  => $total_seconds,
-			'total_hm'       => css_tc_addon()->time->format_duration( $total_seconds ),
-			'pay_codes'      => $pay_rows,
-			'weeks'          => $week_rows,
+			'user_id'          => $user_id,
+			'employee_name'    => css_tc_addon()->employees->display_name( $user_id ),
+			'initials'         => css_tc_addon()->employees->initials( $user_id ),
+			'period'           => $period,
+			'total_seconds'    => $total_seconds,
+			'total_hm'         => css_tc_addon()->time->format_duration( $total_seconds ),
+			'pay_codes'        => $pay_rows,
+			'weeks'            => $week_rows,
+			'long_shift_count' => $long_count,
+			'long_shift_max'   => css_tc_addon()->punches->long_shift_hours(),
 		);
 	}
 
@@ -199,11 +212,15 @@ class Css_Tc_Timecard {
 		$time       = css_tc_addon()->time;
 		$day_obj    = $time->date_immutable( $date );
 		$needs      = false;
+		$has_long   = false;
 		$pairs      = array();
 
 		foreach ( $shifts as $shift ) {
-			if ( ! empty( $shift['is_open'] ) || ! empty( $shift['is_missing_in'] ) ) {
+			if ( ! empty( $shift['is_open'] ) || ! empty( $shift['is_missing_in'] ) || ! empty( $shift['is_long'] ) ) {
 				$needs = true;
+			}
+			if ( ! empty( $shift['is_long'] ) ) {
+				$has_long = true;
 			}
 			$pairs[] = array(
 				'id'            => (int) $shift['id'],
@@ -211,9 +228,11 @@ class Css_Tc_Timecard {
 				'out_display'   => (string) $shift['clock_out_clock'],
 				'in_hms'        => (string) $shift['clock_in_hms'],
 				'out_hms'       => (string) $shift['clock_out_hms'],
+				'duration'      => (string) $shift['time_total'],
 				'is_open'       => ! empty( $shift['is_open'] ),
 				'is_stale'      => ! empty( $shift['is_stale_open'] ),
 				'is_missing_in' => ! empty( $shift['is_missing_in'] ),
+				'is_long'       => ! empty( $shift['is_long'] ),
 				'out_next_day'  => ! empty( $shift['out_next_day'] ),
 			);
 		}
@@ -237,6 +256,7 @@ class Css_Tc_Timecard {
 			'has_time'         => $seconds > 0,
 			'shifts'           => $pairs,
 			'needs_correction' => $needs && ! empty( $period['is_open'] ),
+			'has_long'         => $has_long,
 			'pending'          => ! empty( $day_pending ),
 			'pending_count'    => count( $day_pending ),
 			'flagged'          => $flagged,
@@ -312,6 +332,7 @@ class Css_Tc_Timecard {
 					'is_open'       => ! empty( $shift['is_open'] ),
 					'is_stale'      => ! empty( $shift['is_stale_open'] ),
 					'is_missing_in' => ! empty( $shift['is_missing_in'] ),
+					'is_long'       => ! empty( $shift['is_long'] ),
 					'pending'       => (bool) $overlay,
 				);
 			}
@@ -330,6 +351,7 @@ class Css_Tc_Timecard {
 					'is_open'       => false,
 					'is_stale'      => false,
 					'is_missing_in' => false,
+					'is_long'       => false,
 					'pending'       => true,
 				);
 			}
@@ -345,6 +367,7 @@ class Css_Tc_Timecard {
 					'is_open'       => false,
 					'is_stale'      => false,
 					'is_missing_in' => false,
+					'is_long'       => false,
 					'pending'       => false,
 				);
 			}

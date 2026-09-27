@@ -20,6 +20,7 @@ class Css_Tc_Admin {
 	public static function register() {
 		$self = new self();
 		add_action( 'admin_menu', array( $self, 'add_menu' ), 25 );
+		add_action( 'admin_menu', array( $self, 'replace_monitoring_screen' ), 30 );
 		add_action( 'admin_enqueue_scripts', array( $self, 'enqueue' ) );
 	}
 
@@ -74,9 +75,20 @@ class Css_Tc_Admin {
 			$this->enqueue_aio_upsell_hide();
 		}
 
-		$is_timecards = ( false !== strpos( (string) $hook, 'css-tc-timecards' ) );
-		$is_ours      = $is_timecards || ( false !== strpos( (string) $hook, 'css-tc-addon' ) );
+		$is_timecards  = ( false !== strpos( (string) $hook, 'css-tc-timecards' ) );
+		$is_monitoring = ( false !== strpos( (string) $hook, 'aio-monitoring-sub' ) );
+		$is_ours       = $is_timecards || $is_monitoring || ( false !== strpos( (string) $hook, 'css-tc-addon' ) );
 		if ( ! $is_ours ) {
+			return;
+		}
+
+		if ( $is_monitoring ) {
+			wp_enqueue_style(
+				'css-tc-admin',
+				CSS_TC_ADDON_URL . 'admin/css/admin.css',
+				array(),
+				CSS_TC_ADDON_VERSION
+			);
 			return;
 		}
 
@@ -214,6 +226,42 @@ class Css_Tc_Admin {
 			: admin_url( 'admin.php?page=css-tc-addon' );
 
 		include CSS_TC_ADDON_DIR . 'admin/views/settings-page.php';
+	}
+
+	/**
+	 * Swap AIO's Real Time Monitoring callback for the SMOTC screen.
+	 *
+	 * The menu slug stays aio-monitoring-sub so existing links keep working.
+	 * AIO's page lists every open shift and prints the stored UTC digits.
+	 *
+	 * @return void
+	 */
+	public function replace_monitoring_screen() {
+		if ( ! Css_Tc_Plugin::aio_is_active() || ! function_exists( 'get_plugin_page_hookname' ) ) {
+			return;
+		}
+
+		$hook = get_plugin_page_hookname( 'aio-monitoring-sub', 'aio-tc-lite' );
+		if ( '' === $hook ) {
+			return;
+		}
+
+		remove_all_actions( $hook );
+		add_action( $hook, array( $this, 'render_monitoring' ) );
+	}
+
+	/**
+	 * Working now, plus missed clock-outs, in the site timezone.
+	 *
+	 * @return void
+	 */
+	public function render_monitoring() {
+		if ( ! Css_Tc_Plugin::user_can_manage() ) {
+			wp_die( esc_html__( 'You do not have permission to view who is working.', 'css-timeclock-addon' ) );
+		}
+
+		$snapshot = css_tc_addon()->punches->monitoring_snapshot();
+		include CSS_TC_ADDON_DIR . 'admin/views/monitoring-page.php';
 	}
 
 	/**

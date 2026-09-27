@@ -180,7 +180,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<th scope="row"><label for="missed_clock_out_hours"><?php echo esc_html__( 'Missed clock-out', 'css-timeclock-addon' ); ?></label></th>
 					<td>
 						<input name="missed_clock_out_hours" id="missed_clock_out_hours" type="number" min="1" max="36" value="<?php echo esc_attr( (string) ( isset( $settings['missed_clock_out_hours'] ) ? $settings['missed_clock_out_hours'] : 16 ) ); ?>" class="small-text" />
-						<?php echo esc_html__( 'hours. An open shift older than this is not “clocked in” on the kiosk or who’s-working board. The timecard flags it for correction.', 'css-timeclock-addon' ); ?>
+						<?php echo esc_html__( 'hours. An open shift older than this is not “clocked in” on the kiosk, who’s-working board, or Real Time Monitoring. The timecard flags it for correction.', 'css-timeclock-addon' ); ?>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="long_shift_hours"><?php echo esc_html__( 'Long shift', 'css-timeclock-addon' ); ?></label></th>
+					<td>
+						<input name="long_shift_hours" id="long_shift_hours" type="number" min="1" max="36" value="<?php echo esc_attr( (string) ( isset( $settings['long_shift_hours'] ) ? $settings['long_shift_hours'] : 16 ) ); ?>" class="small-text" />
+						<?php echo esc_html__( 'hours. A finished shift longer than this is flagged on the timecard. Those hours still count in the totals.', 'css-timeclock-addon' ); ?>
 					</td>
 				</tr>
 				<tr>
@@ -208,7 +215,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<div class="css-tc-help">
 			<h2><?php echo esc_html__( 'How punches reach AIO Lite', 'css-timeclock-addon' ); ?></h2>
 			<p>
-				<?php echo esc_html__( 'AIO Lite’s clock AJAX only runs for a logged-in WordPress user. This add-on does not call that AJAX and does not edit AIO files. After a valid PIN it creates or closes the same shift custom posts AIO uses (post type shift, author = employee, meta employee_clock_in_time / employee_clock_out_time). SMOTC → Real Time Monitoring lists anyone whose clock-out meta is still empty.', 'css-timeclock-addon' ); ?>
+				<?php echo esc_html__( 'AIO Lite’s clock AJAX only runs for a logged-in WordPress user. This add-on does not edit AIO files. After a valid PIN it creates or closes the same shift custom posts AIO uses (post type shift, author = employee, meta employee_clock_in_time / employee_clock_out_time), stored as UTC. If someone still uses AIO’s clock button, that save is rewritten to UTC. The /time-clock/ page redirects to an SMOTC kiosk. SMOTC → Real Time Monitoring lists fresh open shifts as working and older open shifts as missed clock-outs, in the site timezone.', 'css-timeclock-addon' ); ?>
 			</p>
 		</div>
 	<?php elseif ( 'pins' === $tab ) : ?>

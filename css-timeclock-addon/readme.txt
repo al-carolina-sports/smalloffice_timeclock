@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,13 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under SMOTC.
 
 == Changelog ==
+
+= 1.4.1 =
+* Closed pay periods show a notice on the employee timecard and on SMOTC → Timecards, including in print: "This pay period is closed and can't be edited."
+* Finished shifts longer than a configurable maximum (default 16 hours, next to the missed clock-out setting) are flagged on the day and the punch line. Those hours still count in the totals. The current period offers the correction pencil. Stored times are not changed.
+* SMOTC replaces AIO's Real Time Monitoring screen (same menu link). Fresh open shifts are "working now" in the site timezone. Open shifts older than the missed clock-out limit are listed separately and are not counted as working. One table header per table.
+* AIO's /time-clock/ page (and any page with [show_aio_time_clock_lite]) redirects to an SMOTC kiosk. If AIO's clock AJAX still runs, those clock-in and clock-out times are stored as UTC instead of site-local wall clocks. Existing rows are not rewritten.
+* On narrow screens the timecard lists each day in a row so clock-in and clock-out stay on one line.
 
 = 1.4.0 =
 * Employee timecards on My Time Clock (`/my-time-clock/`) and an admin SMOTC → Timecards screen (`admin.php?page=css-tc-timecards`) with an employee picker, previous/next arrows, and a print stylesheet.
