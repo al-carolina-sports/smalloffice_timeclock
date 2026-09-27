@@ -57,7 +57,13 @@ $status = isset( $item['status'] ) ? (string) $item['status'] : 'pending';
 	<?php if ( $css_tc_has_current ) : ?>
 		<p class="css-tc-correction__pair">
 			<span class="css-tc-correction__times">
-				<?php echo esc_html__( 'Current:', 'css-timeclock-addon' ); ?>
+				<?php
+				echo esc_html(
+					'pending' === $status
+						? __( 'Current:', 'css-timeclock-addon' )
+						: __( 'Before:', 'css-timeclock-addon' )
+				);
+				?>
 				<?php echo esc_html( ! empty( $item['original_in'] ) ? $item['original_in'] : '—' ); ?>
 				→
 				<?php echo esc_html( ! empty( $item['original_out'] ) ? $item['original_out'] : '—' ); ?>

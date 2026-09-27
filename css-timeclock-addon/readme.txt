@@ -26,7 +26,7 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 == Changelog ==
 
 = 1.4.8 =
-* The Corrections tab puts Original shift on the Current line and Proposed shift hours on the Proposed line. The separate shift-hours line is gone. Day totals, snapshots, and legacy cards are unchanged.
+* The Corrections tab puts Original shift on the time line and Proposed shift hours on the Proposed line. Pending cards label that line Current. Approved and rejected cards label it Before. The separate shift-hours line is gone. Day totals, snapshots, and legacy cards are unchanged.
 
 = 1.4.7 =
 * Approving or rejecting a correction stores that day's Total hours after the decision and the Original day total from just before it, plus the shift's Shift hours and Original shift. Reviewed cards keep those numbers. Pending cards still calculate from current shifts.
