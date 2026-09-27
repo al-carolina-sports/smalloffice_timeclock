@@ -64,7 +64,7 @@ $status = isset( $item['status'] ) ? (string) $item['status'] : 'pending';
 	</p>
 	<?php if ( isset( $item['proposed_hours'] ) ) : ?>
 		<p class="css-tc-correction__hours">
-			<strong>
+			<span>
 				<?php
 				echo esc_html(
 					sprintf(
@@ -74,9 +74,9 @@ $status = isset( $item['status'] ) ? (string) $item['status'] : 'pending';
 					)
 				);
 				?>
-			</strong>
+			</span>
 			<?php if ( isset( $item['original_hours'] ) ) : ?>
-				<span class="description">
+				<span>
 					<?php
 					echo esc_html(
 						sprintf(

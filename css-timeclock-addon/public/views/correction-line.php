@@ -57,7 +57,7 @@ if ( ! empty( $line['pending'] ) ) {
 			<input type="checkbox" name="lines[<?php echo esc_attr( $key ); ?>][out_next_day]" value="1" <?php checked( ! empty( $line['out_next_day'] ) ); ?> />
 			<span><?php echo esc_html__( 'Clock-out is the next day', 'css-timeclock-addon' ); ?></span>
 		</label>
-		<strong class="css-tc-correct__shift"><?php echo esc_html__( 'Shift hours:', 'css-timeclock-addon' ); ?> <span data-shift-hours><?php echo esc_html( $css_tc_shift_hours ); ?></span></strong>
+		<span class="css-tc-correct__shift"><?php echo esc_html__( 'Shift hours:', 'css-timeclock-addon' ); ?> <span data-shift-hours><?php echo esc_html( $css_tc_shift_hours ); ?></span></span>
 	</div>
 	<label class="css-tc-correct__reason">
 		<span><?php echo esc_html__( 'Reason (optional)', 'css-timeclock-addon' ); ?></span>
