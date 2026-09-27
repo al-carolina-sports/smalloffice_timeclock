@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.4.5
+Stable tag: 1.4.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,10 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under SMOTC.
 
 == Changelog ==
+
+= 1.4.6 =
+* Each day on the employee corrections form shows Total hours next to the date, and each punch row shows Shift hours beside “Clock-out is the next day”. Both update as the times or the next-day box change. A missing clock-out shows --:-- and is left out of the day total.
+* The admin Corrections list shows the same totals from the proposed times, with the original shift and original day when they differ.
 
 = 1.4.5 =
 * The employee corrections form labels the note "Reason (optional)". An empty reason is saved. The admin Corrections list shows "No reason given" for that suggestion.
