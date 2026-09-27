@@ -320,7 +320,7 @@ class Css_Tc_Corrections {
 		if ( empty( $parsed_rows ) ) {
 			return new WP_Error(
 				'css_tc_unchanged',
-				__( 'Change a clock-in or clock-out, and add a reason, before sending.', 'css-timeclock-addon' )
+				__( 'Change a clock-in or clock-out before sending.', 'css-timeclock-addon' )
 			);
 		}
 
@@ -617,10 +617,6 @@ class Css_Tc_Corrections {
 
 		if ( $shift_id > 0 && $proposed_in === $original_in && $proposed_out === $original_out && ! $missing && ! $clear_out ) {
 			return new WP_Error( 'css_tc_unchanged', __( 'Change a time or note a missing punch before sending this.', 'css-timeclock-addon' ) );
-		}
-
-		if ( strlen( $reason ) < 8 ) {
-			return new WP_Error( 'css_tc_reason', __( 'Please add a short reason (at least 8 characters).', 'css-timeclock-addon' ) );
 		}
 
 		if ( '' !== $proposed_in ) {

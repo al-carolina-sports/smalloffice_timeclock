@@ -36,7 +36,10 @@ $status = isset( $item['status'] ) ? (string) $item['status'] : 'pending';
 	</p>
 	<p>
 		<?php echo esc_html__( 'Reason:', 'css-timeclock-addon' ); ?>
-		<?php echo esc_html( isset( $item['reason'] ) ? $item['reason'] : '' ); ?>
+		<?php
+		$css_tc_reason = isset( $item['reason'] ) ? trim( (string) $item['reason'] ) : '';
+		echo esc_html( '' !== $css_tc_reason ? $css_tc_reason : __( 'No reason given', 'css-timeclock-addon' ) );
+		?>
 	</p>
 	<?php if ( ! empty( $item['review_note'] ) || ! empty( $item['reviewer'] ) ) : ?>
 		<p class="description">

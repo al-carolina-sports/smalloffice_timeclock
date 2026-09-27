@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.4.4
+Stable tag: 1.4.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,10 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under SMOTC.
 
 == Changelog ==
+
+= 1.4.5 =
+* The employee corrections form labels the note "Reason (optional)". An empty reason is saved. The admin Corrections list shows "No reason given" for that suggestion.
+* Wide-layout kiosk pages no longer keep the 32px admin-bar gap at the top when a staff member is logged in, so the PIN pad stays on the screen.
 
 = 1.4.4 =
 * Kiosk pages keep a small Staff login link in the header when nobody is signed in. It opens the WordPress login and returns to My Time Clock. Signed-in staff see My timecard, managers also see Admin, and Log out returns to that kiosk. The links stay out of the PIN pad and the name list, and they still show when Wide layout is off.

@@ -2,6 +2,15 @@
  * Full-width SMOTC pages. The theme stylesheet is not loaded.
  */
 
+html.css-tc-kiosk-page {
+	margin-top: 0 !important;
+}
+
+body.admin-bar.css-tc-wide-layout.css-tc-kiosk-page {
+	margin-top: 0 !important;
+	padding-top: 0 !important;
+}
+
 body.css-tc-wide-layout {
 	margin: 0;
 	background: #eef1f4;

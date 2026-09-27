@@ -293,6 +293,7 @@ Optional commercial shortcut: AIO **Pro** (~$40/year) documents PIN/QR/locations
 | 1.4.2 | 2026-09-27 | Timecard layout follows the content column. Request change replaces Flag day. Sub-minute shifts and missed clock-outs are labeled. |
 | 1.4.3 | 2026-09-27 | My Time Clock and the kiosks use a full-width page so the week grid can use a desktop screen. Wide layout setting turns it off. |
 | 1.4.4 | 2026-09-27 | Kiosk and My Time Clock pages link to staff login, the timecard, and SMOTC Timecards. Correction time fields are wider on a wide sheet. |
+| 1.4.5 | 2026-09-27 | Correction reasons are optional. Wide kiosk pages drop the logged-in admin-bar gap. |
 
 ---
 
@@ -323,7 +324,7 @@ A closed period shows “This pay period is closed and can't be edited.” above
 
 A finished shift longer than the long-shift setting (default 16 hours) is badged on the day and on the punch line, and counted in a warning above the cards. Those hours stay in the pay-period, pay-code, and weekly totals. The correction pencil appears only while the period is open. Nothing rewrites the stored times.
 
-An edit icon appears on a current-period day that has an open shift, a missed clock-out, a clock-out without a clock-in, a long shift, a pending suggestion, or a day the employee flagged. The icon opens a form for the **entire** current pay period (every day, extra punches, a reason per change). Each changed line is a `css_tc_correction` post. Approve and reject are unchanged: approve writes `employee_clock_in_time` / `employee_clock_out_time` or creates a shift. The timecard shows a Pending badge until review.
+An edit icon appears on a current-period day that has an open shift, a missed clock-out, a clock-out without a clock-in, a long shift, a pending suggestion, or a day the employee flagged. The icon opens a form for the **entire** current pay period (every day, extra punches, an optional reason per change). A blank reason is stored as sanitized text and the Corrections tab shows “No reason given”. Each changed line is a `css_tc_correction` post. Approve and reject are unchanged: approve writes `employee_clock_in_time` / `employee_clock_out_time` or creates a shift. The timecard shows a Pending badge until review.
 
 **Flag day** (1.4.0–1.4.1) posted `css_tc_flag_day` and stored the date in user meta `css_tc_flagged_dates`. That made `needs_correction` true so the pencil appeared. The button was rendered on every day of the open period that did not already need a correction, including days with no punches, and the label was easy to misread as a status. In 1.4.2 the same action is labeled **Request change** and is shown only on days that already have punches and do not already show the pencil. **Cancel request** clears the flag. **Correct this pay period** is still the way to add a missing shift on an empty day.
 

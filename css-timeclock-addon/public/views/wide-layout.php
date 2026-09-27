@@ -18,7 +18,7 @@ $css_tc_wide_kiosk = $css_tc_wide_post instanceof WP_Post && (
 	|| has_shortcode( (string) $css_tc_wide_post->post_content, 'css_tc_name_kiosk' )
 );
 ?><!DOCTYPE html>
-<html <?php language_attributes(); ?>>
+<html <?php language_attributes(); ?><?php echo $css_tc_wide_kiosk ? ' class="css-tc-kiosk-page"' : ''; ?>>
 <head>
 	<meta charset="<?php bloginfo( 'charset' ); ?>" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />

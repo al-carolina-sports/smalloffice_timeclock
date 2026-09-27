@@ -241,12 +241,7 @@
   if (form) {
     form.addEventListener("submit", function (event) {
       event.preventDefault();
-      var reason = (form.reason.value || "").trim();
-      if (reason.length < 8) {
-        text($('[data-role="form-error"]'), strings.needReason || "");
-        show($('[data-role="form-error"]'), true);
-        return;
-      }
+      var reason = form.reason ? (form.reason.value || "").trim() : "";
       post("css_tc_suggest_edit", {
         work_date: form.work_date.value,
         shift_id: form.shift_id.value,
