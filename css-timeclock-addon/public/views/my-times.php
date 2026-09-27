@@ -26,6 +26,11 @@ $notice     = isset( $notice ) ? (string) $notice : '';
 $mode       = 'employee';
 ?>
 <div class="css-tc-times" data-enabled="<?php echo $allowed ? '1' : '0'; ?>">
+	<?php if ( ! Css_Tc_Shortcodes::uses_wide_layout() ) : ?>
+		<div class="css-tc-times-nav">
+			<?php Css_Tc_Shortcodes::render_staff_nav( 'times' ); ?>
+		</div>
+	<?php endif; ?>
 	<?php if ( ! $logged_in ) : ?>
 		<div class="css-tc-times__panel">
 			<h1><?php echo esc_html__( 'Your timecard', 'css-timeclock-addon' ); ?></h1>

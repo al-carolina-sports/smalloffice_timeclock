@@ -340,6 +340,116 @@ class Css_Tc_Shortcodes {
 	}
 
 	/**
+	 * My Time Clock page: saved setting, else the page that contains the shortcode, else home.
+	 *
+	 * @return string
+	 */
+	public static function employee_times_url() {
+		static $cached = null;
+		if ( null !== $cached ) {
+			return $cached;
+		}
+
+		$settings = css_tc_addon()->get_settings();
+		$page_id  = isset( $settings['employee_times_page_id'] ) ? (int) $settings['employee_times_page_id'] : 0;
+		if ( $page_id > 0 ) {
+			$link = get_permalink( $page_id );
+			if ( $link ) {
+				$cached = (string) $link;
+				return $cached;
+			}
+		}
+
+		global $wpdb;
+		$like = '%' . $wpdb->esc_like( '[css_tc_my_times' ) . '%';
+		$found = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT ID FROM {$wpdb->posts} WHERE post_type = 'page' AND post_status = 'publish' AND post_content LIKE %s ORDER BY ID ASC LIMIT 1",
+				$like
+			)
+		);
+		if ( $found > 0 ) {
+			$link = get_permalink( $found );
+			if ( $link ) {
+				$cached = (string) $link;
+				return $cached;
+			}
+		}
+
+		$cached = home_url( '/' );
+		return $cached;
+	}
+
+	/**
+	 * Permalink of the page being viewed, keeping the corrections query.
+	 *
+	 * @return string
+	 */
+	public static function current_front_url() {
+		$url = '';
+		if ( is_singular() ) {
+			$url = (string) get_permalink();
+		}
+		if ( '' === $url ) {
+			$url = home_url( '/' );
+		}
+		if ( isset( $_GET['css_tc_view'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$view = sanitize_key( wp_unslash( $_GET['css_tc_view'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			if ( 'correct' === $view ) {
+				$url = add_query_arg( 'css_tc_view', 'correct', $url );
+			}
+		}
+		return $url;
+	}
+
+	/**
+	 * Small links so a kiosk or timecard page can reach login, the timecard, or admin.
+	 *
+	 * @param string $context `kiosk` or `times`.
+	 * @return void
+	 */
+	public static function render_staff_nav( $context = 'times' ) {
+		$times = self::employee_times_url();
+		$links = array();
+
+		if ( ! is_user_logged_in() ) {
+			$redirect = ( 'kiosk' === $context ) ? $times : self::current_front_url();
+			$links[]  = array(
+				'url'   => wp_login_url( $redirect ),
+				'label' => __( 'Staff login', 'css-timeclock-addon' ),
+			);
+		} else {
+			$links[] = array(
+				'url'   => $times,
+				'label' => __( 'My timecard', 'css-timeclock-addon' ),
+			);
+			if ( Css_Tc_Plugin::user_can_manage() ) {
+				$links[] = array(
+					'url'   => Css_Tc_Admin::timecards_url(),
+					'label' => __( 'Admin', 'css-timeclock-addon' ),
+				);
+			}
+			if ( 'kiosk' === $context ) {
+				$links[] = array(
+					'url'   => wp_logout_url( self::current_front_url() ),
+					'label' => __( 'Log out', 'css-timeclock-addon' ),
+				);
+			} else {
+				$kiosk = self::preferred_kiosk_url();
+				if ( $kiosk ) {
+					$links[] = array(
+						'url'   => $kiosk,
+						'label' => __( 'Time clock', 'css-timeclock-addon' ),
+					);
+				}
+			}
+		}
+
+		$css_tc_staff_links = $links;
+		include CSS_TC_ADDON_DIR . 'public/views/staff-nav.php';
+	}
+
+	/**
 	 * Front-end URL of the employee timecard page.
 	 *
 	 * @param string $period_start Optional Y-m-d period start.
@@ -348,7 +458,7 @@ class Css_Tc_Shortcodes {
 	public static function times_url( $period_start = '' ) {
 		$settings = css_tc_addon()->get_settings();
 		$page_id  = isset( $settings['employee_times_page_id'] ) ? (int) $settings['employee_times_page_id'] : 0;
-		$base     = ( $page_id && get_permalink( $page_id ) ) ? (string) get_permalink( $page_id ) : home_url( '/my-time-clock/' );
+		$base     = ( $page_id && get_permalink( $page_id ) ) ? (string) get_permalink( $page_id ) : self::employee_times_url();
 		if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', (string) $period_start ) ) {
 			$base = add_query_arg( 'period', $period_start, $base );
 		}
@@ -382,7 +492,7 @@ class Css_Tc_Shortcodes {
 		$user_id   = get_current_user_id();
 		$logged_in = $user_id > 0;
 		$allowed   = $logged_in && css_tc_addon()->employees->can_view_own_times( $user_id );
-		$login_url = wp_login_url( self::times_url() );
+		$login_url = wp_login_url( self::current_front_url() );
 
 		$view = 'timecard';
 		if ( isset( $_GET['css_tc_view'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended

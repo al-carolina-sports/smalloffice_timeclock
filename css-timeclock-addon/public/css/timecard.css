@@ -436,12 +436,22 @@
 
 .css-tc-correct__line {
 	display: grid;
-	grid-template-columns: 160px 160px 1fr;
+	grid-template-columns: minmax(160px, 220px) minmax(160px, 220px);
 	gap: 10px 12px;
 	align-items: end;
 	margin: 0 0 12px;
 	padding-bottom: 12px;
 	border-bottom: 1px solid #f0f2f5;
+}
+
+@container tc-sheet (min-width: 900px) {
+	.css-tc-correct__line {
+		grid-template-columns: minmax(260px, 360px) minmax(260px, 360px);
+	}
+
+	.css-tc-correct__line input[type="time"] {
+		min-width: 12em;
+	}
 }
 
 .css-tc-correct__line label span {

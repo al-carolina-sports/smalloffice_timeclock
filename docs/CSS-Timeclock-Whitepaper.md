@@ -292,6 +292,7 @@ Optional commercial shortcut: AIO **Pro** (~$40/year) documents PIN/QR/locations
 | 1.4.1 | 2026-09-27 | Closed-period notice, long-shift flags, SMOTC Real Time Monitoring, and AIO clock times stored as UTC. |
 | 1.4.2 | 2026-09-27 | Timecard layout follows the content column. Request change replaces Flag day. Sub-minute shifts and missed clock-outs are labeled. |
 | 1.4.3 | 2026-09-27 | My Time Clock and the kiosks use a full-width page so the week grid can use a desktop screen. Wide layout setting turns it off. |
+| 1.4.4 | 2026-09-27 | Kiosk and My Time Clock pages link to staff login, the timecard, and SMOTC Timecards. Correction time fields are wider on a wide sheet. |
 
 ---
 
@@ -325,6 +326,10 @@ A finished shift longer than the long-shift setting (default 16 hours) is badged
 An edit icon appears on a current-period day that has an open shift, a missed clock-out, a clock-out without a clock-in, a long shift, a pending suggestion, or a day the employee flagged. The icon opens a form for the **entire** current pay period (every day, extra punches, a reason per change). Each changed line is a `css_tc_correction` post. Approve and reject are unchanged: approve writes `employee_clock_in_time` / `employee_clock_out_time` or creates a shift. The timecard shows a Pending badge until review.
 
 **Flag day** (1.4.0–1.4.1) posted `css_tc_flag_day` and stored the date in user meta `css_tc_flagged_dates`. That made `needs_correction` true so the pencil appeared. The button was rendered on every day of the open period that did not already need a correction, including days with no punches, and the label was easy to misread as a status. In 1.4.2 the same action is labeled **Request change** and is shown only on days that already have punches and do not already show the pencil. **Cancel request** clears the flag. **Correct this pay period** is still the way to add a missing shift on an empty day.
+
+The kiosk header and the My Time Clock bar include a small staff nav. Signed-out visitors get **Staff login**, which uses `wp_login_url()` and returns to My Time Clock from a kiosk, or back to the timecard page (including the corrections view) from My Time Clock. Signed-in staff get **My timecard**. People who can open SMOTC admin also get **Admin** (`css-tc-timecards`). A kiosk adds **Log out** back to that kiosk. My Time Clock adds **Time clock**, which opens the preferred kiosk. The same nav is rendered in the shortcode when Wide layout is off, so it is not drawn twice. Keyboard and numpad PIN entry ignore those links unless one of them is focused.
+
+On a corrections sheet at least 900px wide, clock-in and clock-out each get a column up to 360px. Narrower sheets still stack the fields.
 
 My Time Clock, the corrections view on that page, and the kiosk pages use `template_include` to render `public/views/wide-layout.php` instead of the theme template. The theme stylesheet is dequeued on those requests. A CSS breakout would still sit in Twenty Fifteen’s sidebar column and can be clipped by a parent with `overflow` hidden. The wide canvas is up to 1360px, so a desktop gets the seven-day grid. The SMOTC setting **Wide layout** (default on) turns the template off and leaves the pages in the theme column.
 

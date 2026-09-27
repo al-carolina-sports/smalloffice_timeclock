@@ -21,7 +21,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<h1 class="css-tc-kiosk__title"><?php echo esc_html__( 'Clock in with your PIN', 'css-timeclock-addon' ); ?></h1>
 			</div>
 		</div>
-		<p class="css-tc-kiosk__clock" data-role="live-clock" aria-live="off"></p>
+		<div class="css-tc-kiosk__aside">
+			<?php Css_Tc_Shortcodes::render_staff_nav( 'kiosk' ); ?>
+			<p class="css-tc-kiosk__clock" data-role="live-clock" aria-live="off"></p>
+		</div>
 	</div>
 
 	<div class="css-tc-kiosk__layout">

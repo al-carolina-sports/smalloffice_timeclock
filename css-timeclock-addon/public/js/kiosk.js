@@ -385,6 +385,11 @@
     if (isTextEntryTarget(event.target)) {
       return;
     }
+    // Staff links live in the kiosk header. Leave Enter and digits alone while
+    // one of them is focused so login still works and the pad is unchanged.
+    if (event.target && event.target.closest && event.target.closest("[data-css-tc-staff-nav]")) {
+      return;
+    }
     if (this.busy) {
       return;
     }

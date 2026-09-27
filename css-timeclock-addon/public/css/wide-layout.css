@@ -28,9 +28,31 @@ body.css-tc-wide-layout {
 	text-decoration: none;
 }
 
+.css-tc-wide__tools {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px 16px;
+	min-width: 0;
+}
+
+.css-tc-wide__bar .css-tc-staff-nav a {
+	color: #fff;
+}
+
+.css-tc-wide__bar .css-tc-staff-nav a:hover,
+.css-tc-wide__bar .css-tc-staff-nav a:focus {
+	color: #fff;
+}
+
 .css-tc-wide__user {
 	font-size: 14px;
 	opacity: 0.9;
+}
+
+.css-tc-wide-layout .css-tc-times-nav {
+	display: none;
 }
 
 .css-tc-wide__main {

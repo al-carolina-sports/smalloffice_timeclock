@@ -96,6 +96,36 @@
 	font-weight: 700;
 }
 
+.css-tc-kiosk__aside {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 8px;
+	min-width: 0;
+}
+
+.css-tc-staff-nav {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 4px 14px;
+	margin: 0;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.3;
+}
+
+.css-tc-staff-nav a {
+	color: var(--css-tc-muted);
+	text-decoration: none;
+}
+
+.css-tc-staff-nav a:hover,
+.css-tc-staff-nav a:focus {
+	color: var(--css-tc-accent);
+	text-decoration: underline;
+}
+
 .css-tc-kiosk__clock {
 	margin: 0;
 	font-variant-numeric: tabular-nums;
@@ -469,6 +499,12 @@
 
 	.css-tc-kiosk__chrome {
 		flex-direction: column;
+	}
+
+	.css-tc-kiosk__aside,
+	.css-tc-staff-nav {
+		align-items: flex-start;
+		justify-content: flex-start;
 	}
 
 	.css-tc-kiosk__actions {
