@@ -147,6 +147,7 @@ class Css_Tc_Plugin {
 			'overtime_weeks'          => 1,
 			'overtime_scope'          => 'combined',
 			'assignments_enabled'     => 0,
+			'switch_enabled'          => 1,
 			'wide_layout'             => 1,
 		);
 	}

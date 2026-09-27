@@ -67,6 +67,7 @@
         overtime_weeks: form.overtime_weeks ? form.overtime_weeks.value : 1,
         overtime_scope: form.overtime_scope ? form.overtime_scope.value : "combined",
         assignments_enabled: form.assignments_enabled && form.assignments_enabled.checked ? 1 : 0,
+        switch_enabled: form.switch_enabled && form.switch_enabled.checked ? 1 : 0,
       };
       post("css_tc_save_settings", data)
         .then(function (result) {

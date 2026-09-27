@@ -221,9 +221,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<td>
 						<label>
 							<input type="checkbox" name="assignments_enabled" value="1" <?php checked( ! empty( $settings['assignments_enabled'] ) ); ?> />
-							<?php echo esc_html__( 'Ask which department at clock-in, and allow Switch', 'css-timeclock-addon' ); ?>
+							<?php echo esc_html__( 'Ask which department at clock-in', 'css-timeclock-addon' ); ?>
 						</label>
 						<p class="description"><?php echo esc_html__( 'Uses the companies, locations and departments on the Locations & departments tab. Employees only see departments assigned on their profile. The kiosk page location (shortcode attribute location="Raleigh") or the office network decides the location; otherwise the employee picks it. With one choice, the question is skipped.', 'css-timeclock-addon' ); ?></p>
+					</td>
+				</tr>
+				<tr id="switch_enabled">
+					<th scope="row"><?php echo esc_html__( 'Switch', 'css-timeclock-addon' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="switch_enabled" value="1" <?php checked( ! isset( $settings['switch_enabled'] ) || ! empty( $settings['switch_enabled'] ) ); ?> />
+							<?php echo esc_html__( 'Allow Switch: move to another department without clocking out', 'css-timeclock-addon' ); ?>
+						</label>
+						<p class="description"><?php echo esc_html__( 'Shows a Switch button to clocked-in employees and offers "Switch to <office>" when they enter their PIN at another office. The current shift ends and the next one starts at the same second. Turned off, employees clock out and clock back in to change departments. Needs "Ask which department at clock-in".', 'css-timeclock-addon' ); ?></p>
 					</td>
 				</tr>
 				<tr>

@@ -62,6 +62,17 @@ class Css_Tc_Organization {
 		return ! empty( $settings['assignments_enabled'] ) && ! empty( $this->departments() );
 	}
 
+	/**
+	 * Whether clocked-in employees may Switch departments at the kiosk.
+	 * Needs departments at clock-in. Missing setting (older installs) = on.
+	 *
+	 * @return bool
+	 */
+	public function switch_enabled() {
+		$settings = css_tc_addon()->get_settings();
+		return $this->enabled() && ( ! isset( $settings['switch_enabled'] ) || ! empty( $settings['switch_enabled'] ) );
+	}
+
 	// ------------------------------------------------------------------
 	// Store
 	// ------------------------------------------------------------------

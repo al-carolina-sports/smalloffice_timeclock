@@ -144,9 +144,11 @@ class Css_Tc_Ajax {
 		$choices = $here_ok ? $here : $org->choices( $user_id, 0 );
 
 		$switch = array();
-		foreach ( $choices as $choice ) {
-			if ( (int) $choice['department_id'] !== (int) $current['department_id'] ) {
-				$switch[] = $choice;
+		if ( $org->switch_enabled() ) {
+			foreach ( $choices as $choice ) {
+				if ( (int) $choice['department_id'] !== (int) $current['department_id'] ) {
+					$switch[] = $choice;
+				}
 			}
 		}
 
@@ -157,7 +159,7 @@ class Css_Tc_Ajax {
 			'choices'       => $choices,
 			'switch'        => $switch,
 			'current'       => (string) $current['label'],
-			'away'          => ! empty( $open['is_clocked_in'] ) && (int) $location['id'] > 0 && (int) $current['location_id'] > 0 && (int) $current['location_id'] !== (int) $location['id'],
+			'away'          => $org->switch_enabled() && ! empty( $open['is_clocked_in'] ) && (int) $location['id'] > 0 && (int) $current['location_id'] > 0 && (int) $current['location_id'] !== (int) $location['id'],
 			'needs_choice'  => count( $choices ) > 1,
 			'single_choice' => 1 === count( $choices ) ? (int) $choices[0]['department_id'] : 0,
 		);
@@ -231,6 +233,9 @@ class Css_Tc_Ajax {
 			// cannot name a department. Everyone else must pick one of theirs.
 			if ( empty( $allowed ) ? $department_id > 0 : ! in_array( $department_id, $allowed, true ) ) {
 				wp_send_json_error( array( 'message' => __( 'Choose one of your departments.', 'css-timeclock-addon' ) ), 400 );
+			}
+			if ( 'switch' === $clock_act && ! $org->switch_enabled() ) {
+				wp_send_json_error( array( 'message' => __( 'Switching departments is turned off. Clock out, then clock in again.', 'css-timeclock-addon' ) ), 400 );
 			}
 			if ( 'switch' === $clock_act && $department_id < 1 ) {
 				wp_send_json_error( array( 'message' => __( 'Choose where you are switching to.', 'css-timeclock-addon' ) ), 400 );
@@ -381,6 +386,7 @@ class Css_Tc_Ajax {
 		$scope = isset( $_POST['overtime_scope'] ) ? sanitize_key( wp_unslash( $_POST['overtime_scope'] ) ) : 'combined';
 		$settings['overtime_scope']      = ( 'per_company' === $scope ) ? 'per_company' : 'combined';
 		$settings['assignments_enabled'] = empty( $_POST['assignments_enabled'] ) ? 0 : 1;
+		$settings['switch_enabled']      = empty( $_POST['switch_enabled'] ) ? 0 : 1;
 
 		css_tc_addon()->update_settings( $settings );
 

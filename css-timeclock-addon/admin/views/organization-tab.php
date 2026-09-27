@@ -19,6 +19,7 @@ $css_tc_msg       = isset( $_GET['css_tc_org_msg'] ) ? sanitize_text_field( wp_u
 $css_tc_err       = isset( $_GET['css_tc_org_err'] ) ? sanitize_text_field( wp_unslash( $_GET['css_tc_org_err'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 $css_tc_post_url  = admin_url( 'admin-post.php' );
 $css_tc_enabled   = ! empty( css_tc_addon()->get_settings()['assignments_enabled'] );
+$css_tc_switch    = $css_tc_org->switch_enabled();
 
 /**
  * Hidden fields every setup form needs.
@@ -52,6 +53,8 @@ $css_tc_hidden = static function ( $op, $kind = '', $id = 0 ) {
 	<p>
 		<strong><?php echo esc_html__( 'Ask for department at clock-in:', 'css-timeclock-addon' ); ?></strong>
 		<?php echo $css_tc_enabled ? esc_html__( 'On', 'css-timeclock-addon' ) : esc_html__( 'Off', 'css-timeclock-addon' ); ?>
+		· <strong><?php echo esc_html__( 'Switch:', 'css-timeclock-addon' ); ?></strong>
+		<?php echo $css_tc_switch ? esc_html__( 'On', 'css-timeclock-addon' ) : esc_html__( 'Off', 'css-timeclock-addon' ); ?>
 		— <a href="<?php echo esc_url( $base_url . '&tab=settings#assignments_enabled' ); ?>"><?php echo esc_html__( 'change in Kiosk settings', 'css-timeclock-addon' ); ?></a>
 	</p>
 
