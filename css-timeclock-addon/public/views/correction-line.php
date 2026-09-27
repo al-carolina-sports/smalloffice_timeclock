@@ -29,20 +29,21 @@ if ( ! empty( $line['pending'] ) ) {
 	$notes[] = __( 'Pending review', 'css-timeclock-addon' );
 }
 ?>
+<?php $css_tc_locked = ! empty( $day['is_future'] ); ?>
 <div class="css-tc-correct__line" data-line>
-	<input type="hidden" name="lines[<?php echo esc_attr( $key ); ?>][work_date]" value="<?php echo esc_attr( $day['date'] ); ?>" />
-	<input type="hidden" name="lines[<?php echo esc_attr( $key ); ?>][shift_id]" value="<?php echo esc_attr( (string) (int) $line['shift_id'] ); ?>" />
-	<input type="hidden" name="lines[<?php echo esc_attr( $key ); ?>][correction_id]" value="<?php echo esc_attr( (string) (int) $line['correction_id'] ); ?>" />
+	<input type="hidden" name="lines[<?php echo esc_attr( $key ); ?>][work_date]" value="<?php echo esc_attr( $day['date'] ); ?>" <?php disabled( $css_tc_locked ); ?> />
+	<input type="hidden" name="lines[<?php echo esc_attr( $key ); ?>][shift_id]" value="<?php echo esc_attr( (string) (int) $line['shift_id'] ); ?>" <?php disabled( $css_tc_locked ); ?> />
+	<input type="hidden" name="lines[<?php echo esc_attr( $key ); ?>][correction_id]" value="<?php echo esc_attr( (string) (int) $line['correction_id'] ); ?>" <?php disabled( $css_tc_locked ); ?> />
 	<?php if ( ! empty( $notes ) ) : ?>
 		<p class="css-tc-correct__note"><?php echo esc_html( implode( ' · ', $notes ) ); ?></p>
 	<?php endif; ?>
 	<label>
 		<span><?php echo esc_html__( 'Clock in', 'css-timeclock-addon' ); ?></span>
-		<input type="time" step="1" name="lines[<?php echo esc_attr( $key ); ?>][proposed_in]" value="<?php echo esc_attr( (string) $line['in_hms'] ); ?>" />
+		<input type="time" step="1" name="lines[<?php echo esc_attr( $key ); ?>][proposed_in]" value="<?php echo esc_attr( (string) $line['in_hms'] ); ?>" <?php disabled( $css_tc_locked ); ?> />
 	</label>
 	<label>
 		<span><?php echo esc_html__( 'Clock out', 'css-timeclock-addon' ); ?></span>
-		<input type="time" step="1" name="lines[<?php echo esc_attr( $key ); ?>][proposed_out]" value="<?php echo esc_attr( (string) $line['out_hms'] ); ?>" />
+		<input type="time" step="1" name="lines[<?php echo esc_attr( $key ); ?>][proposed_out]" value="<?php echo esc_attr( (string) $line['out_hms'] ); ?>" <?php disabled( $css_tc_locked ); ?> />
 	</label>
 	<?php
 	$css_tc_shift_seconds = css_tc_addon()->time->hms_span_seconds(
@@ -54,13 +55,13 @@ if ( ! empty( $line['pending'] ) ) {
 	?>
 	<div class="css-tc-correct__pair">
 		<label class="css-tc-correct__check">
-			<input type="checkbox" name="lines[<?php echo esc_attr( $key ); ?>][out_next_day]" value="1" <?php checked( ! empty( $line['out_next_day'] ) ); ?> />
+			<input type="checkbox" name="lines[<?php echo esc_attr( $key ); ?>][out_next_day]" value="1" <?php checked( ! empty( $line['out_next_day'] ) ); ?> <?php disabled( $css_tc_locked ); ?> />
 			<span><?php echo esc_html__( 'Clock-out is the next day', 'css-timeclock-addon' ); ?></span>
 		</label>
 		<span class="css-tc-correct__shift"><?php echo esc_html__( 'Shift hours:', 'css-timeclock-addon' ); ?> <span data-shift-hours><?php echo esc_html( $css_tc_shift_hours ); ?></span></span>
 	</div>
 	<label class="css-tc-correct__reason">
 		<span><?php echo esc_html__( 'Reason (optional)', 'css-timeclock-addon' ); ?></span>
-		<textarea name="lines[<?php echo esc_attr( $key ); ?>][reason]" rows="2" maxlength="500"><?php echo esc_textarea( (string) $line['reason'] ); ?></textarea>
+		<textarea name="lines[<?php echo esc_attr( $key ); ?>][reason]" rows="2" maxlength="500" <?php disabled( $css_tc_locked ); ?>><?php echo esc_textarea( (string) $line['reason'] ); ?></textarea>
 	</label>
 </div>

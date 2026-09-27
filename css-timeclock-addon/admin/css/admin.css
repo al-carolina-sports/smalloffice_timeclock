@@ -230,6 +230,11 @@
 	color: #b32d2e;
 }
 
+.css-tc-admin .css-tc-pill-manager {
+	background: #e8eef7;
+	color: #1d4e89;
+}
+
 @media (max-width: 782px) {
 	.css-tc-admin .css-tc-pin-form {
 		flex-direction: column;

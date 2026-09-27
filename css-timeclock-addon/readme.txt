@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.4.8
+Stable tag: 1.4.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,12 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under SMOTC.
 
 == Changelog ==
+
+= 1.4.9 =
+* Today and earlier days in the pay period show a pencil, including a day with no punches. On My Time Clock, while the pay period is open, the pencil opens that day's correction form. An empty day can request a new shift: clock-in, clock-out, next day, and Reason (optional). Submitting still waits for a manager. Days after today have no pencil, and those fields stay closed. The day cells do not have a Request change link. A pending day keeps the Pending badge. Cancel request is on that day's correction form and withdraws the pending suggestion without changing punches. An approved correction shows a small dot. Closed periods do not offer the employee pencil. Correct this pay period stays at the top of the timecard. Today is the site timezone, Eastern time.
+* Timecard clock times and totals come from stored punches. A pending suggestion does not change them.
+* Approving or rejecting a correction, and a manager edit of that day, removes the old Request change flag for that date when no other suggestion is still pending. The first load after this update does the same for flags left behind, including a day that was flagged and never reviewed. That cleanup changes only the employee's flagged-dates list. The timecard does not read the flag. The Pending badge and Cancel request follow the pending correction.
+* On SMOTC → Timecards the pencil is on today and earlier days, including a day with no punches. A later day has no pencil, and saving one is refused. The editor changes clock-in, clock-out, next day, adds a punch, or deletes a shift after a confirmation. An empty day starts with a blank punch. Shift hours and the day total update as you type. Each change is an auto-approved correction labeled Edited by manager, with the before and after times and the day totals. Closed periods warn and can still be edited through today.
 
 = 1.4.8 =
 * The Corrections tab puts Original shift on the time line and Proposed shift hours on the Proposed line. Pending cards label that line Current. Approved and rejected cards label it Before. The separate shift-hours line is gone. Day totals, snapshots, and legacy cards are unchanged.

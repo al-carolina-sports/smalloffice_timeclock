@@ -11,7 +11,7 @@
  * @var WP_User[]                $employees   Admin picker. Optional.
  * @var int                      $prev_id
  * @var int                      $next_id
- * @var string                   $edit_url    Admin corrections queue.
+ * @var string                   $edit_day    Y-m-d manager editor, or empty.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -27,7 +27,7 @@ $user_id    = (int) $sheet['user_id'];
 $employees  = isset( $employees ) && is_array( $employees ) ? $employees : array();
 $prev_id    = isset( $prev_id ) ? (int) $prev_id : 0;
 $next_id    = isset( $next_id ) ? (int) $next_id : 0;
-$edit_url   = isset( $edit_url ) ? (string) $edit_url : '';
+$edit_day   = isset( $edit_day ) ? (string) $edit_day : '';
 
 $period_options = css_tc_addon()->pay_periods->dropdown_periods( 6 );
 $monday         = css_tc_addon()->time->date_immutable( '2026-09-07' );
@@ -107,7 +107,13 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 
 	<?php if ( ! $is_open ) : ?>
 		<p class="css-tc-banner css-tc-banner--closed" role="status">
-			<?php echo esc_html__( 'This pay period is closed and can\'t be edited.', 'css-timeclock-addon' ); ?>
+			<?php
+			if ( 'admin' === $mode ) {
+				echo esc_html__( 'This pay period is closed. You can still edit a day. Saving updates the punches immediately and records the change.', 'css-timeclock-addon' );
+			} else {
+				echo esc_html__( 'This pay period is closed and can\'t be edited.', 'css-timeclock-addon' );
+			}
+			?>
 		</p>
 	<?php endif; ?>
 	<?php if ( ! empty( $sheet['long_shift_count'] ) ) : ?>
@@ -135,6 +141,22 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 	<?php endif; ?>
 	<?php if ( '' !== $form_error ) : ?>
 		<p class="css-tc-sheet__error css-tc-no-print"><?php echo esc_html( $form_error ); ?></p>
+	<?php endif; ?>
+
+	<?php
+	$edit_row = null;
+	if ( 'admin' === $mode && '' !== $edit_day ) {
+		foreach ( $sheet['weeks'] as $css_tc_week ) {
+			foreach ( $css_tc_week['days'] as $css_tc_day ) {
+				if ( isset( $css_tc_day['date'] ) && $css_tc_day['date'] === $edit_day ) {
+					$edit_row = $css_tc_day;
+				}
+			}
+		}
+	}
+	?>
+	<?php if ( 'admin' === $mode && '' !== $edit_day ) : ?>
+		<?php include CSS_TC_ADDON_DIR . 'admin/views/manager-day-edit.php'; ?>
 	<?php endif; ?>
 
 	<?php if ( 'employee' === $mode && $is_open ) : ?>
@@ -209,11 +231,28 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 					if ( ! empty( $day['has_long'] ) ) {
 						$day_classes .= ' is-long';
 					}
+					if ( 'admin' === $mode && $edit_day === $day['date'] ) {
+						$day_classes .= ' is-editing';
+					}
+					$in_period    = ! empty( $day['in_period'] );
+					$is_future    = ( $day['date'] > css_tc_addon()->time->site_today() );
 					$correct_href = '';
-					if ( ! empty( $day['needs_correction'] ) && 'employee' === $mode ) {
+					$edit_label   = empty( $day['shifts'] )
+						? __( 'Add a shift', 'css-timeclock-addon' )
+						: __( 'Correct this day', 'css-timeclock-addon' );
+					if ( $in_period && ! $is_future && 'employee' === $mode && $is_open ) {
 						$correct_href = Css_Tc_Shortcodes::correct_url( $day['date'] );
-					} elseif ( ! empty( $day['needs_correction'] ) && 'admin' === $mode && '' !== $edit_url ) {
-						$correct_href = $edit_url;
+					} elseif ( $in_period && ! $is_future && 'admin' === $mode ) {
+						$correct_href = Css_Tc_Admin::timecards_url(
+							array(
+								'employee' => $user_id,
+								'period'   => $period['start'],
+								'edit_day' => $day['date'],
+							)
+						);
+						$edit_label = empty( $day['shifts'] )
+							? __( 'Add a shift', 'css-timeclock-addon' )
+							: __( 'Edit this day', 'css-timeclock-addon' );
 					}
 					?>
 					<div class="<?php echo esc_attr( $day_classes ); ?>" id="day-<?php echo esc_attr( $day['date'] ); ?>">
@@ -232,8 +271,15 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 								<?php if ( ! empty( $day['pending'] ) ) : ?>
 									<span class="css-tc-badge"><?php echo esc_html__( 'Pending', 'css-timeclock-addon' ); ?></span>
 								<?php endif; ?>
+								<?php if ( ! empty( $day['pending'] ) || ! empty( $day['has_approved'] ) ) : ?>
+									<span class="css-tc-dot<?php echo empty( $day['pending'] ) ? ' css-tc-dot--approved' : ''; ?>" title="<?php echo esc_attr( ! empty( $day['pending'] ) ? __( 'Pending correction', 'css-timeclock-addon' ) : __( 'Approved correction', 'css-timeclock-addon' ) ); ?>">
+										<span class="screen-reader-text">
+											<?php echo esc_html( ! empty( $day['pending'] ) ? __( 'Pending correction', 'css-timeclock-addon' ) : __( 'Approved correction', 'css-timeclock-addon' ) ); ?>
+										</span>
+									</span>
+								<?php endif; ?>
 								<?php if ( '' !== $correct_href ) : ?>
-									<a class="css-tc-edit" href="<?php echo esc_url( $correct_href ); ?>" aria-label="<?php echo esc_attr__( 'Correct this day', 'css-timeclock-addon' ); ?>">
+									<a class="css-tc-edit" href="<?php echo esc_url( $correct_href ); ?>" aria-label="<?php echo esc_attr( $edit_label ); ?>">
 										<?php echo $pencil; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?>
 									</a>
 								<?php endif; ?>
@@ -276,23 +322,6 @@ $pencil = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fo
 								</div>
 							<?php endforeach; ?>
 						</div>
-						<?php if ( 'employee' === $mode && $is_open && empty( $day['needs_correction'] ) && ! empty( $day['shifts'] ) ) : ?>
-							<form class="css-tc-flag css-tc-no-print" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-								<?php wp_nonce_field( Css_Tc_Corrections::EMPLOYEE_NONCE ); ?>
-								<input type="hidden" name="action" value="css_tc_flag_day" />
-								<input type="hidden" name="work_date" value="<?php echo esc_attr( $day['date'] ); ?>" />
-								<input type="hidden" name="flag" value="1" />
-								<button type="submit"><?php echo esc_html__( 'Request change', 'css-timeclock-addon' ); ?></button>
-							</form>
-						<?php elseif ( 'employee' === $mode && $is_open && ! empty( $day['flagged'] ) ) : ?>
-							<form class="css-tc-flag css-tc-no-print" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-								<?php wp_nonce_field( Css_Tc_Corrections::EMPLOYEE_NONCE ); ?>
-								<input type="hidden" name="action" value="css_tc_flag_day" />
-								<input type="hidden" name="work_date" value="<?php echo esc_attr( $day['date'] ); ?>" />
-								<input type="hidden" name="flag" value="0" />
-								<button type="submit"><?php echo esc_html__( 'Cancel request', 'css-timeclock-addon' ); ?></button>
-							</form>
-						<?php endif; ?>
 					</div>
 				<?php endforeach; ?>
 			</div>

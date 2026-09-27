@@ -309,7 +309,20 @@ class Css_Tc_Admin {
 		$prev_id  = ( false !== $index && $index > 0 ) ? $ids[ $index - 1 ] : 0;
 		$next_id  = ( false !== $index && $index < count( $ids ) - 1 ) ? $ids[ $index + 1 ] : 0;
 		$periods  = css_tc_addon()->pay_periods->dropdown_periods( 6 );
-		$edit_url = admin_url( 'admin.php?page=css-tc-addon&tab=corrections' );
+		$edit_day = isset( $_GET['edit_day'] ) ? sanitize_text_field( wp_unslash( $_GET['edit_day'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $edit_day ) ) {
+			$edit_day = '';
+		}
+		$notice     = '';
+		$form_error = '';
+		if ( isset( $_GET['css_tc_notice'] ) && 'edited' === sanitize_key( wp_unslash( $_GET['css_tc_notice'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$notice = __( 'Day saved. The edit is under Recently reviewed on the Corrections tab, labeled Edited by manager.', 'css-timeclock-addon' );
+		}
+		$stored_error = (string) get_transient( 'css_tc_manager_error_' . get_current_user_id() );
+		if ( '' !== $stored_error ) {
+			delete_transient( 'css_tc_manager_error_' . get_current_user_id() );
+			$form_error = $stored_error;
+		}
 
 		include CSS_TC_ADDON_DIR . 'admin/views/timecard-page.php';
 	}

@@ -303,7 +303,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</table>
 	<?php else : ?>
 		<p>
-			<?php echo esc_html__( 'Employees suggest clock-in or clock-out corrections for the current pay period from My Time Clock. Approving writes the AIO-compatible shift and keeps the original times plus who suggested and who approved. A suggestion that would change a closed pay period is rejected.', 'css-timeclock-addon' ); ?>
+			<?php echo esc_html__( 'Employees suggest clock-in or clock-out corrections for the current pay period from My Time Clock. Approving writes the AIO-compatible shift and keeps the original times plus who suggested and who approved. A suggestion that would change a closed pay period is rejected. A manager edit from the timecard is saved immediately and listed under Recently reviewed as Edited by manager.', 'css-timeclock-addon' ); ?>
 		</p>
 
 		<h2><?php echo esc_html__( 'Pending', 'css-timeclock-addon' ); ?></h2>

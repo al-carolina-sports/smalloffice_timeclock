@@ -48,6 +48,9 @@ $status = isset( $item['status'] ) ? (string) $item['status'] : 'pending';
 			<?php endif; ?>
 		</span>
 		<span class="css-tc-pill css-tc-pill-<?php echo esc_attr( $status ); ?>"><?php echo esc_html( ucfirst( $status ) ); ?></span>
+		<?php if ( ! empty( $item['manager_edit'] ) ) : ?>
+			<span class="css-tc-pill css-tc-pill-manager"><?php echo esc_html__( 'Edited by manager', 'css-timeclock-addon' ); ?></span>
+		<?php endif; ?>
 	</header>
 	<?php
 	$css_tc_has_current = ( ! empty( $item['original_in'] ) || ! empty( $item['original_out'] ) );
@@ -91,6 +94,9 @@ $status = isset( $item['status'] ) ? (string) $item['status'] : 'pending';
 			<?php echo esc_html( ! empty( $item['proposed_out'] ) ? $item['proposed_out'] : '—' ); ?>
 			<?php if ( ! empty( $item['missing_punch'] ) ) : ?>
 				<span class="description"><?php echo esc_html__( '(missing punch)', 'css-timeclock-addon' ); ?></span>
+			<?php endif; ?>
+			<?php if ( ! empty( $item['deleted_shift'] ) ) : ?>
+				<span class="description"><?php echo esc_html__( '(deleted shift)', 'css-timeclock-addon' ); ?></span>
 			<?php endif; ?>
 		</span>
 		<?php if ( isset( $item['proposed_hours'] ) ) : ?>

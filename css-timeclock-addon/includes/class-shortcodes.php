@@ -522,6 +522,8 @@ class Css_Tc_Shortcodes {
 			$sheet = css_tc_addon()->timecard->build( $user_id, $period );
 			if ( isset( $_GET['css_tc_notice'] ) && 'sent' === sanitize_key( wp_unslash( $_GET['css_tc_notice'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 				$notice = __( 'Suggestions sent. A supervisor will review them before any punch changes.', 'css-timeclock-addon' );
+			} elseif ( isset( $_GET['css_tc_notice'] ) && 'cancelled' === sanitize_key( wp_unslash( $_GET['css_tc_notice'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+				$notice = __( 'Request cancelled. The punches were not changed.', 'css-timeclock-addon' );
 			}
 			$form_error = (string) get_transient( 'css_tc_period_error_' . $user_id );
 			if ( '' !== $form_error ) {
