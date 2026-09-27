@@ -157,6 +157,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 							<?php endif; ?>
 						</p>
 						<p class="description"><?php echo esc_html__( 'Logged-in employees see their own timecard here. Supervisors open SMOTC → Timecards for any employee. Corrections for the current pay period are approved on the Corrections tab. Past pay periods are display-only.', 'css-timeclock-addon' ); ?></p>
+						<label>
+							<input type="checkbox" name="wide_layout" value="1" <?php checked( ! isset( $settings['wide_layout'] ) || ! empty( $settings['wide_layout'] ) ); ?> />
+							<?php echo esc_html__( 'Wide layout', 'css-timeclock-addon' ); ?>
+						</label>
+						<p class="description"><?php echo esc_html__( 'My Time Clock, its corrections view, and the kiosks use a full-width page so the week grid can use the screen. Turn this off to leave those pages inside the theme’s content column. A genuinely narrow window still stacks the days.', 'css-timeclock-addon' ); ?></p>
 					</td>
 				</tr>
 				<tr>

@@ -33,6 +33,8 @@ class Css_Tc_Shortcodes {
 		add_shortcode( 'css_tc_my_times', array( __CLASS__, 'my_times' ) );
 		add_filter( 'body_class', array( __CLASS__, 'body_class' ) );
 		add_action( 'template_redirect', array( __CLASS__, 'redirect_aio_clock_page' ) );
+		add_filter( 'template_include', array( __CLASS__, 'wide_template' ) );
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_wide_layout' ), 999 );
 	}
 
 	/**
@@ -194,6 +196,94 @@ class Css_Tc_Shortcodes {
 	}
 
 	/**
+	 * Front-end pages that host an SMOTC shortcode.
+	 *
+	 * @param WP_Post|null $post Page.
+	 * @return bool
+	 */
+	public static function is_smotc_front_page( $post = null ) {
+		if ( ! $post instanceof WP_Post ) {
+			$queried = get_queried_object();
+			$post    = $queried instanceof WP_Post ? $queried : null;
+		}
+		if ( ! $post || 'page' !== $post->post_type ) {
+			return false;
+		}
+		$content = (string) $post->post_content;
+		foreach ( array( 'css_tc_my_times', 'css_tc_pin_kiosk', 'css_tc_name_kiosk' ) as $tag ) {
+			if ( has_shortcode( $content, $tag ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Whether this request should replace the theme template.
+	 *
+	 * A CSS breakout (100vw / negative margins) still sits inside Twenty Fifteen's
+	 * sidebar column and is clipped by theme wrappers that set overflow. Owning
+	 * the page template avoids that. The setting puts the theme template back.
+	 *
+	 * @return bool
+	 */
+	public static function uses_wide_layout() {
+		if ( is_admin() || wp_doing_ajax() || ! is_singular( 'page' ) ) {
+			return false;
+		}
+		$settings = css_tc_addon()->get_settings();
+		if ( empty( $settings['wide_layout'] ) ) {
+			return false;
+		}
+		return self::is_smotc_front_page();
+	}
+
+	/**
+	 * @param string $template Theme template path.
+	 * @return string
+	 */
+	public static function wide_template( $template ) {
+		if ( ! self::uses_wide_layout() ) {
+			return $template;
+		}
+		$ours = CSS_TC_ADDON_DIR . 'public/views/wide-layout.php';
+		return file_exists( $ours ) ? $ours : $template;
+	}
+
+	/**
+	 * Drop the active theme's styles so its column and sidebar cannot shrink the sheet.
+	 *
+	 * @return void
+	 */
+	public static function enqueue_wide_layout() {
+		if ( ! self::uses_wide_layout() ) {
+			return;
+		}
+
+		remove_action( 'wp_enqueue_scripts', 'wp_enqueue_global_styles' );
+		remove_action( 'wp_footer', 'wp_enqueue_global_styles', 1 );
+		wp_dequeue_style( 'global-styles' );
+		wp_dequeue_style( 'classic-theme-styles' );
+
+		global $wp_styles;
+		if ( $wp_styles instanceof WP_Styles ) {
+			foreach ( $wp_styles->registered as $handle => $style ) {
+				$src = isset( $style->src ) ? (string) $style->src : '';
+				if ( '' !== $src && false !== strpos( $src, '/themes/' ) ) {
+					wp_dequeue_style( $handle );
+				}
+			}
+		}
+
+		wp_enqueue_style(
+			'css-tc-wide-layout',
+			CSS_TC_ADDON_URL . 'public/css/wide-layout.css',
+			array(),
+			CSS_TC_ADDON_VERSION
+		);
+	}
+
+	/**
 	 * @param array<int,string> $classes Body classes.
 	 * @return array<int,string>
 	 */
@@ -210,6 +300,9 @@ class Css_Tc_Shortcodes {
 		}
 		if ( has_shortcode( $post->post_content, 'css_tc_my_times' ) ) {
 			$classes[] = 'css-tc-times-page';
+		}
+		if ( self::uses_wide_layout() ) {
+			$classes[] = 'css-tc-wide-layout';
 		}
 		return $classes;
 	}
