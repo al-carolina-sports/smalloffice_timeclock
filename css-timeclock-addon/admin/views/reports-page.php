@@ -204,6 +204,53 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 			<?php endif; ?>
 		</table>
 
+		<?php if ( $css_tc_use_org && ! empty( $summary['by_employee'] ) ) : ?>
+			<h2 class="css-tc-report-h2">
+				<?php echo esc_html__( 'By employee', 'css-timeclock-addon' ); ?>
+				<a class="button button-small" href="<?php echo esc_url( $by_employee_csv_url ); ?>"><?php echo esc_html__( 'Download CSV', 'css-timeclock-addon' ); ?></a>
+			</h2>
+			<p class="description"><?php echo esc_html__( 'Each employee\'s hours split by where they worked. Overtime sits with the department whose hours crossed the limit.', 'css-timeclock-addon' ); ?></p>
+			<table class="widefat css-tc-report-table css-tc-report-table--narrow css-tc-by-employee">
+				<thead>
+					<tr>
+						<th><?php echo esc_html__( 'Employee', 'css-timeclock-addon' ); ?></th>
+						<th><?php echo esc_html__( 'Company', 'css-timeclock-addon' ); ?></th>
+						<th><?php echo esc_html__( 'Department · Location', 'css-timeclock-addon' ); ?></th>
+						<th class="num"><?php echo esc_html__( 'Shifts', 'css-timeclock-addon' ); ?></th>
+						<th class="num"><?php echo esc_html__( 'Regular', 'css-timeclock-addon' ); ?></th>
+						<th class="num"><?php echo esc_html__( 'Overtime', 'css-timeclock-addon' ); ?></th>
+						<th class="num"><?php echo esc_html__( 'Total', 'css-timeclock-addon' ); ?></th>
+					</tr>
+				</thead>
+				<?php foreach ( $summary['by_employee'] as $css_tc_emp ) : ?>
+					<tbody class="css-tc-by-employee__group">
+						<?php foreach ( $css_tc_emp['rows'] as $css_tc_i => $css_tc_r ) : ?>
+							<tr>
+								<?php if ( 0 === $css_tc_i ) : ?>
+									<th scope="rowgroup" rowspan="<?php echo esc_attr( (string) ( count( $css_tc_emp['rows'] ) + 1 ) ); ?>" class="css-tc-by-employee__name">
+										<a href="<?php echo esc_url( Css_Tc_Admin::timecards_url( array( 'employee' => (int) $css_tc_emp['user_id'], 'period' => (string) $css_tc_period['start'] ) ) ); ?>"><?php echo esc_html( $css_tc_emp['name'] ); ?></a>
+									</th>
+								<?php endif; ?>
+								<td><?php echo esc_html( '' !== $css_tc_r['company'] ? $css_tc_r['company'] : '—' ); ?></td>
+								<td><?php echo esc_html( $css_tc_r['department'] . ( '' !== $css_tc_r['location'] ? ' · ' . $css_tc_r['location'] : '' ) ); ?></td>
+								<td class="num"><?php echo esc_html( (string) $css_tc_r['shifts'] ); ?></td>
+								<td class="num"><?php echo esc_html( $css_tc_hm( $css_tc_r['regular'] ) ); ?></td>
+								<td class="num<?php echo $css_tc_r['overtime'] > 0 ? ' is-overtime' : ''; ?>"><?php echo esc_html( $css_tc_hm( $css_tc_r['overtime'] ) ); ?></td>
+								<td class="num"><?php echo esc_html( $css_tc_hm( $css_tc_r['total'] ) ); ?></td>
+							</tr>
+						<?php endforeach; ?>
+						<tr class="css-tc-by-employee__total">
+							<td colspan="2"><?php echo esc_html__( 'Total', 'css-timeclock-addon' ); ?></td>
+							<td class="num"><?php echo esc_html( (string) $css_tc_emp['total']['shifts'] ); ?></td>
+							<td class="num"><?php echo esc_html( $css_tc_hm( $css_tc_emp['total']['regular'] ) ); ?></td>
+							<td class="num<?php echo $css_tc_emp['total']['overtime'] > 0 ? ' is-overtime' : ''; ?>"><?php echo esc_html( $css_tc_hm( $css_tc_emp['total']['overtime'] ) ); ?></td>
+							<td class="num"><strong><?php echo esc_html( $css_tc_hm( $css_tc_emp['total']['total'] ) ); ?></strong></td>
+						</tr>
+					</tbody>
+				<?php endforeach; ?>
+			</table>
+		<?php endif; ?>
+
 		<?php if ( count( $summary['departments'] ) > 0 ) : ?>
 			<h2><?php echo $css_tc_use_org ? esc_html__( 'By company · department · location', 'css-timeclock-addon' ) : esc_html__( 'By department', 'css-timeclock-addon' ); ?></h2>
 			<table class="widefat striped css-tc-report-table css-tc-report-table--narrow">

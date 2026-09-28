@@ -163,6 +163,7 @@ class Css_Tc_Reports {
 		$use_org  = css_tc_addon()->organization->enabled();
 		$filtered = $use_org && $this->org_filter_active( $org );
 		$by_assignment = array();
+		$by_employee   = array();
 		$unassigned    = 0;
 		$codes   = ( new Css_Tc_Pay_Codes() )->definitions();
 		$rows    = array();
@@ -229,6 +230,51 @@ class Css_Tc_Reports {
 					}
 				}
 				$dept_name = implode( ', ', $labels );
+				$emp_rows = array();
+				foreach ( $matched as $segment ) {
+					$dkey = (int) $segment['department_id'];
+					if ( ! isset( $emp_rows[ $dkey ] ) ) {
+						$emp_rows[ $dkey ] = array(
+							'company'    => $dkey > 0 ? css_tc_addon()->organization->company_name( $segment['company_id'] ) : '',
+							'department' => $dkey > 0 ? (string) ( css_tc_addon()->organization->department( $dkey ) ? css_tc_addon()->organization->department( $dkey )['name'] : $segment['label'] ) : __( 'Not set', 'css-timeclock-addon' ),
+							'location'   => $dkey > 0 ? css_tc_addon()->organization->location_name( $segment['location_id'] ) : '',
+							'shifts'     => 0,
+							'regular'    => 0,
+							'overtime'   => 0,
+							'total'      => 0,
+						);
+					}
+					++$emp_rows[ $dkey ]['shifts'];
+					$emp_rows[ $dkey ]['total']    += $segment['seconds'];
+					$emp_rows[ $dkey ]['overtime'] += $segment['overtime'];
+					$emp_rows[ $dkey ]['regular']  += $segment['seconds'] - $segment['overtime'];
+				}
+				uasort(
+					$emp_rows,
+					static function ( $a, $b ) {
+						return strnatcasecmp( $a['company'] . $a['location'] . $a['department'], $b['company'] . $b['location'] . $b['department'] );
+					}
+				);
+				$emp_total = array(
+					'shifts'   => 0,
+					'regular'  => 0,
+					'overtime' => 0,
+					'total'    => 0,
+				);
+				foreach ( $emp_rows as $r ) {
+					foreach ( $emp_total as $k => $v ) {
+						$emp_total[ $k ] += $r[ $k ];
+					}
+				}
+				if ( ! empty( $emp_rows ) ) {
+					$by_employee[] = array(
+						'user_id' => (int) $user->ID,
+						'name'    => css_tc_addon()->employees->display_name( (int) $user->ID ),
+						'rows'    => array_values( $emp_rows ),
+						'total'   => $emp_total,
+					);
+				}
+
 				foreach ( $matched as $segment ) {
 					$key = (int) $segment['department_id'];
 					if ( ! isset( $by_assignment[ $key ] ) ) {
@@ -356,6 +402,7 @@ class Css_Tc_Reports {
 			'totals'      => $totals,
 			'departments' => array_values( $by_dept ),
 			'use_org'     => $use_org,
+			'by_employee' => $by_employee,
 			'unassigned'  => $unassigned,
 			'filtered'    => $filtered,
 			'rule_note'   => css_tc_addon()->overtime->describe(),
@@ -487,7 +534,7 @@ class Css_Tc_Reports {
 	 */
 	public function filters( $source ) {
 		$report = isset( $source['report'] ) ? sanitize_key( wp_unslash( $source['report'] ) ) : 'summary';
-		if ( ! in_array( $report, array( 'summary', 'shifts' ), true ) ) {
+		if ( ! in_array( $report, array( 'summary', 'shifts', 'by_employee' ), true ) ) {
 			$report = 'summary';
 		}
 
@@ -563,7 +610,26 @@ class Css_Tc_Reports {
 			self::CSV_ACTION
 		);
 
+		$by_employee_csv_url = add_query_arg( 'report', 'by_employee', $csv_url );
+
 		include CSS_TC_ADDON_DIR . 'admin/views/reports-page.php';
+	}
+
+	/**
+	 * One line per employee and department, plus a subtotal per employee.
+	 *
+	 * @param array<string,mixed> $summary Summary.
+	 * @return array<int,array<int,string>>
+	 */
+	private function by_employee_csv_lines( $summary ) {
+		$lines = array( array( 'Employee', 'Company', 'Department', 'Location', 'Shifts', 'Regular (hours)', 'Overtime (hours)', 'Total (hours)' ) );
+		foreach ( $summary['by_employee'] as $emp ) {
+			foreach ( $emp['rows'] as $row ) {
+				$lines[] = array( $emp['name'], $row['company'], $row['department'], $row['location'], (string) $row['shifts'], self::decimal_hours( $row['regular'] ), self::decimal_hours( $row['overtime'] ), self::decimal_hours( $row['total'] ) );
+			}
+			$lines[] = array( $emp['name'], 'Total', '', '', (string) $emp['total']['shifts'], self::decimal_hours( $emp['total']['regular'] ), self::decimal_hours( $emp['total']['overtime'] ), self::decimal_hours( $emp['total']['total'] ) );
+		}
+		return $lines;
 	}
 
 	/**
@@ -582,9 +648,13 @@ class Css_Tc_Reports {
 			wp_die( esc_html__( 'Choose a pay period.', 'css-timeclock-addon' ), 400 );
 		}
 		$period = $filters['period'];
-		$lines  = 'shifts' === $filters['report']
-			? $this->shift_csv_lines( $this->shift_detail( $period, $filters['department'], $filters['employee'], $filters['org'] ) )
-			: $this->summary_csv_lines( $this->period_summary( $period, $filters['department'], $filters['org'] ) );
+		if ( 'shifts' === $filters['report'] ) {
+			$lines = $this->shift_csv_lines( $this->shift_detail( $period, $filters['department'], $filters['employee'], $filters['org'] ) );
+		} elseif ( 'by_employee' === $filters['report'] ) {
+			$lines = $this->by_employee_csv_lines( $this->period_summary( $period, $filters['department'], $filters['org'] ) );
+		} else {
+			$lines = $this->summary_csv_lines( $this->period_summary( $period, $filters['department'], $filters['org'] ) );
+		}
 
 		$company_slug = '';
 		if ( $filters['org']['company'] > 0 ) {
@@ -594,7 +664,7 @@ class Css_Tc_Reports {
 		}
 		$name = sprintf(
 			'timeclock-%s%s-%s-to-%s.csv',
-			'shifts' === $filters['report'] ? 'shifts' : 'pay-period',
+			'shifts' === $filters['report'] ? 'shifts' : ( 'by_employee' === $filters['report'] ? 'by-employee' : 'pay-period' ),
 			$company_slug,
 			$period['start'],
 			$period['end']

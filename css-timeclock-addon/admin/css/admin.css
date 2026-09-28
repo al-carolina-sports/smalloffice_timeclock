@@ -321,3 +321,11 @@
 .css-tc-admin .css-tc-pin-row-msg[hidden] {
 	display: none;
 }
+
+/* Reports: By employee */
+.css-tc-report-h2 { display: flex; align-items: center; gap: 12px; }
+.css-tc-by-employee { border-collapse: collapse; }
+.css-tc-by-employee__group { border-top: 2px solid #c3c4c7; }
+.css-tc-by-employee__name { vertical-align: top; font-weight: 600; background: #f6f7f7; min-width: 140px; }
+.css-tc-by-employee__total td { background: #f6f7f7; font-weight: 600; }
+@media print { .css-tc-report-h2 .button { display: none; } }
