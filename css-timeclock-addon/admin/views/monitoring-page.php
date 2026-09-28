@@ -1,6 +1,6 @@
 <?php
 /**
- * SMOTC replacement for AIO Real Time Monitoring.
+ * USOTC replacement for AIO Real Time Monitoring.
  *
  * @package CssTimeclockAddon
  *

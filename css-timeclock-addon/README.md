@@ -1,4 +1,6 @@
-# CSS Time Clock Addon
+# Ultimate Small Office Timeclock (USOTC)
+
+Formerly SMOTC. The plugin folder, code prefixes (`css_tc_`) and saved-settings names are unchanged, so existing sites update in place.
 
 This GitHub repository **is** the WordPress plugin. `css-timeclock-addon.php` is at the repo root (`https://github.com/al-carolina-sports/CSS_timeclock`). Default branch: `main`.
 
@@ -9,7 +11,7 @@ WP Engine upload zip (plugin wrapped in a `css-timeclock-addon/` folder):
 
 Add-on for **All in One Time Clock Lite** (Codebangers, slug `aio-time-clock-lite`). It adds shared-tablet kiosks so employees can clock in and out **without a WordPress login**, plus a logged-in employee times page with supervisor-approved corrections.
 
-This plugin does **not** fork or edit AIO Lite. It writes the same `shift` posts and meta AIO already uses. **SMOTC → Real Time Monitoring** is the addon’s screen: fresh open shifts only, times in the site timezone. In wp-admin the menu and this plugin are labeled **SMOTC**, and AIO Lite is labeled **SMOTC Core**.
+This plugin does **not** fork or edit AIO Lite. It writes the same `shift` posts and meta AIO already uses. **USOTC → Real Time Monitoring** is the addon’s screen: fresh open shifts only, times in the site timezone. In wp-admin the menu and this plugin are labeled **USOTC**, and AIO Lite is labeled **USOTC Core**.
 
 | Requirement | Status |
 | --- | --- |
@@ -24,7 +26,7 @@ This plugin does **not** fork or edit AIO Lite. It writes the same `shift` posts
 2. **Name-list kiosk** — `[css_tc_name_kiosk]` — alphabetical employees, tap a name, **confirm with PIN**, then Clock in / Clock out.
 3. **Who’s working board** — on both kiosk pages (logged-out visitors). Side panel on wide screens; stacks under the pad on tablet widths. Lists **Working now** (with clock-in time) and **Not clocked in**. Refreshes every 20 seconds and immediately after a successful punch.
 4. **My Time Clock** — `[css_tc_my_times]` — logged-in employees see their own timecard for the current and previous pay periods (older periods are listed read-only). The current period can be corrected; suggestions stay pending until a supervisor reviews them.
-5. Admin **SMOTC** screen (`admin.php?page=css-tc-addon`, under the SMOTC menu when AIO is active, otherwise Settings), including pay-period settings and a **Corrections** queue. **SMOTC → Timecards** (`admin.php?page=css-tc-timecards`) shows any employee’s timecard. Approve writes the AIO-compatible shift and keeps an audit (original times, who suggested, who approved). Reject leaves punches unchanged. A correction that would change a closed pay period is rejected.
+5. Admin **USOTC** screen (`admin.php?page=css-tc-addon`, under the USOTC menu when AIO is active, otherwise Settings), including pay-period settings and a **Corrections** queue. **USOTC → Timecards** (`admin.php?page=css-tc-timecards`) shows any employee’s timecard. Approve writes the AIO-compatible shift and keeps an audit (original times, who suggested, who approved). Reject leaves punches unchanged. A correction that would change a closed pay period is rejected.
 6. Per-employee PINs stored with `wp_hash_password()` / checked with `wp_check_password()`. Never plaintext.
 7. Failed-PIN rate limit by tablet IP.
 8. Optional **office IP allowlist** (IPv4, IPv6, and CIDR) for kiosk PIN checks, punches, the name list, and the who’s-working roster. Off, or on with an empty list, allows every network. wp-admin is not restricted.
@@ -60,7 +62,7 @@ An employee is **Working** in AIO monitoring when a shift has a clock-in time an
    ./bin/make-zip.sh
    ```
 
-   That writes `dist/css-timeclock-addon.zip`. The zip in this repository is SMOTC 1.6.0. Install it on carolinaspodev only.
+   That writes `dist/css-timeclock-addon.zip`. The zip in this repository is USOTC 1.6.0. Install it on carolinaspodev only.
 
 2. WP Engine → the `carolinaspodev` environment → **WordPress Admin** → **Plugins → Add New → Upload Plugin**.
 3. Upload the zip, then **Activate**.
@@ -73,12 +75,12 @@ On activation the plugin creates pages if they do not already exist:
 - `/name-time-clock/` → `[css_tc_name_kiosk]`
 - `/my-time-clock/` → `[css_tc_my_times]`
 
-You can recreate them from **SMOTC → Create or restore kiosk and times pages**.
+You can recreate them from **USOTC → Create or restore kiosk and times pages**.
 
 ## Set employee PINs
 
 1. Create WordPress users with AIO roles (`employee`, `volunteer`, `manager`, `contractor`, or the `aio_tc_*` / `time_clock_admin` aliases).
-2. Open **SMOTC → Employee PINs** (administrators can also use **Settings → SMOTC**).
+2. Open **USOTC → Employee PINs** (administrators can also use **Settings → USOTC**).
 3. Enter a 4–8 digit PIN (unique per employee) and **Save PIN**. The field is masked. The eye button on the field shows the digits while you type, and click it again to hide them.
 4. The digits are hashed immediately with `wp_hash_password()`. A saved PIN can only be replaced or cleared. The eye never reads a stored PIN back.
 
@@ -98,9 +100,9 @@ Employees without a PIN do not appear on the name-list kiosk. The PIN kiosk only
 
 1. Employees sign in to WordPress (their existing AIO employee user) and open **My Time Clock** (`/my-time-clock/`). This is a front-end page, not wp-admin. They only see their own shifts.
 2. The page is a timecard: pay-period dropdown (current, previous, and older periods), Print, Pay Period / Pay Code / Weekly summaries, and a Monday–Sunday calendar. Each day shows total hours and clock-in/clock-out pairs. Times are shown in the site timezone.
-3. Pay period length (weekly or biweekly, default biweekly) and the Monday anchor (default 2026-09-07) are on the SMOTC settings screen. Weeks run Monday–Sunday. Past periods are display-only.
+3. Pay period length (weekly or biweekly, default biweekly) and the Monday anchor (default 2026-09-07) are on the USOTC settings screen. Weeks run Monday–Sunday. Past periods are display-only.
 4. On the **current** pay period, a day with an open shift, a missed clock-out, a clock-out without a clock-in, a pending suggestion, or an employee flag shows an edit icon. **Correct this pay period** opens one form for every day in that period (change times, add a missing punch, reason required on each change).
-5. A site admin, `time_clock_admin`, or anyone who can manage the kiosk opens **SMOTC → Timecards** to view any employee, and **SMOTC → Corrections** to approve or reject.
+5. A site admin, `time_clock_admin`, or anyone who can manage the kiosk opens **USOTC → Timecards** to view any employee, and **USOTC → Corrections** to approve or reject.
 6. **Approve** writes the corrected `employee_clock_in_time` / `employee_clock_out_time` on the AIO `shift` (or creates a shift for a missing punch) and keeps seconds. The suggestion stores original times, the employee, the reviewer, and timestamps. **Reject** leaves punches unchanged. Submit and approve both refuse a change that would alter a shift in a closed pay period.
 
 Open shifts older than the missed-clock-out setting (default 16 hours) are not treated as currently clocked in on the kiosk or who’s-working board.
@@ -109,7 +111,7 @@ The kiosk who’s-working board still reads the same open-shift rule after an ap
 
 ## Office IP allowlist
 
-1. Open **SMOTC** (or **Settings → SMOTC**). The allowlist is on the Kiosk settings tab.
+1. Open **USOTC** (or **Settings → USOTC**). The allowlist is on the Kiosk settings tab.
 2. Leave the checkbox off, or on with an empty box (comments and blank lines do not count). Kiosks keep working from every network, including the sandbox.
 3. The page shows the address this browser is seen as. That is the same value the kiosk will check. Forwarded headers are only used when the request arrives through the hosting network or a listed trusted proxy (see below).
 4. To enforce: check **Only allow kiosk punches from these networks**, add that address or a CIDR such as `203.0.113.0/24`, one per line, and save. `#` starts a comment.
@@ -121,7 +123,7 @@ If every tablet is refused after you turn the list on, the proxy is not forwardi
 ## Verify against AIO monitoring
 
 1. Clock an employee **in** on a kiosk.
-2. In wp-admin open **SMOTC → Real Time Monitoring**.
+2. In wp-admin open **USOTC → Real Time Monitoring**.
 3. That employee should appear under **Employees Currently Working** with a clock-in time.
 4. Clock the same employee **out** on the kiosk.
 5. Refresh monitoring — they should leave the working list. The closed shift remains under **Shifts** / reports.
@@ -147,7 +149,7 @@ Do not commit real PINs. Treat them like passwords.
 - Public AJAX uses a nonce (`css_tc_kiosk`). The employee times page uses a logged-in nonce (`css_tc_employee`); staff can only load or suggest edits for themselves. Admin screens (timecards, reports, PINs, corrections, locations) require `manage_options` or the `css_tc_manage` capability, which activation grants to Administrator and AIO's Time Clock Admin role, plus an admin nonce. AIO's own time clock pages are closed to everyone else, even though AIO registers them for `edit_posts`.
 - The public roster action (`css_tc_roster`) returns display names, in/out status, and clock-in times only — no PINs, emails, user IDs, or admin data. It is rate-limited separately from the PIN lock (40 requests / minute / IP). The board is not transient-cached; a successful punch returns a fresh board payload.
 - Failed PINs are counted per client IP (transient). After the configured limit the IP is locked for the window (default 5 failures / 15 minutes). The same client-IP helper is used for the office allowlist.
-- Office allowlist (SMOTC screen): one IPv4, IPv6, or CIDR per line; `#` comments. Disabled or empty allows all, so a sandbox is not locked out. When it is enforcing, `css_tc_resolve_pin`, `css_tc_punch`, `css_tc_employees`, and `css_tc_roster` return “This kiosk only works from the office network.” with no IP in the error. Logged-in My Time Clock and every wp-admin screen stay open from any IP.
+- Office allowlist (USOTC screen): one IPv4, IPv6, or CIDR per line; `#` comments. Disabled or empty allows all, so a sandbox is not locked out. When it is enforcing, `css_tc_resolve_pin`, `css_tc_punch`, `css_tc_employees`, and `css_tc_roster` return “This kiosk only works from the office network.” with no IP in the error. Logged-in My Time Clock and every wp-admin screen stay open from any IP.
 - Allowlist and office network lines may be hostnames (dynamic DNS such as `csswilson.ddns.net`). They are resolved (A and AAAA) by a five-minute WP-Cron job and at request time when the cached answer is over ten minutes old, cached in the `css_tc_dns_cache` option. A failed lookup keeps the last good addresses and is not retried for a minute; a name that never resolved matches nothing. Whoever controls the DNS name controls who passes the allowlist, so protect that account.
 - That helper uses `REMOTE_ADDR` unless it is a trusted proxy (private, loopback or carrier-grade NAT addresses, as used inside WP Engine, or an address under Settings → Trusted proxies). Only then does it read `X-Forwarded-For` from the right and take the first address that is not a trusted proxy, so anything a visitor types into the header is ignored. `X-Real-IP` / `True-Client-IP` are used only from a trusted proxy with no `X-Forwarded-For`. If a CDN with public addresses sits in front of the site, list its ranges under Trusted proxies; Settings → "What this request looks like" shows the raw headers and the detected address. The settings screen shows the address this browser is seen as, so you can copy it onto the list. Shift meta `ip_address_in` / `ip_address_out` stores that same address.
 - PIN lookup errors are generic (“That PIN was not recognized”).

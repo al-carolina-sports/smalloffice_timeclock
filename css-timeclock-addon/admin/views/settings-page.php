@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 ?>
 <div class="wrap css-tc-admin">
-	<h1><?php echo esc_html( Css_Tc_Branding::BRAND ); ?></h1>
+	<h1><?php echo esc_html( Css_Tc_Branding::FULL_NAME ); ?></h1>
 	<p class="css-tc-lead">
 		<?php echo esc_html__( 'Shared tablet kiosks. Employees clock in and out with a PIN — no WordPress login on the tablet.', 'css-timeclock-addon' ); ?>
 	</p>
@@ -218,7 +218,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 								— <a href="<?php echo esc_url( $times_page ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html__( 'Open employee times page', 'css-timeclock-addon' ); ?></a>
 							<?php endif; ?>
 						</p>
-						<p class="description"><?php echo esc_html__( 'Logged-in employees see their own timecard here. Supervisors open SMOTC → Timecards for any employee. Corrections for the current pay period are approved on the Corrections tab. Past pay periods are display-only.', 'css-timeclock-addon' ); ?></p>
+						<p class="description"><?php echo esc_html__( 'Logged-in employees see their own timecard here. Supervisors open USOTC → Timecards for any employee. Corrections for the current pay period are approved on the Corrections tab. Past pay periods are display-only.', 'css-timeclock-addon' ); ?></p>
 						<label>
 							<input type="checkbox" name="wide_layout" value="1" <?php checked( ! isset( $settings['wide_layout'] ) || ! empty( $settings['wide_layout'] ) ); ?> />
 							<?php echo esc_html__( 'Wide layout', 'css-timeclock-addon' ); ?>
@@ -330,7 +330,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<div class="css-tc-help">
 			<h2><?php echo esc_html__( 'How punches reach AIO Lite', 'css-timeclock-addon' ); ?></h2>
 			<p>
-				<?php echo esc_html__( 'AIO Lite’s clock AJAX only runs for a logged-in WordPress user. This add-on does not edit AIO files. After a valid PIN it creates or closes the same shift custom posts AIO uses (post type shift, author = employee, meta employee_clock_in_time / employee_clock_out_time), stored as UTC. If someone still uses AIO’s clock button, that save is rewritten to UTC. The /time-clock/ page redirects to an SMOTC kiosk. SMOTC → Real Time Monitoring lists fresh open shifts as working and older open shifts as missed clock-outs, in the site timezone.', 'css-timeclock-addon' ); ?>
+				<?php echo esc_html__( 'AIO Lite’s clock AJAX only runs for a logged-in WordPress user. This add-on does not edit AIO files. After a valid PIN it creates or closes the same shift custom posts AIO uses (post type shift, author = employee, meta employee_clock_in_time / employee_clock_out_time), stored as UTC. If someone still uses AIO’s clock button, that save is rewritten to UTC. The /time-clock/ page redirects to an USOTC kiosk. USOTC → Real Time Monitoring lists fresh open shifts as working and older open shifts as missed clock-outs, in the site timezone.', 'css-timeclock-addon' ); ?>
 			</p>
 		</div>
 	<?php elseif ( 'pins' === $tab ) : ?>

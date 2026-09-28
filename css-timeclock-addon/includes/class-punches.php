@@ -632,7 +632,7 @@ class Css_Tc_Punches {
 	}
 
 	/**
-	 * SMOTC timecard for this punch. The shift post type has no editor, so
+	 * USOTC timecard for this punch. The shift post type has no editor, so
 	 * get_edit_post_link() is empty and the monitoring Shift cell was blank.
 	 *
 	 * @param int    $user_id   Employee.

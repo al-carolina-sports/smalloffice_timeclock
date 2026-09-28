@@ -31,7 +31,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<?php if ( ! $enabled ) : ?>
 		<div class="css-tc-kiosk__stage">
 			<div class="css-tc-kiosk__panel css-tc-kiosk__panel--message">
-				<p><?php echo esc_html__( 'This name-list kiosk is turned off. A supervisor can enable it under SMOTC.', 'css-timeclock-addon' ); ?></p>
+				<p><?php echo esc_html__( 'This name-list kiosk is turned off. A supervisor can enable it under USOTC.', 'css-timeclock-addon' ); ?></p>
 			</div>
 		</div>
 	<?php else : ?>

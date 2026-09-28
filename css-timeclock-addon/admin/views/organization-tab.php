@@ -1,6 +1,6 @@
 <?php
 /**
- * SMOTC → Locations tab: companies, locations (with office networks) and departments.
+ * USOTC → Locations tab: companies, locations (with office networks) and departments.
  *
  * @package CssTimeclockAddon
  *

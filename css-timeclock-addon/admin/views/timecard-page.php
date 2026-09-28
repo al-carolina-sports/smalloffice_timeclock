@@ -1,6 +1,6 @@
 <?php
 /**
- * SMOTC → Timecards.
+ * USOTC → Timecards.
  *
  * @package CssTimeclockAddon
  *

@@ -1,6 +1,6 @@
 <?php
 /**
- * SMOTC Reports: pay period summary and shift detail.
+ * USOTC Reports: pay period summary and shift detail.
  *
  * @package CssTimeclockAddon
  *

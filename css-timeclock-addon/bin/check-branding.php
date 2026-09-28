@@ -1,6 +1,6 @@
 <?php
 /**
- * CLI checks for SMOTC menu labels and Codebangers HTML removal.
+ * CLI checks for USOTC menu labels and Codebangers HTML removal.
  *
  * Usage: php bin/check-branding.php
  *
@@ -76,14 +76,14 @@ $submenu = array(
 
 Css_Tc_Branding::rebrand_menu_arrays( $menu, $submenu );
 
-css_tc_check( 'SMOTC' === $menu[5][0] && 'SMOTC' === $menu[5][3], 'top-level Time Clock Lite becomes SMOTC' );
+css_tc_check( 'USOTC' === $menu[5][0] && 'USOTC' === $menu[5][3], 'top-level Time Clock Lite becomes USOTC' );
 css_tc_check( 'Posts' === $menu[6][0], 'unrelated top-level menu stays' );
 css_tc_check( 'Settings' === $submenu['aio-tc-lite'][0][0], 'Settings submenu stays' );
 css_tc_check( 'Real Time Monitoring' === $submenu['aio-tc-lite'][1][0], 'Real Time Monitoring stays' );
 css_tc_check( 'Employees' === $submenu['aio-tc-lite'][2][0], 'Employees stays' );
-css_tc_check( 'SMOTC' === $submenu['aio-tc-lite'][3][0] && 'SMOTC' === $submenu['aio-tc-lite'][3][3], 'duplicate Time Clock Lite submenu becomes SMOTC' );
-css_tc_check( 'SMOTC' === $submenu['aio-tc-lite'][4][0] && 'SMOTC' === $submenu['aio-tc-lite'][4][3], 'Kiosk & PINs menu becomes SMOTC' );
-css_tc_check( 'SMOTC' === $submenu['options-general.php'][0][0] && 'SMOTC' === $submenu['options-general.php'][0][3], 'Settings → Time Clock Kiosk becomes SMOTC' );
+css_tc_check( 'USOTC' === $submenu['aio-tc-lite'][3][0] && 'USOTC' === $submenu['aio-tc-lite'][3][3], 'duplicate Time Clock Lite submenu becomes USOTC' );
+css_tc_check( 'USOTC' === $submenu['aio-tc-lite'][4][0] && 'USOTC' === $submenu['aio-tc-lite'][4][3], 'Kiosk & PINs menu becomes USOTC' );
+css_tc_check( 'USOTC' === $submenu['options-general.php'][0][0] && 'USOTC' === $submenu['options-general.php'][0][3], 'Settings → Time Clock Kiosk becomes USOTC' );
 css_tc_check( 'General' === $submenu['options-general.php'][1][0], 'unrelated settings item stays' );
 
 $settings = <<<'HTML'
@@ -125,11 +125,11 @@ $monitoring_out = Css_Tc_Branding::filter_aio_admin_html( $monitoring );
 
 css_tc_check( false === stripos( $settings_out, 'logo.png' ), 'settings logo removed' );
 css_tc_check( false === stripos( $settings_out, 'codebangers.com"' ) && false === stripos( $settings_out, "codebangers.com'" ), 'settings codebangers logo and support links removed' );
-css_tc_check( false !== strpos( $settings_out, '<h1>SMOTC</h1>' ), 'settings h1 is SMOTC' );
+css_tc_check( false !== strpos( $settings_out, '<h1>USOTC</h1>' ), 'settings h1 is USOTC' );
 css_tc_check( false === stripos( $settings_out, 'tab=help' ), 'help tab removed' );
 css_tc_check( false === stripos( $settings_out, 'aio-support-section' ), 'support banner removed' );
 css_tc_check( false === stripos( $settings_out, 'All In One Time Clock Lite' ), 'news credit renamed' );
-css_tc_check( false !== strpos( $settings_out, 'Thanks again for using SMOTC' ), 'news credit says SMOTC' );
+css_tc_check( false !== strpos( $settings_out, 'Thanks again for using USOTC' ), 'news credit says USOTC' );
 css_tc_check( false !== strpos( $settings_out, 'aio-pro-button' ), 'pro button left for upsell CSS' );
 css_tc_check( false !== strpos( $settings_out, 'tab=general_settings' ), 'settings tab kept' );
 css_tc_check( false === stripos( $monitoring_out, 'logo.png' ) && false === stripos( $monitoring_out, '<hr>' ), 'monitoring logo and following rule removed' );
@@ -158,9 +158,9 @@ if ( ! defined( 'CSS_TC_ADDON_BASENAME' ) ) {
 }
 $branding = new Css_Tc_Branding();
 $plugins  = $branding->filter_plugins( $plugins );
-css_tc_check( 'SMOTC' === $plugins['css-timeclock-addon/css-timeclock-addon.php']['Name'], 'addon plugin name is SMOTC' );
+css_tc_check( 'Ultimate Small Office Timeclock' === $plugins['css-timeclock-addon/css-timeclock-addon.php']['Name'], 'addon plugin name is Ultimate Small Office Timeclock' );
 $aio = $plugins['aio-time-clock-lite/aio-time-clock-lite.php'];
-css_tc_check( 'SMOTC Core' === $aio['Name'] && 'SMOTC Core' === $aio['Title'], 'AIO plugin name is SMOTC Core' );
+css_tc_check( 'USOTC Core' === $aio['Name'] && 'USOTC Core' === $aio['Title'], 'AIO plugin name is USOTC Core' );
 css_tc_check( '' === $aio['Author'] && '' === $aio['AuthorName'] && '' === $aio['AuthorURI'] && '' === $aio['PluginURI'], 'AIO author and URIs blanked' );
 css_tc_check( 'Hello' === $plugins['hello.php']['Name'] && 'Someone' === $plugins['hello.php']['Author'], 'other plugins untouched' );
 
@@ -173,9 +173,9 @@ $meta = $branding->filter_plugin_row_meta( $meta, 'aio-time-clock-lite/aio-time-
 css_tc_check( array( 'Version 2.1.0' ) === array_values( $meta ), 'AIO row meta drops Codebangers and View details' );
 
 $title = $branding->filter_admin_title( 'Time Clock Lite &lsaquo; Sandbox &#8212; WordPress', 'Time Clock Lite' );
-css_tc_check( false === strpos( $title, 'SMOTC' ), 'admin title unchanged off AIO screens' );
+css_tc_check( false === strpos( $title, 'USOTC' ), 'admin title unchanged off AIO screens' );
 $_GET['page'] = 'aio-tc-lite';
 $title        = $branding->filter_admin_title( 'Time Clock Lite &lsaquo; Sandbox &#8212; WordPress', 'Time Clock Lite' );
-css_tc_check( 0 === strpos( $title, 'SMOTC ' ), 'admin title replaces Time Clock Lite on AIO screens' );
+css_tc_check( 0 === strpos( $title, 'USOTC ' ), 'admin title replaces Time Clock Lite on AIO screens' );
 
 exit( $failed > 0 ? 1 : 0 );

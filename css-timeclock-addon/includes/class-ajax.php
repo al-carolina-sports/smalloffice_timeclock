@@ -424,7 +424,7 @@ class Css_Tc_Ajax {
 	}
 
 	/**
-	 * Manager reveals an employee's PIN (SMOTC → Employee PINs).
+	 * Manager reveals an employee's PIN (USOTC → Employee PINs).
 	 *
 	 * @return void
 	 */
