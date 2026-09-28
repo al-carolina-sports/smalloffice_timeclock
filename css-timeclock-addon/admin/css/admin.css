@@ -365,3 +365,7 @@
 .css-tc-leave-bal { margin: 4px 0 12px; }
 tr.is-pending td { color: #787c82; font-style: italic; }
 @media (max-width: 782px) { .css-tc-out-cal { grid-template-columns: repeat(7, minmax(44px, 1fr)); overflow-x: auto; } }
+.form-table .css-tc-holiday-list label.css-tc-holiday { display: flex !important; align-items: flex-start; gap: 6px; margin: 0 !important; }
+.css-tc-holiday input { margin-top: 3px; }
+.css-tc-holiday__when { display: block; color: #646970; font-size: 12px; }
+.css-tc-holiday-custom { margin: 4px 0 8px 18px; list-style: disc; color: #3c434a; }

@@ -26,25 +26,25 @@ class Css_Tc_Holidays {
 	 * relative date phrase with %d for the year. 'default' marks the ones
 	 * checked on a new install.
 	 *
-	 * @return array<string,array{label:string,rule:string,fixed:bool,eve:bool,default:bool}>
+	 * @return array<string,array{label:string,when:string,rule:string,fixed:bool,eve:bool,default:bool}>
 	 */
 	public static function catalog() {
 		return array(
-			'new_year'      => array( 'label' => __( "New Year's Day", 'css-timeclock-addon' ), 'rule' => '01-01', 'fixed' => true, 'eve' => false, 'default' => true ),
-			'mlk'           => array( 'label' => __( 'Martin Luther King Jr. Day', 'css-timeclock-addon' ), 'rule' => 'third monday of january %d', 'fixed' => false, 'eve' => false, 'default' => false ),
-			'presidents'    => array( 'label' => __( "Presidents' Day", 'css-timeclock-addon' ), 'rule' => 'third monday of february %d', 'fixed' => false, 'eve' => false, 'default' => false ),
-			'good_friday'   => array( 'label' => __( 'Good Friday', 'css-timeclock-addon' ), 'rule' => 'easter-2', 'fixed' => false, 'eve' => false, 'default' => false ),
-			'memorial'      => array( 'label' => __( 'Memorial Day', 'css-timeclock-addon' ), 'rule' => 'last monday of may %d', 'fixed' => false, 'eve' => false, 'default' => true ),
-			'juneteenth'    => array( 'label' => __( 'Juneteenth', 'css-timeclock-addon' ), 'rule' => '06-19', 'fixed' => true, 'eve' => false, 'default' => false ),
-			'independence'  => array( 'label' => __( 'Independence Day', 'css-timeclock-addon' ), 'rule' => '07-04', 'fixed' => true, 'eve' => false, 'default' => true ),
-			'labor'         => array( 'label' => __( 'Labor Day', 'css-timeclock-addon' ), 'rule' => 'first monday of september %d', 'fixed' => false, 'eve' => false, 'default' => true ),
-			'columbus'      => array( 'label' => __( "Columbus Day / Indigenous Peoples' Day", 'css-timeclock-addon' ), 'rule' => 'second monday of october %d', 'fixed' => false, 'eve' => false, 'default' => false ),
-			'veterans'      => array( 'label' => __( 'Veterans Day', 'css-timeclock-addon' ), 'rule' => '11-11', 'fixed' => true, 'eve' => false, 'default' => false ),
-			'thanksgiving'  => array( 'label' => __( 'Thanksgiving Day', 'css-timeclock-addon' ), 'rule' => 'fourth thursday of november %d', 'fixed' => false, 'eve' => false, 'default' => true ),
-			'thanksgiving2' => array( 'label' => __( 'Day after Thanksgiving', 'css-timeclock-addon' ), 'rule' => 'fourth thursday of november %d +1 day', 'fixed' => false, 'eve' => false, 'default' => false ),
-			'christmas_eve' => array( 'label' => __( 'Christmas Eve', 'css-timeclock-addon' ), 'rule' => '12-24', 'fixed' => true, 'eve' => true, 'default' => false ),
-			'christmas'     => array( 'label' => __( 'Christmas Day', 'css-timeclock-addon' ), 'rule' => '12-25', 'fixed' => true, 'eve' => false, 'default' => true ),
-			'new_years_eve' => array( 'label' => __( "New Year's Eve", 'css-timeclock-addon' ), 'rule' => '12-31', 'fixed' => true, 'eve' => true, 'default' => false ),
+			'new_year'      => array( 'label' => __( "New Year's Day", 'css-timeclock-addon' ), 'when' => __( 'January 1', 'css-timeclock-addon' ), 'rule' => '01-01', 'fixed' => true, 'eve' => false, 'default' => true ),
+			'mlk'           => array( 'label' => __( 'Martin Luther King Jr. Day', 'css-timeclock-addon' ), 'when' => __( 'Third Monday in January', 'css-timeclock-addon' ), 'rule' => 'third monday of january %d', 'fixed' => false, 'eve' => false, 'default' => false ),
+			'presidents'    => array( 'label' => __( "Presidents' Day", 'css-timeclock-addon' ), 'when' => __( 'Third Monday in February', 'css-timeclock-addon' ), 'rule' => 'third monday of february %d', 'fixed' => false, 'eve' => false, 'default' => false ),
+			'good_friday'   => array( 'label' => __( 'Good Friday', 'css-timeclock-addon' ), 'when' => __( 'Friday before Easter Sunday', 'css-timeclock-addon' ), 'rule' => 'easter-2', 'fixed' => false, 'eve' => false, 'default' => false ),
+			'memorial'      => array( 'label' => __( 'Memorial Day', 'css-timeclock-addon' ), 'when' => __( 'Last Monday in May', 'css-timeclock-addon' ), 'rule' => 'last monday of may %d', 'fixed' => false, 'eve' => false, 'default' => true ),
+			'juneteenth'    => array( 'label' => __( 'Juneteenth', 'css-timeclock-addon' ), 'when' => __( 'June 19', 'css-timeclock-addon' ), 'rule' => '06-19', 'fixed' => true, 'eve' => false, 'default' => false ),
+			'independence'  => array( 'label' => __( 'Independence Day', 'css-timeclock-addon' ), 'when' => __( 'July 4', 'css-timeclock-addon' ), 'rule' => '07-04', 'fixed' => true, 'eve' => false, 'default' => true ),
+			'labor'         => array( 'label' => __( 'Labor Day', 'css-timeclock-addon' ), 'when' => __( 'First Monday in September', 'css-timeclock-addon' ), 'rule' => 'first monday of september %d', 'fixed' => false, 'eve' => false, 'default' => true ),
+			'columbus'      => array( 'label' => __( "Columbus Day / Indigenous Peoples' Day", 'css-timeclock-addon' ), 'when' => __( 'Second Monday in October', 'css-timeclock-addon' ), 'rule' => 'second monday of october %d', 'fixed' => false, 'eve' => false, 'default' => false ),
+			'veterans'      => array( 'label' => __( 'Veterans Day', 'css-timeclock-addon' ), 'when' => __( 'November 11', 'css-timeclock-addon' ), 'rule' => '11-11', 'fixed' => true, 'eve' => false, 'default' => false ),
+			'thanksgiving'  => array( 'label' => __( 'Thanksgiving Day', 'css-timeclock-addon' ), 'when' => __( 'Fourth Thursday in November', 'css-timeclock-addon' ), 'rule' => 'fourth thursday of november %d', 'fixed' => false, 'eve' => false, 'default' => true ),
+			'thanksgiving2' => array( 'label' => __( 'Day after Thanksgiving', 'css-timeclock-addon' ), 'when' => __( 'Friday after Thanksgiving', 'css-timeclock-addon' ), 'rule' => 'fourth thursday of november %d +1 day', 'fixed' => false, 'eve' => false, 'default' => false ),
+			'christmas_eve' => array( 'label' => __( 'Christmas Eve', 'css-timeclock-addon' ), 'when' => __( 'December 24', 'css-timeclock-addon' ), 'rule' => '12-24', 'fixed' => true, 'eve' => true, 'default' => false ),
+			'christmas'     => array( 'label' => __( 'Christmas Day', 'css-timeclock-addon' ), 'when' => __( 'December 25', 'css-timeclock-addon' ), 'rule' => '12-25', 'fixed' => true, 'eve' => false, 'default' => true ),
+			'new_years_eve' => array( 'label' => __( "New Year's Eve", 'css-timeclock-addon' ), 'when' => __( 'December 31', 'css-timeclock-addon' ), 'rule' => '12-31', 'fixed' => true, 'eve' => true, 'default' => false ),
 		);
 	}
 
@@ -201,6 +201,23 @@ class Css_Tc_Holidays {
 	public function observed_keys() {
 		$keys = isset( $this->settings()['holidays_observed'] ) ? (array) $this->settings()['holidays_observed'] : self::default_observed();
 		return array_values( array_intersect( array_keys( self::catalog() ), array_map( 'strval', $keys ) ) );
+	}
+
+	/**
+	 * Plain-language rule for a custom line ("Every year on Dec 24").
+	 *
+	 * @param array{md:string,date:string,name:string} $row Parsed line.
+	 * @return string
+	 */
+	public static function describe_custom( $row ) {
+		if ( '' !== $row['md'] ) {
+			$d = DateTimeImmutable::createFromFormat( '!Y-m-d', '2024-' . $row['md'], new DateTimeZone( 'UTC' ) );
+			/* translators: %s: month and day */
+			return sprintf( __( 'Every year on %s', 'css-timeclock-addon' ), $d ? $d->format( 'F j' ) : $row['md'] );
+		}
+		$d = DateTimeImmutable::createFromFormat( '!Y-m-d', $row['date'], new DateTimeZone( 'UTC' ) );
+		/* translators: %s: date */
+		return sprintf( __( 'One day only: %s', 'css-timeclock-addon' ), $d ? $d->format( 'F j, Y' ) : $row['date'] );
 	}
 
 	/**

@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.8.0
+Stable tag: 1.8.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,9 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under USOTC.
 
 == Changelog ==
+
+= 1.8.1 =
+* TC-Config → Holidays: each holiday shows when it falls ("Fourth Thursday in November", "July 4", "Friday before Easter Sunday"). Other holidays you type are described too ("Every year on December 24", "One day only: October 12, 2026"), and the paid-dates preview says which rule each date comes from and when a weekend holiday moved to Friday or Monday.
 
 = 1.8.0 =
 * PTO & sick time (TC-Config → PTO & sick, off by default). Each employee's leave year runs from their hire-date anniversary; the whole year's hours are available at the start of the year and unused hours are lost at the anniversary. Separate first-year amounts (default 24 h PTO; sick blank = same as yearly), usable once the introductory period ends. Settings: hours per year, first-year hours, "Sick time comes out of PTO" (one bank), days of notice for PTO (default 14), length of a day off, smallest amount (15 / 30 / 60 min), allow negative balance.

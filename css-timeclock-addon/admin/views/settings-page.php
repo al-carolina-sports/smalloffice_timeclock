@@ -279,9 +279,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 						<fieldset class="css-tc-holiday-list">
 							<legend><?php echo esc_html__( 'Observed holidays', 'css-timeclock-addon' ); ?></legend>
 							<?php foreach ( Css_Tc_Holidays::catalog() as $css_tc_key => $css_tc_def ) : ?>
-								<label>
+								<label class="css-tc-holiday">
 									<input type="checkbox" name="holidays_observed[]" value="<?php echo esc_attr( $css_tc_key ); ?>" <?php checked( in_array( $css_tc_key, $css_tc_observed, true ) ); ?> />
-									<?php echo esc_html( $css_tc_def['label'] ); ?>
+									<span>
+										<?php echo esc_html( $css_tc_def['label'] ); ?>
+										<span class="css-tc-holiday__when"><?php echo esc_html( $css_tc_def['when'] ); ?></span>
+									</span>
 								</label>
 							<?php endforeach; ?>
 						</fieldset>
@@ -290,6 +293,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 							<textarea name="holidays_custom" id="holidays_custom" rows="3" class="large-text code" placeholder="<?php echo esc_attr__( "12-24 Christmas Eve\n2026-10-12 Office closed", 'css-timeclock-addon' ); ?>"><?php echo esc_textarea( (string) ( $settings['holidays_custom'] ?? '' ) ); ?></textarea>
 							<span class="description"><?php echo esc_html__( 'One per line: MM-DD Name for every year, or YYYY-MM-DD Name for one date.', 'css-timeclock-addon' ); ?></span>
 						</p>
+						<?php $css_tc_custom_rows = Css_Tc_Holidays::parse_custom( (string) ( $settings['holidays_custom'] ?? '' ) )['rows']; ?>
+						<?php if ( ! empty( $css_tc_custom_rows ) ) : ?>
+							<ul class="css-tc-holiday-custom">
+								<?php foreach ( $css_tc_custom_rows as $css_tc_row ) : ?>
+									<li><strong><?php echo esc_html( $css_tc_row['name'] ); ?></strong> — <?php echo esc_html( Css_Tc_Holidays::describe_custom( $css_tc_row ) ); ?></li>
+								<?php endforeach; ?>
+							</ul>
+						<?php endif; ?>
 						<label>
 							<input type="checkbox" name="holiday_weekend_shift" value="1" <?php checked( ! isset( $settings['holiday_weekend_shift'] ) || ! empty( $settings['holiday_weekend_shift'] ) ); ?> />
 							<?php echo esc_html__( 'When a holiday falls on a weekend, pay it on Friday (Saturday holidays) or Monday (Sunday holidays)', 'css-timeclock-addon' ); ?>
@@ -300,8 +311,32 @@ if ( ! defined( 'ABSPATH' ) ) {
 							<details class="css-tc-holiday-preview">
 								<summary><?php echo esc_html( sprintf( /* translators: %d: year */ __( 'Paid dates in %d', 'css-timeclock-addon' ), $css_tc_year ) ); ?></summary>
 								<ul>
+									<?php
+									$css_tc_rules = array();
+									foreach ( Css_Tc_Holidays::catalog() as $css_tc_def ) {
+										$css_tc_rules[ $css_tc_def['label'] ] = $css_tc_def;
+									}
+									foreach ( $css_tc_custom_rows as $css_tc_row ) {
+										$css_tc_rules[ $css_tc_row['name'] ] = array( 'when' => Css_Tc_Holidays::describe_custom( $css_tc_row ), 'fixed' => '' !== $css_tc_row['md'], 'rule' => $css_tc_row['md'] );
+									}
+									?>
 									<?php foreach ( $css_tc_preview as $css_tc_date => $css_tc_names ) : ?>
-										<li><strong><?php echo esc_html( css_tc_addon()->time->format_day_label( $css_tc_date ) ); ?></strong> — <?php echo esc_html( implode( ', ', $css_tc_names ) ); ?></li>
+										<?php
+										$css_tc_bits = array();
+										foreach ( $css_tc_names as $css_tc_n ) {
+											$css_tc_r    = $css_tc_rules[ $css_tc_n ] ?? null;
+											$css_tc_text = $css_tc_n;
+											if ( $css_tc_r ) {
+												$css_tc_text .= ' (' . $css_tc_r['when'];
+												if ( ! empty( $css_tc_r['fixed'] ) && preg_match( '/^\d{2}-\d{2}$/', (string) $css_tc_r['rule'] ) && substr( $css_tc_date, 5 ) !== $css_tc_r['rule'] ) {
+													$css_tc_text .= '; ' . __( 'falls on a weekend, paid this day', 'css-timeclock-addon' );
+												}
+												$css_tc_text .= ')';
+											}
+											$css_tc_bits[] = $css_tc_text;
+										}
+										?>
+										<li><strong><?php echo esc_html( css_tc_addon()->time->format_day_label( $css_tc_date ) ); ?></strong> — <?php echo esc_html( implode( ', ', $css_tc_bits ) ); ?></li>
 									<?php endforeach; ?>
 								</ul>
 							</details>
