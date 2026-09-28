@@ -9,6 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once CSS_TC_ADDON_DIR . 'includes/compat-aio.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-time.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pay-codes.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-overtime.php';
