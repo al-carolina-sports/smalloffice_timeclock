@@ -34,7 +34,7 @@ class Css_Tc_Admin {
 
 		if ( ! Css_Tc_Plugin::aio_is_active() ) {
 			add_options_page(
-				Css_Tc_Branding::BRAND,
+				Css_Tc_Branding::FULL_NAME,
 				Css_Tc_Branding::BRAND,
 				'manage_options',
 				$page,
@@ -45,7 +45,7 @@ class Css_Tc_Admin {
 		if ( Css_Tc_Plugin::aio_is_active() ) {
 			add_submenu_page(
 				'aio-tc-lite',
-				Css_Tc_Branding::BRAND,
+				Css_Tc_Branding::FULL_NAME,
 				Css_Tc_Branding::BRAND,
 				Css_Tc_Plugin::admin_capability(),
 				$page,
@@ -231,7 +231,7 @@ class Css_Tc_Admin {
 	}
 
 	/**
-	 * Swap AIO's Real Time Monitoring callback for the SMOTC screen.
+	 * Swap AIO's Real Time Monitoring callback for the USOTC screen.
 	 *
 	 * The menu slug stays aio-monitoring-sub so existing links keep working.
 	 * AIO's page lists every open shift and prints the stored UTC digits.
@@ -267,7 +267,7 @@ class Css_Tc_Admin {
 	}
 
 	/**
-	 * SMOTC → Timecards. Any employee, read-only outside the current period.
+	 * USOTC → Timecards. Any employee, read-only outside the current period.
 	 *
 	 * @return void
 	 */
@@ -335,7 +335,7 @@ class Css_Tc_Admin {
 	}
 
 	/**
-	 * SMOTC settings page (optionally a tab).
+	 * USOTC settings page (optionally a tab).
 	 *
 	 * @param string $tab Tab slug or ''.
 	 * @return string
@@ -352,7 +352,7 @@ class Css_Tc_Admin {
 	 * Timecards, Reports, Who's working, Corrections, Employees & PINs,
 	 * Locations & departments, Settings, and (administrators) the base
 	 * AIO settings last. AIO's Employees and Shifts pages, and its
-	 * Departments page while SMOTC departments are on, leave the menu; the
+	 * Departments page while USOTC departments are on, leave the menu; the
 	 * pages still open from a direct link.
 	 *
 	 * @return void
@@ -423,14 +423,14 @@ class Css_Tc_Admin {
 
 		$submenu[ $parent ] = array_values( $ordered ); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
 
-		// AIO's "Department" screen under Users duplicates SMOTC's departments.
+		// AIO's "Department" screen under Users duplicates USOTC's departments.
 		if ( css_tc_addon()->organization->enabled() ) {
 			remove_submenu_page( 'users.php', 'edit-tags.php?taxonomy=department' );
 		}
 	}
 
 	/**
-	 * Highlight the right menu item on the tabbed SMOTC settings page.
+	 * Highlight the right menu item on the tabbed USOTC settings page.
 	 *
 	 * @param string|null $submenu_file Current submenu file.
 	 * @param string      $parent_file  Current parent.

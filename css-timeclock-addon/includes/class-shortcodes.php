@@ -38,7 +38,7 @@ class Css_Tc_Shortcodes {
 	}
 
 	/**
-	 * Send AIO's logged-in clock page to an SMOTC kiosk.
+	 * Send AIO's logged-in clock page to an USOTC kiosk.
 	 *
 	 * AIO's widget stores wp_date() (site-local). After the site timezone leaves
 	 * UTC those strings are not UTC. The kiosk already writes UTC. The AJAX
@@ -196,7 +196,7 @@ class Css_Tc_Shortcodes {
 	}
 
 	/**
-	 * Front-end pages that host an SMOTC shortcode.
+	 * Front-end pages that host an USOTC shortcode.
 	 *
 	 * @param WP_Post|null $post Page.
 	 * @return bool
@@ -647,7 +647,7 @@ class Css_Tc_Shortcodes {
 					'badPin'         => __( 'That PIN was not recognized.', 'css-timeclock-addon' ),
 					'network'        => __( 'Could not reach the time clock. Try again.', 'css-timeclock-addon' ),
 					'disabled'       => __( 'This kiosk is turned off.', 'css-timeclock-addon' ),
-					'noEmployees'    => __( 'No employees have a PIN yet. A supervisor can set PINs under SMOTC.', 'css-timeclock-addon' ),
+					'noEmployees'    => __( 'No employees have a PIN yet. A supervisor can set PINs under USOTC.', 'css-timeclock-addon' ),
 					'search'         => __( 'Search names', 'css-timeclock-addon' ),
 					'cancel'         => __( 'Cancel', 'css-timeclock-addon' ),
 					'clear'          => __( 'Clear', 'css-timeclock-addon' ),

@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin rebrand: SMOTC labels, and hide Codebangers on AIO Lite screens.
+ * Admin rebrand: USOTC labels, and hide Codebangers on AIO Lite screens.
  *
  * Does not edit All in One Time Clock Lite files. Markup matched to AIO Lite 2.1.0.
  *
@@ -16,8 +16,11 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Css_Tc_Branding {
 
-	const BRAND     = 'SMOTC';
-	const CORE_NAME = 'SMOTC Core';
+	/** Short name: admin menu and "USOTC → Settings" style references. */
+	const BRAND     = 'USOTC';
+	/** Full product name: plugin list, page headings, kiosk. */
+	const FULL_NAME = 'Ultimate Small Office Timeclock';
+	const CORE_NAME = 'USOTC Core';
 
 	/**
 	 * AIO Lite 2.1.0 admin page slugs that render its own screens.
@@ -109,7 +112,7 @@ class Css_Tc_Branding {
 	}
 
 	/**
-	 * Product names that should read as SMOTC. Full label only, so "Settings" stays.
+	 * Product names that should read as USOTC. Full label only, so "Settings" stays.
 	 *
 	 * @param mixed $label Menu or title text, possibly with markup.
 	 * @return bool
@@ -275,7 +278,7 @@ class Css_Tc_Branding {
 	}
 
 	/**
-	 * Plugins screen: this addon is SMOTC, AIO Lite is SMOTC Core.
+	 * Plugins screen: this addon is USOTC, AIO Lite is USOTC Core.
 	 *
 	 * @param array<string,array<string,mixed>> $plugins Plugin rows.
 	 * @return array<string,array<string,mixed>>
@@ -290,8 +293,8 @@ class Css_Tc_Branding {
 				continue;
 			}
 			if ( self::is_our_plugin_file( (string) $file ) ) {
-				$plugins[ $file ]['Name']  = self::BRAND;
-				$plugins[ $file ]['Title'] = self::BRAND;
+				$plugins[ $file ]['Name']  = self::FULL_NAME;
+				$plugins[ $file ]['Title'] = self::FULL_NAME;
 				continue;
 			}
 			if ( ! self::is_aio_plugin_file( (string) $file, $data ) ) {

@@ -55,7 +55,7 @@ class Css_Tc_Organization {
 	}
 
 	/**
-	 * With SMOTC departments on, AIO's own single-choice "Department" list on
+	 * With USOTC departments on, AIO's own single-choice "Department" list on
 	 * the user profile is redundant (and its save path is what crashed on
 	 * AIO's missing count function). Remove AIO's profile department hooks so
 	 * only "Time clock departments" shows. AIO department terms already set

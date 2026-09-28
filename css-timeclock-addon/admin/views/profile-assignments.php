@@ -20,9 +20,9 @@ $css_tc_org = css_tc_addon()->organization;
 <input type="hidden" name="css_tc_assign_present" value="1" />
 <?php wp_nonce_field( Css_Tc_Organization::PROFILE_NONCE, 'css_tc_assign_nonce' ); ?>
 <?php if ( empty( $departments ) ) : ?>
-	<p class="description"><?php echo esc_html__( 'No departments are set up yet. Add them under SMOTC → Locations.', 'css-timeclock-addon' ); ?></p>
+	<p class="description"><?php echo esc_html__( 'No departments are set up yet. Add them under USOTC → Locations.', 'css-timeclock-addon' ); ?></p>
 <?php else : ?>
-	<p class="description"><?php echo esc_html__( 'Tick every department this employee can clock into and choose their home department, which is listed first at the kiosk. Saved with the Update User button at the bottom of this page. Companies, locations and departments are managed under SMOTC → Locations & departments.', 'css-timeclock-addon' ); ?></p>
+	<p class="description"><?php echo esc_html__( 'Tick every department this employee can clock into and choose their home department, which is listed first at the kiosk. Saved with the Update User button at the bottom of this page. Companies, locations and departments are managed under USOTC → Locations & departments.', 'css-timeclock-addon' ); ?></p>
 	<table class="widefat striped css-tc-assign" style="max-width:720px">
 		<thead>
 			<tr>

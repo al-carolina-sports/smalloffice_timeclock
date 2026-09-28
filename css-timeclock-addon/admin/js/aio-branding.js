@@ -23,7 +23,7 @@
     Array.prototype.forEach.call(root.querySelectorAll("h1"), function (h1) {
       var text = (h1.textContent || "").replace(/\s+/g, " ").trim();
       if (/^all in one time clock lite$/i.test(text)) {
-        h1.textContent = "SMOTC";
+        h1.textContent = "USOTC";
       }
     });
 

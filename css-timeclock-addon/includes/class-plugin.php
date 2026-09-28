@@ -211,7 +211,7 @@ class Css_Tc_Plugin {
 	}
 
 	/**
-	 * Give manager roles the SMOTC capability (activation, and once after an
+	 * Give manager roles the USOTC capability (activation, and once after an
 	 * upgrade, or when AIO's Time Clock Admin role appears later).
 	 *
 	 * @param bool $force Grant even if already recorded.
@@ -301,7 +301,7 @@ class Css_Tc_Plugin {
 	public static function cron_schedules( $schedules ) {
 		$schedules['css_tc_five_minutes'] = array(
 			'interval' => Css_Tc_Pins::DNS_REFRESH,
-			'display'  => 'Every five minutes (SMOTC office hostnames)',
+			'display'  => 'Every five minutes (USOTC office hostnames)',
 		);
 		return $schedules;
 	}
@@ -340,7 +340,7 @@ class Css_Tc_Plugin {
 	}
 
 	/**
-	 * Capability used for SMOTC admin screens.
+	 * Capability used for USOTC admin screens.
 	 *
 	 * With AIO active this is css_tc_manage (administrators and AIO's Time
 	 * Clock Admin role). AIO itself only asks for edit_posts, which every
@@ -364,7 +364,7 @@ class Css_Tc_Plugin {
 	}
 
 	/**
-	 * Time Clock admin pages (AIO's and SMOTC's) are for managers only.
+	 * Time Clock admin pages (AIO's and USOTC's) are for managers only.
 	 * AIO registers them with edit_posts; turn everyone else away.
 	 *
 	 * @return void
@@ -444,7 +444,7 @@ class Css_Tc_Plugin {
 		}
 
 		echo '<div class="notice notice-warning"><p>';
-		echo esc_html__( 'SMOTC is a soft add-on for SMOTC Core. Install and activate SMOTC Core so Real Time Monitoring, employee roles, and shift reports stay in sync. Kiosk punches still write compatible shift posts if it is missing.', 'css-timeclock-addon' );
+		echo esc_html__( 'USOTC is a soft add-on for USOTC Core. Install and activate USOTC Core so Real Time Monitoring, employee roles, and shift reports stay in sync. Kiosk punches still write compatible shift posts if it is missing.', 'css-timeclock-addon' );
 		echo '</p></div>';
 	}
 

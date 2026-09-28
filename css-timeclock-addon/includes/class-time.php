@@ -32,7 +32,7 @@
  * calls getCurrentTime(), which is site-local once the timezone leaves UTC.
  * Css_Tc_Punches rewrites those two writes to UTC before they are stored.
  * The front-end page that embeds [show_aio_time_clock_lite], including
- * /time-clock/, redirects to an SMOTC kiosk. Kiosk punches and approved
+ * /time-clock/, redirects to an USOTC kiosk. Kiosk punches and approved
  * corrections are written in UTC directly and are not converted again.
  * Punches AIO already saved as Eastern wall-clock strings are not rewritten.
  *
