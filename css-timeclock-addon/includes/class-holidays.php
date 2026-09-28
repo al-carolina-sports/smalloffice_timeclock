@@ -72,6 +72,47 @@ class Css_Tc_Holidays {
 		add_action( 'user_profile_update_errors', array( $this, 'validate_profile' ), 10, 3 );
 		add_action( 'personal_options_update', array( $this, 'save_profile' ) );
 		add_action( 'edit_user_profile_update', array( $this, 'save_profile' ) );
+		add_action( 'admin_post_css_tc_holiday_settings', array( $this, 'save_settings' ) );
+	}
+
+	/**
+	 * TC-Config → Holidays form.
+	 *
+	 * @return void
+	 */
+	public function save_settings() {
+		if ( ! Css_Tc_Plugin::user_can_manage() ) {
+			wp_die( esc_html__( 'Only time clock managers can do that.', 'css-timeclock-addon' ), '', array( 'response' => 403 ) );
+		}
+		check_admin_referer( 'css_tc_holiday_settings' );
+		$url  = Css_Tc_Admin::settings_url( 'holidays' );
+		$back = static function ( $message, $error ) use ( $url ) {
+			set_transient( 'css_tc_leave_notice_' . get_current_user_id(), array( 'message' => $message, 'error' => $error ), 60 );
+			wp_safe_redirect( $url );
+			exit;
+		};
+		$s     = css_tc_addon()->get_settings();
+		$hours = isset( $_POST['holiday_hours'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['holiday_hours'] ) ) ) : '8';
+		if ( ! is_numeric( $hours ) || (float) $hours < 0 || (float) $hours > 24 ) {
+			$back( __( 'Hours paid per holiday must be between 0 and 24.', 'css-timeclock-addon' ), true );
+		}
+		$custom = isset( $_POST['holidays_custom'] ) ? sanitize_textarea_field( str_replace( array( "\r\n", "\r" ), "\n", (string) wp_unslash( $_POST['holidays_custom'] ) ) ) : '';
+		if ( strlen( $custom ) > 3000 ) {
+			$back( __( 'The other holidays list is too long.', 'css-timeclock-addon' ), true );
+		}
+		$parsed = self::parse_custom( $custom );
+		if ( ! empty( $parsed['invalid'] ) ) {
+			/* translators: %s: lines that could not be read */
+			$back( sprintf( __( 'Other holidays: use MM-DD Name or YYYY-MM-DD Name. Could not read: %s', 'css-timeclock-addon' ), implode( ', ', array_slice( $parsed['invalid'], 0, 5 ) ) ), true );
+		}
+		$observed                   = isset( $_POST['holidays_observed'] ) ? array_map( 'sanitize_key', (array) wp_unslash( $_POST['holidays_observed'] ) ) : array();
+		$s['holidays_enabled']      = empty( $_POST['holidays_enabled'] ) ? 0 : 1;
+		$s['holiday_hours']         = round( (float) $hours, 2 );
+		$s['holidays_observed']     = array_values( array_intersect( array_keys( self::catalog() ), $observed ) );
+		$s['holidays_custom']       = $custom;
+		$s['holiday_weekend_shift'] = empty( $_POST['holiday_weekend_shift'] ) ? 0 : 1;
+		css_tc_addon()->update_settings( $s );
+		$back( __( 'Holidays saved.', 'css-timeclock-addon' ), false );
 	}
 
 	/**
