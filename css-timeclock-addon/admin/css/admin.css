@@ -329,3 +329,10 @@
 .css-tc-by-employee__name { vertical-align: top; font-weight: 600; background: #f6f7f7; min-width: 140px; }
 .css-tc-by-employee__total td { background: #f6f7f7; font-weight: 600; }
 @media print { .css-tc-report-h2 .button { display: none; } }
+
+/* Office hostname lookups */
+.css-tc-host-status { margin: 6px 0 0; }
+.css-tc-host-status li { margin: 2px 0; font-size: 12px; }
+.css-tc-host-status__ok::before { content: "✓ "; color: #008a20; }
+.css-tc-host-status__warn { color: #996800; }
+.css-tc-host-status__bad { color: #b32d2e; }

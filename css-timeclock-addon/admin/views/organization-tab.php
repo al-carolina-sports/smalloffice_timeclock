@@ -91,15 +91,18 @@ $css_tc_hidden = static function ( $op, $kind = '', $id = 0 ) {
 	</table>
 
 	<h2><?php echo esc_html__( 'Locations', 'css-timeclock-addon' ); ?></h2>
-	<p class="description"><?php echo esc_html__( 'Office network: the public IP addresses or CIDR ranges of that office, one per line. Any tablet or desk computer on that network clocks in at this location. Leave blank and employees pick the location themselves.', 'css-timeclock-addon' ); ?></p>
+	<p class="description"><?php echo esc_html__( 'Office network: the public IP addresses, CIDR ranges or hostname (for an office on dynamic DNS, such as csswilson.ddns.net) of that office, one per line. Any tablet or desk computer on that network clocks in at this location. Leave blank and employees pick the location themselves.', 'css-timeclock-addon' ); ?></p>
 	<?php
 	$css_tc_here     = css_tc_addon()->pins->client_ip();
-	$css_tc_here_loc = '' !== $css_tc_here ? css_tc_addon()->organization->location_for_ip( $css_tc_here ) : 0;
+	$css_tc_here_m   = '' !== $css_tc_here ? css_tc_addon()->organization->location_match( $css_tc_here ) : array( 'id' => 0, 'via' => '' );
+	$css_tc_here_loc = (int) $css_tc_here_m['id'];
 	?>
 	<p class="description css-tc-here-ip">
 		<?php
 		if ( '' === $css_tc_here ) {
 			echo esc_html__( 'This computer’s address could not be read.', 'css-timeclock-addon' );
+		} elseif ( $css_tc_here_loc && '' !== $css_tc_here_m['via'] && '' !== css_tc_addon()->pins->normalize_hostname( $css_tc_here_m['via'] ) && '' === css_tc_addon()->pins->canonical_ip( $css_tc_here_m['via'] ) ) {
+			echo esc_html( sprintf( /* translators: 1: IP address, 2: location name, 3: hostname */ __( 'This computer’s address is %1$s, which matches %2$s via %3$s.', 'css-timeclock-addon' ), $css_tc_here, css_tc_addon()->organization->location_name( $css_tc_here_loc ), $css_tc_here_m['via'] ) );
 		} elseif ( $css_tc_here_loc ) {
 			echo esc_html( sprintf( /* translators: 1: IP address, 2: location name */ __( 'This computer’s address is %1$s, which matches %2$s.', 'css-timeclock-addon' ), $css_tc_here, css_tc_addon()->organization->location_name( (int) $css_tc_here_loc ) ) );
 		} else {
@@ -115,9 +118,10 @@ $css_tc_hidden = static function ( $op, $kind = '', $id = 0 ) {
 						<form method="post" action="<?php echo esc_url( $css_tc_post_url ); ?>" class="css-tc-org__row">
 							<?php $css_tc_hidden( 'save', 'locations', (int) $location['id'] ); ?>
 							<input type="text" name="name" value="<?php echo esc_attr( $location['name'] ); ?>" aria-label="<?php echo esc_attr__( 'Location name', 'css-timeclock-addon' ); ?>" />
-							<textarea name="ips" rows="2" cols="28" placeholder="<?php echo esc_attr__( 'Office IPs, one per line', 'css-timeclock-addon' ); ?>" aria-label="<?php echo esc_attr__( 'Office network', 'css-timeclock-addon' ); ?>"><?php echo esc_textarea( isset( $location['ips'] ) ? (string) $location['ips'] : '' ); ?></textarea>
+							<textarea name="ips" rows="2" cols="28" placeholder="<?php echo esc_attr__( 'Office IPs or hostname, one per line', 'css-timeclock-addon' ); ?>" aria-label="<?php echo esc_attr__( 'Office network', 'css-timeclock-addon' ); ?>"><?php echo esc_textarea( isset( $location['ips'] ) ? (string) $location['ips'] : '' ); ?></textarea>
 							<button type="submit" class="button"><?php echo esc_html__( 'Save', 'css-timeclock-addon' ); ?></button>
 						</form>
+						<?php Css_Tc_Admin::render_host_status( isset( $location['ips'] ) ? (string) $location['ips'] : '' ); ?>
 					</td>
 					<td class="css-tc-org__del">
 						<form method="post" action="<?php echo esc_url( $css_tc_post_url ); ?>">

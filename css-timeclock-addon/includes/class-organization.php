@@ -285,12 +285,13 @@ class Css_Tc_Organization {
 					'css_tc_org_ips',
 					sprintf(
 						/* translators: %s: invalid lines */
-						__( 'These lines are not IPv4, IPv6, or CIDR ranges: %s', 'css-timeclock-addon' ),
+						__( 'These lines are not IP addresses, CIDR ranges or hostnames: %s', 'css-timeclock-addon' ),
 						implode( ', ', array_slice( $parsed['invalid'], 0, 5 ) )
 					)
 				);
 			}
 			$clean['ips'] = $ips;
+			css_tc_addon()->pins->refresh_hosts( $parsed['hosts'] );
 		}
 
 		if ( 'departments' === $kind ) {
@@ -455,19 +456,43 @@ class Css_Tc_Organization {
 	 * @return int Location ID or 0.
 	 */
 	public function location_for_ip( $ip ) {
+		return $this->location_match( $ip )['id'];
+	}
+
+	/**
+	 * Location whose office network contains this address, and the line
+	 * that matched (an address, range or hostname).
+	 *
+	 * @param string $ip Client address.
+	 * @return array{id:int,via:string}
+	 */
+	public function location_match( $ip ) {
 		$pins = css_tc_addon()->pins;
 		if ( '' === $pins->canonical_ip( (string) $ip ) ) {
-			return 0;
+			return array( 'id' => 0, 'via' => '' );
 		}
 		foreach ( $this->locations() as $location ) {
 			$parsed = $pins->parse_allowlist( isset( $location['ips'] ) ? (string) $location['ips'] : '' );
-			foreach ( $parsed['entries'] as $entry ) {
-				if ( $pins->ip_in_entry( $ip, $entry ) ) {
-					return (int) $location['id'];
-				}
+			$via    = $pins->list_match( $ip, $parsed );
+			if ( false !== $via ) {
+				return array( 'id' => (int) $location['id'], 'via' => (string) $via );
 			}
 		}
-		return 0;
+		return array( 'id' => 0, 'via' => '' );
+	}
+
+	/**
+	 * Hostnames used in any location's office network.
+	 *
+	 * @return string[]
+	 */
+	public function location_hosts() {
+		$hosts = array();
+		foreach ( $this->locations() as $location ) {
+			$parsed = css_tc_addon()->pins->parse_allowlist( isset( $location['ips'] ) ? (string) $location['ips'] : '' );
+			$hosts  = array_merge( $hosts, $parsed['hosts'] );
+		}
+		return array_values( array_unique( $hosts ) );
 	}
 
 	/**

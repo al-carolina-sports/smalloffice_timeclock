@@ -128,6 +128,56 @@ css_tc_check( '198.51.100.5' === $pins->client_ip(), 'unlisted public proxy is t
 css_tc_check( $pins->is_trusted_proxy( '100.64.3.4' ), 'CGNAT range counts as internal' );
 $reset();
 
+// --- Hostnames (dynamic DNS) -------------------------------------------
+$h = $pins->parse_allowlist( "66.76.190.146\nCSSWilson.DDNS.net.  # Wilson\n10.0.0.300\nbad_host.example\nlocalhost\n" );
+css_tc_check( array( '66.76.190.146' ) === $h['entries'], 'hostname list keeps addresses' );
+css_tc_check( array( 'csswilson.ddns.net' ) === $h['hosts'], 'hostname lower-cased, trailing dot and comment removed' );
+css_tc_check( array( '10.0.0.300', 'bad_host.example', 'localhost' ) === $h['invalid'], 'bad address, underscore and dotless names rejected' );
+css_tc_check( array( 'csswilson.ddns.net' ) === $pins->parse_allowlist( 'csswilson.ddns.net', false )['invalid'], 'hostnames refused where not allowed (trusted proxies)' );
+
+$dns_now    = 1000000;
+$dns_answer = array( '216.210.87.91' );
+$dns_calls  = 0;
+$pins->set_dns_test_hooks(
+	static function ( $host ) use ( &$dns_answer, &$dns_calls ) {
+		++$dns_calls;
+		return 'csswilson.ddns.net' === $host ? $dns_answer : false;
+	},
+	static function () use ( &$dns_now ) {
+		return $dns_now;
+	}
+);
+$wilson = "76.195.93.124\ncsswilson.ddns.net\n";
+css_tc_check( $pins->ip_allowed_by_list( '216.210.87.91', true, $wilson ), 'address behind the hostname is allowed' );
+css_tc_check( ! $pins->ip_allowed_by_list( '198.51.100.4', true, $wilson ), 'other address still refused' );
+css_tc_check( 'csswilson.ddns.net' === $pins->list_match( '216.210.87.91', $pins->parse_allowlist( $wilson ) ), 'match reports the hostname' );
+$calls_before = $dns_calls;
+$pins->ip_allowed_by_list( '216.210.87.91', true, $wilson );
+css_tc_check( $calls_before === $dns_calls, 'fresh answer comes from the cache' );
+
+$dns_now   += 700;
+$dns_answer = array( '216.210.87.99' );
+css_tc_check( $pins->ip_allowed_by_list( '216.210.87.99', true, $wilson ), 'new address picked up after the cache ages out' );
+css_tc_check( ! $pins->ip_allowed_by_list( '216.210.87.91', true, $wilson ), 'old address no longer allowed' );
+
+$dns_now   += 700;
+$dns_answer = false;
+css_tc_check( $pins->ip_allowed_by_list( '216.210.87.99', true, $wilson ), 'failed lookup keeps the last address that worked' );
+$st = $pins->host_status( 'csswilson.ddns.net' );
+css_tc_check( ! empty( $st['failed'] ) && array( '216.210.87.99' ) === $st['ips'], 'status shows the failure and kept address' );
+$calls_before = $dns_calls;
+$dns_now     += 10;
+$pins->ip_allowed_by_list( '216.210.87.99', true, $wilson );
+css_tc_check( $calls_before === $dns_calls, 'no retry within a minute of a failure' );
+
+css_tc_check( ! $pins->ip_allowed_by_list( '198.51.100.4', true, "never.example.test\n" ), 'unresolvable-only list stays closed, not open to all' );
+css_tc_check( array() === $pins->host_ips( 'never.example.test' ), 'unresolvable name has no addresses' );
+
+$dns_answer = array( '::ffff:216.210.87.50', '2001:db8::5' );
+$pins->refresh_hosts( array( 'csswilson.ddns.net' ) );
+css_tc_check( array( '216.210.87.50', '2001:db8::5' ) === $pins->host_ips( 'csswilson.ddns.net' ), 'refresh looks up now; mapped IPv4 canonicalized, IPv6 kept' );
+$pins->set_dns_test_hooks( null );
+
 $ajax = file_get_contents( dirname( __DIR__ ) . '/includes/class-ajax.php' );
 css_tc_check( false !== strpos( $ajax, $office ), 'kiosk error string is present' );
 css_tc_check( false === strpos( $ajax, "office network.' )," ) || false === strpos( $ajax, 'client_ip()' ), 'office error is a fixed string' );

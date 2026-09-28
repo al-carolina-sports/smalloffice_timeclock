@@ -80,3 +80,7 @@ foreach ( array( 'administrator', 'time_clock_admin' ) as $css_tc_role_name ) {
 }
 delete_option( 'css_tc_caps_version' );
 delete_option( 'css_tc_caps_roles' );
+
+// Office hostname lookups.
+delete_option( 'css_tc_dns_cache' );
+wp_clear_scheduled_hook( 'css_tc_refresh_dns' );

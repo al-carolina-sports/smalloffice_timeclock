@@ -447,6 +447,50 @@ class Css_Tc_Admin {
 	}
 
 	/**
+	 * One line per hostname in a list: where it points and when it was checked.
+	 *
+	 * @param string $raw List text (allowlist or a location's office network).
+	 * @return void
+	 */
+	public static function render_host_status( $raw ) {
+		$pins  = css_tc_addon()->pins;
+		$hosts = $pins->parse_allowlist( (string) $raw )['hosts'];
+		if ( empty( $hosts ) ) {
+			return;
+		}
+		echo '<ul class="css-tc-host-status">';
+		foreach ( $hosts as $host ) {
+			$st  = $pins->host_status( $host );
+			$ago = $st['checked'] ? human_time_diff( (int) $st['checked'] ) : '';
+			if ( empty( $st['ips'] ) ) {
+				/* translators: %s: hostname */
+				$text  = sprintf( __( '%s could not be looked up yet, so it matches no one. Check the spelling, or that the name is active.', 'css-timeclock-addon' ), $host );
+				$class = 'css-tc-host-status__bad';
+			} elseif ( ! empty( $st['failed'] ) ) {
+				$text  = sprintf(
+					/* translators: 1: hostname, 2: addresses, 3: time ago */
+					__( '%1$s → %2$s (last lookup failed %3$s ago; still using the last address that worked).', 'css-timeclock-addon' ),
+					$host,
+					implode( ', ', $st['ips'] ),
+					$ago
+				);
+				$class = 'css-tc-host-status__warn';
+			} else {
+				$text  = sprintf(
+					/* translators: 1: hostname, 2: addresses, 3: time ago */
+					__( '%1$s → %2$s (checked %3$s ago).', 'css-timeclock-addon' ),
+					$host,
+					implode( ', ', $st['ips'] ),
+					$ago
+				);
+				$class = 'css-tc-host-status__ok';
+			}
+			echo '<li class="' . esc_attr( $class ) . '">' . esc_html( $text ) . '</li>';
+		}
+		echo '</ul>';
+	}
+
+	/**
 	 * @param array<string,mixed> $args Query args.
 	 * @return string
 	 */

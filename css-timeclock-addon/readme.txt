@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.6.1
+Stable tag: 1.6.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,9 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under SMOTC.
 
 == Changelog ==
+
+= 1.6.2 =
+* Office hostnames: the office IP allowlist and each location's office network accept a hostname (for example an office on dynamic DNS, csswilson.ddns.net) as well as addresses and CIDR ranges. Names are looked up every five minutes in the background and again at punch time if the saved answer is over ten minutes old. If a lookup fails, the last address that worked is kept; a name that has never resolved matches no one (the allowlist stays closed rather than opening to everyone). Settings and the Locations tab show where each name points and when it was checked, and "This computer's address" says which name it matched. Trusted proxies still take addresses only.
 
 = 1.6.1 =
 * Security: the client address (office IP allowlist, office detection for locations, failed-PIN limits) can no longer be faked with an X-Forwarded-For header. Forwarded headers are only believed when the request comes through the hosting network (private or internal addresses) or a proxy listed under the new "Trusted proxies" setting, and then the right-most outside address is used. Settings shows what each request looks like, and the Locations tab shows this computer's address and which location it matches.

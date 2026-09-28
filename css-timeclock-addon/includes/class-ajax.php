@@ -343,7 +343,7 @@ class Css_Tc_Ajax {
 				array(
 					'message' => sprintf(
 						/* translators: %s: invalid allowlist lines the admin typed */
-						__( 'These lines are not IPv4, IPv6, or CIDR ranges: %s', 'css-timeclock-addon' ),
+						__( 'These lines are not IP addresses, CIDR ranges or hostnames: %s', 'css-timeclock-addon' ),
 						implode( ', ', array_map( 'sanitize_text_field', array_slice( $parsed['invalid'], 0, 8 ) ) )
 					),
 				),
@@ -352,13 +352,14 @@ class Css_Tc_Ajax {
 		}
 		$settings['ip_allowlist_enabled'] = empty( $_POST['ip_allowlist_enabled'] ) ? 0 : 1;
 		$settings['ip_allowlist']         = $allow_raw;
+		css_tc_addon()->pins->refresh_hosts( $parsed['hosts'] );
 
 		$proxy_raw = isset( $_POST['trusted_proxies'] ) ? (string) wp_unslash( $_POST['trusted_proxies'] ) : '';
 		$proxy_raw = sanitize_textarea_field( str_replace( array( "\r\n", "\r" ), "\n", $proxy_raw ) );
 		if ( strlen( $proxy_raw ) > 2000 ) {
 			wp_send_json_error( array( 'message' => __( 'The trusted proxy list is too long.', 'css-timeclock-addon' ) ), 400 );
 		}
-		$proxy_parsed = css_tc_addon()->pins->parse_allowlist( $proxy_raw );
+		$proxy_parsed = css_tc_addon()->pins->parse_allowlist( $proxy_raw, false );
 		if ( ! empty( $proxy_parsed['invalid'] ) ) {
 			wp_send_json_error(
 				array(
