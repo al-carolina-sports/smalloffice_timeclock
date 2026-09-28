@@ -87,7 +87,7 @@ class Css_Tc_Admin {
 				'css-tc-admin',
 				CSS_TC_ADDON_URL . 'admin/css/admin.css',
 				array(),
-				CSS_TC_ADDON_VERSION
+				CSS_TC_ADDON_ASSET_VERSION
 			);
 			return;
 		}
@@ -97,13 +97,13 @@ class Css_Tc_Admin {
 				'css-tc-timecard',
 				CSS_TC_ADDON_URL . 'public/css/timecard.css',
 				array(),
-				CSS_TC_ADDON_VERSION
+				CSS_TC_ADDON_ASSET_VERSION
 			);
 			wp_enqueue_script(
 				'css-tc-timecard',
 				CSS_TC_ADDON_URL . 'public/js/timecard.js',
 				array(),
-				CSS_TC_ADDON_VERSION,
+				CSS_TC_ADDON_ASSET_VERSION,
 				true
 			);
 			return;
@@ -113,14 +113,14 @@ class Css_Tc_Admin {
 			'css-tc-admin',
 			CSS_TC_ADDON_URL . 'admin/css/admin.css',
 			array(),
-			CSS_TC_ADDON_VERSION
+			CSS_TC_ADDON_ASSET_VERSION
 		);
 
 		wp_enqueue_script(
 			'css-tc-admin',
 			CSS_TC_ADDON_URL . 'admin/js/admin.js',
 			array(),
-			CSS_TC_ADDON_VERSION,
+			CSS_TC_ADDON_ASSET_VERSION,
 			true
 		);
 
@@ -190,14 +190,14 @@ class Css_Tc_Admin {
 			'css-tc-aio-upsell',
 			CSS_TC_ADDON_URL . 'admin/css/aio-upsell.css',
 			array(),
-			CSS_TC_ADDON_VERSION
+			CSS_TC_ADDON_ASSET_VERSION
 		);
 
 		wp_enqueue_script(
 			'css-tc-aio-upsell',
 			CSS_TC_ADDON_URL . 'admin/js/aio-upsell.js',
 			array(),
-			CSS_TC_ADDON_VERSION,
+			CSS_TC_ADDON_ASSET_VERSION,
 			true
 		);
 	}

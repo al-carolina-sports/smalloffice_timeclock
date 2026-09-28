@@ -262,14 +262,14 @@ class Css_Tc_Branding {
 			'css-tc-aio-branding',
 			CSS_TC_ADDON_URL . 'admin/css/aio-branding.css',
 			array(),
-			CSS_TC_ADDON_VERSION
+			CSS_TC_ADDON_ASSET_VERSION
 		);
 
 		wp_enqueue_script(
 			'css-tc-aio-branding',
 			CSS_TC_ADDON_URL . 'admin/js/aio-branding.js',
 			array(),
-			CSS_TC_ADDON_VERSION,
+			CSS_TC_ADDON_ASSET_VERSION,
 			true
 		);
 	}

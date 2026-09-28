@@ -279,7 +279,7 @@ class Css_Tc_Shortcodes {
 			'css-tc-wide-layout',
 			CSS_TC_ADDON_URL . 'public/css/wide-layout.css',
 			array(),
-			CSS_TC_ADDON_VERSION
+			CSS_TC_ADDON_ASSET_VERSION
 		);
 	}
 
@@ -574,13 +574,13 @@ class Css_Tc_Shortcodes {
 			'css-tc-times',
 			CSS_TC_ADDON_URL . 'public/css/times.css',
 			array(),
-			CSS_TC_ADDON_VERSION
+			CSS_TC_ADDON_ASSET_VERSION
 		);
 		wp_enqueue_style(
 			'css-tc-timecard',
 			CSS_TC_ADDON_URL . 'public/css/timecard.css',
 			array( 'css-tc-times' ),
-			CSS_TC_ADDON_VERSION
+			CSS_TC_ADDON_ASSET_VERSION
 		);
 
 		if ( ! is_user_logged_in() || ! css_tc_addon()->employees->can_view_own_times( get_current_user_id() ) ) {
@@ -591,7 +591,7 @@ class Css_Tc_Shortcodes {
 			'css-tc-timecard',
 			CSS_TC_ADDON_URL . 'public/js/timecard.js',
 			array(),
-			CSS_TC_ADDON_VERSION,
+			CSS_TC_ADDON_ASSET_VERSION,
 			true
 		);
 	}
@@ -611,14 +611,14 @@ class Css_Tc_Shortcodes {
 			'css-tc-kiosk',
 			CSS_TC_ADDON_URL . 'public/css/kiosk.css',
 			array(),
-			CSS_TC_ADDON_VERSION
+			CSS_TC_ADDON_ASSET_VERSION
 		);
 
 		wp_enqueue_script(
 			'css-tc-kiosk',
 			CSS_TC_ADDON_URL . 'public/js/kiosk.js',
 			array(),
-			CSS_TC_ADDON_VERSION,
+			CSS_TC_ADDON_ASSET_VERSION,
 			true
 		);
 

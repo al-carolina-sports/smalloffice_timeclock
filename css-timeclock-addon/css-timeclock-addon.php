@@ -19,6 +19,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'CSS_TC_ADDON_VERSION', '1.6.0' );
+// Script and stylesheet version: plugin version plus the time this copy was
+// installed. Each upload rewrites this file, so browsers and host caches
+// (WP Engine) fetch fresh assets after every deploy, not only on a version bump.
+define( 'CSS_TC_ADDON_ASSET_VERSION', CSS_TC_ADDON_VERSION . '.' . (int) filemtime( __FILE__ ) );
 define( 'CSS_TC_ADDON_FILE', __FILE__ );
 define( 'CSS_TC_ADDON_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CSS_TC_ADDON_URL', plugin_dir_url( __FILE__ ) );

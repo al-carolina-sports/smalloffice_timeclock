@@ -79,7 +79,7 @@ class Css_Tc_Reports {
 		if ( false === strpos( $hook, self::AIO_SLUG ) && false === strpos( $hook, self::PAGE_SLUG ) ) {
 			return;
 		}
-		wp_enqueue_style( 'css-tc-admin', CSS_TC_ADDON_URL . 'admin/css/admin.css', array(), CSS_TC_ADDON_VERSION );
+		wp_enqueue_style( 'css-tc-admin', CSS_TC_ADDON_URL . 'admin/css/admin.css', array(), CSS_TC_ADDON_ASSET_VERSION );
 	}
 
 	/**
