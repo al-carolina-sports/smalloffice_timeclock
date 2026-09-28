@@ -42,6 +42,8 @@ $mode       = 'employee';
 			<h1><?php echo esc_html__( 'Your timecard', 'css-timeclock-addon' ); ?></h1>
 			<p><?php echo esc_html__( 'This page is for time-clock employees. If you need access, ask a supervisor to assign you an Employee role.', 'css-timeclock-addon' ); ?></p>
 		</div>
+	<?php elseif ( 'timeoff' === $view ) : ?>
+		<?php include CSS_TC_ADDON_DIR . 'public/views/time-off.php'; ?>
 	<?php elseif ( 'correct' === $view ) : ?>
 		<?php include CSS_TC_ADDON_DIR . 'public/views/period-corrections.php'; ?>
 	<?php elseif ( $sheet ) : ?>

@@ -408,33 +408,6 @@ class Css_Tc_Ajax {
 		$settings['overtime_scope']      = ( 'per_company' === $scope ) ? 'per_company' : 'combined';
 		$settings['assignments_enabled'] = empty( $_POST['assignments_enabled'] ) ? 0 : 1;
 
-		$settings['holidays_enabled'] = empty( $_POST['holidays_enabled'] ) ? 0 : 1;
-		$hol_hours                    = isset( $_POST['holiday_hours'] ) ? (float) sanitize_text_field( wp_unslash( $_POST['holiday_hours'] ) ) : 8;
-		if ( $hol_hours < 0 || $hol_hours > 24 ) {
-			wp_send_json_error( array( 'message' => __( 'Hours paid per holiday must be between 0 and 24.', 'css-timeclock-addon' ) ), 400 );
-		}
-		$settings['holiday_hours'] = round( $hol_hours, 2 );
-		$observed                  = isset( $_POST['holidays_observed'] ) ? explode( ',', sanitize_text_field( wp_unslash( $_POST['holidays_observed'] ) ) ) : array();
-		$settings['holidays_observed'] = array_values( array_intersect( array_keys( Css_Tc_Holidays::catalog() ), array_map( 'sanitize_key', $observed ) ) );
-		$hol_custom = isset( $_POST['holidays_custom'] ) ? sanitize_textarea_field( str_replace( array( "\r\n", "\r" ), "\n", (string) wp_unslash( $_POST['holidays_custom'] ) ) ) : '';
-		if ( strlen( $hol_custom ) > 3000 ) {
-			wp_send_json_error( array( 'message' => __( 'The other holidays list is too long.', 'css-timeclock-addon' ) ), 400 );
-		}
-		$hol_parsed = Css_Tc_Holidays::parse_custom( $hol_custom );
-		if ( ! empty( $hol_parsed['invalid'] ) ) {
-			wp_send_json_error(
-				array(
-					'message' => sprintf(
-						/* translators: %s: lines that could not be read */
-						__( 'Other holidays: use MM-DD Name or YYYY-MM-DD Name. Could not read: %s', 'css-timeclock-addon' ),
-						implode( ', ', array_slice( $hol_parsed['invalid'], 0, 5 ) )
-					),
-				),
-				400
-			);
-		}
-		$settings['holidays_custom']       = $hol_custom;
-		$settings['holiday_weekend_shift'] = empty( $_POST['holiday_weekend_shift'] ) ? 0 : 1;
 		$settings['switch_enabled']      = empty( $_POST['switch_enabled'] ) ? 0 : 1;
 
 		css_tc_addon()->update_settings( $settings );

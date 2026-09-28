@@ -92,6 +92,16 @@ css_tc_check( '2026-09-01' === Css_Tc_Holidays::eligible_from_dates( '2026-09-01
 css_tc_check( '' === Css_Tc_Holidays::eligible_from_dates( '', 90 ), 'intro without hire date: always eligible' );
 css_tc_check( 21600 === ( new Css_Tc_Holidays( array_merge( $base, array( 'holiday_hours' => 6 ) ) ) )->seconds_per_holiday(), 'custom hours per holiday' );
 
+$missing = array();
+foreach ( Css_Tc_Holidays::catalog() as $k => $def ) {
+	if ( empty( $def['when'] ) ) {
+		$missing[] = $k;
+	}
+}
+css_tc_check( array() === $missing, 'every holiday has a plain-language date rule' );
+css_tc_check( 'Every year on December 24' === Css_Tc_Holidays::describe_custom( array( 'md' => '12-24', 'date' => '', 'name' => 'x' ) ), 'custom yearly line described' );
+css_tc_check( 'One day only: October 12, 2026' === Css_Tc_Holidays::describe_custom( array( 'md' => '', 'date' => '2026-10-12', 'name' => 'x' ) ), 'custom one-day line described' );
+
 if ( $failed ) {
 	fwrite( STDERR, "{$failed} check(s) failed\n" );
 	exit( 1 );

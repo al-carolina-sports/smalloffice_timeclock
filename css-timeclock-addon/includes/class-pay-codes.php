@@ -22,6 +22,8 @@ class Css_Tc_Pay_Codes {
 	const REGULAR  = 'regular';
 	const OVERTIME = 'overtime';
 	const HOLIDAY  = 'holiday';
+	const PTO      = 'pto';
+	const SICK     = 'sick';
 
 	/**
 	 * @return array<string,array{label:string,order:int}>
@@ -44,6 +46,19 @@ class Css_Tc_Pay_Codes {
 			$codes[ self::HOLIDAY ] = array(
 				'label' => __( 'Holiday', 'css-timeclock-addon' ),
 				'order' => 30,
+			);
+		}
+
+		if ( css_tc_addon()->leave->type_enabled( 'pto' ) ) {
+			$codes[ self::PTO ] = array(
+				'label' => __( 'PTO', 'css-timeclock-addon' ),
+				'order' => 40,
+			);
+		}
+		if ( css_tc_addon()->leave->type_enabled( 'sick' ) ) {
+			$codes[ self::SICK ] = array(
+				'label' => __( 'Sick', 'css-timeclock-addon' ),
+				'order' => 50,
 			);
 		}
 

@@ -493,6 +493,16 @@ class Css_Tc_Shortcodes {
 	}
 
 	/**
+	 * Employee time off page (request calendar and history).
+	 *
+	 * @param string $hash Optional section id.
+	 * @return string
+	 */
+	public static function timeoff_url( $hash = '' ) {
+		return add_query_arg( 'css_tc_view', 'timeoff', self::times_url() ) . ( '' !== $hash ? '#' . $hash : '' );
+	}
+
+	/**
 	 * Corrections form for the current pay period only.
 	 *
 	 * @param string $day Optional Y-m-d hash target.
@@ -526,6 +536,8 @@ class Css_Tc_Shortcodes {
 			$requested = sanitize_key( wp_unslash( $_GET['css_tc_view'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			if ( 'correct' === $requested ) {
 				$view = 'correct';
+			} elseif ( 'timeoff' === $requested && css_tc_addon()->leave->any_enabled() ) {
+				$view = 'timeoff';
 			}
 		}
 
@@ -596,6 +608,56 @@ class Css_Tc_Shortcodes {
 			CSS_TC_ADDON_ASSET_VERSION,
 			true
 		);
+
+		if ( css_tc_addon()->leave->any_enabled() ) {
+			wp_enqueue_script( 'css-tc-timeoff', CSS_TC_ADDON_URL . 'public/js/timeoff.js', array(), CSS_TC_ADDON_ASSET_VERSION, true );
+			wp_localize_script(
+				'css-tc-timeoff',
+				'cssTcTimeoff',
+				array(
+					'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+					'nonce'   => wp_create_nonce( Css_Tc_Corrections::EMPLOYEE_NONCE ),
+					'locale'  => str_replace( '_', '-', get_locale() ),
+					'strings' => array(
+						'total'       => __( 'Total', 'css-timeclock-addon' ),
+						'used'        => __( 'Used', 'css-timeclock-addon' ),
+						'pending'     => __( 'Pending', 'css-timeclock-addon' ),
+						'remaining'   => __( 'Remaining', 'css-timeclock-addon' ),
+						'days'        => __( 'days', 'css-timeclock-addon' ),
+						'leaveYear'   => __( 'Leave year', 'css-timeclock-addon' ),
+						'usableFrom'  => __( 'You can use time off from %s.', 'css-timeclock-addon' ),
+						'noHire'      => __( 'Your time off starts once a manager sets your hire date.', 'css-timeclock-addon' ),
+						'notYet'      => __( 'Not available yet', 'css-timeclock-addon' ),
+						'notice'      => __( 'PTO needs %d days\' notice', 'css-timeclock-addon' ),
+						'closed'      => __( 'Closed pay period', 'css-timeclock-addon' ),
+						'holiday'     => __( 'Holiday', 'css-timeclock-addon' ),
+						'pendingDay'  => __( 'requested', 'css-timeclock-addon' ),
+						'approvedDay' => __( 'approved', 'css-timeclock-addon' ),
+						'fullDay'     => __( 'Full day', 'css-timeclock-addon' ),
+						'perDay'      => __( 'per day', 'css-timeclock-addon' ),
+						'pick'        => __( 'Tap the days you want off.', 'css-timeclock-addon' ),
+						'picked'      => __( '%1$d day(s), %2$s in total', 'css-timeclock-addon' ),
+						'send'        => __( 'Send request', 'css-timeclock-addon' ),
+						'sending'     => __( 'Sending…', 'css-timeclock-addon' ),
+						'cancel'      => __( 'Cancel request', 'css-timeclock-addon' ),
+						'cancelSure'  => __( 'Tap again to cancel', 'css-timeclock-addon' ),
+						'none'        => __( 'No time off requests yet.', 'css-timeclock-addon' ),
+						'status'      => array(
+							'pending'   => __( 'Waiting for approval', 'css-timeclock-addon' ),
+							'approved'  => __( 'Approved', 'css-timeclock-addon' ),
+							'denied'    => __( 'Denied', 'css-timeclock-addon' ),
+							'cancelled' => __( 'Cancelled', 'css-timeclock-addon' ),
+						),
+						'addedByManager' => __( 'Added by a manager', 'css-timeclock-addon' ),
+						'reason'      => __( 'Reason:', 'css-timeclock-addon' ),
+						'network'     => __( 'Could not reach the time clock. Try again.', 'css-timeclock-addon' ),
+						'prev'        => __( 'Previous month', 'css-timeclock-addon' ),
+						'next'        => __( 'Next month', 'css-timeclock-addon' ),
+						'oneBank'     => __( 'Sick time comes out of your PTO.', 'css-timeclock-addon' ),
+					),
+				)
+			);
+		}
 	}
 
 	/**

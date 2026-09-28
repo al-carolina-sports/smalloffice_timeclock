@@ -177,10 +177,56 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 		<?php include CSS_TC_ADDON_DIR . 'admin/views/manager-day-edit.php'; ?>
 	<?php endif; ?>
 
-	<?php if ( 'employee' === $mode && $is_open ) : ?>
+	<?php $css_tc_leave_on = css_tc_addon()->leave->any_enabled(); ?>
+	<?php if ( 'employee' === $mode && ( $is_open || $css_tc_leave_on ) ) : ?>
 		<p class="css-tc-sheet__actions css-tc-no-print">
-			<a class="css-tc-print" href="<?php echo esc_url( Css_Tc_Shortcodes::correct_url() ); ?>"><?php echo esc_html__( 'Correct this pay period', 'css-timeclock-addon' ); ?></a>
+			<?php if ( $is_open ) : ?>
+				<a class="css-tc-print" href="<?php echo esc_url( Css_Tc_Shortcodes::correct_url() ); ?>"><?php echo esc_html__( 'Correct this pay period', 'css-timeclock-addon' ); ?></a>
+			<?php endif; ?>
+			<?php if ( $css_tc_leave_on ) : ?>
+				<a class="css-tc-print" href="<?php echo esc_url( Css_Tc_Shortcodes::timeoff_url() ); ?>"><?php echo esc_html__( 'Request time off', 'css-timeclock-addon' ); ?></a>
+			<?php endif; ?>
 		</p>
+	<?php endif; ?>
+
+	<?php if ( $css_tc_leave_on ) : ?>
+		<?php
+		$css_tc_lb   = css_tc_addon()->leave->balances( $user_id );
+		$css_tc_dayl = css_tc_addon()->leave->day_seconds();
+		$css_tc_used = 'admin' === $mode ? Css_Tc_Reports::leave_used_url( $user_id ) : Css_Tc_Shortcodes::timeoff_url( 'css-tc-leave-mine' );
+		$css_tc_days = static function ( $seconds ) use ( $css_tc_dayl ) {
+			$d = round( $seconds / $css_tc_dayl, 2 );
+			return rtrim( rtrim( number_format( $d, 2, '.', '' ), '0' ), '.' );
+		};
+		?>
+		<section class="css-tc-pto" aria-label="<?php echo esc_attr__( 'PTO summary', 'css-timeclock-addon' ); ?>">
+			<h2 class="css-tc-pto__title"><?php echo esc_html__( 'PTO Summary', 'css-timeclock-addon' ); ?></h2>
+			<?php if ( ! $css_tc_lb['cycle'] ) : ?>
+				<p class="css-tc-pto__note">
+					<?php echo esc_html( 'admin' === $mode ? __( 'No hire date yet, so no PTO. Set it on the employee\'s profile.', 'css-timeclock-addon' ) : __( 'Your PTO starts once a manager sets your hire date.', 'css-timeclock-addon' ) ); ?>
+				</p>
+			<?php else : ?>
+				<p class="css-tc-pto__year">
+					<?php echo esc_html( sprintf( /* translators: %s: date range */ __( 'Leave year %s', 'css-timeclock-addon' ), css_tc_leave_date_label( $css_tc_lb['cycle']['start'] ) . ' – ' . css_tc_leave_date_label( $css_tc_lb['cycle']['end'] ) ) ); ?>
+					<?php if ( '' !== $css_tc_lb['usable_from'] && $css_tc_lb['usable_from'] > css_tc_addon()->leave->today() ) : ?>
+						· <?php echo esc_html( sprintf( /* translators: %s: date */ __( 'usable from %s', 'css-timeclock-addon' ), css_tc_leave_date_label( $css_tc_lb['usable_from'] ) ) ); ?>
+					<?php endif; ?>
+				</p>
+				<div class="css-tc-pto__banks">
+					<?php foreach ( $css_tc_lb['banks'] as $css_tc_bank => $css_tc_t ) : ?>
+						<div class="css-tc-pto__bank css-tc-pto__bank--<?php echo esc_attr( $css_tc_bank ); ?>">
+							<span class="css-tc-pto__name"><?php echo esc_html( 'pto' === $css_tc_bank ? ( css_tc_addon()->leave->one_bank() ? __( 'PTO (incl. sick)', 'css-timeclock-addon' ) : __( 'PTO', 'css-timeclock-addon' ) ) : __( 'Sick', 'css-timeclock-addon' ) ); ?></span>
+							<span class="css-tc-pto__stat"><span><?php echo esc_html__( 'Total', 'css-timeclock-addon' ); ?></span><strong><?php echo esc_html( Css_Tc_Leave::hours( $css_tc_t['allowance'] + $css_tc_t['adjust'] ) ); ?></strong></span>
+							<span class="css-tc-pto__stat"><span><?php echo esc_html__( 'Used', 'css-timeclock-addon' ); ?></span><strong><a href="<?php echo esc_url( $css_tc_used ); ?>"><?php echo esc_html( Css_Tc_Leave::hours( $css_tc_t['used'] ) ); ?></a></strong></span>
+							<span class="css-tc-pto__stat css-tc-pto__stat--left"><span><?php echo esc_html__( 'Remaining', 'css-timeclock-addon' ); ?></span><strong><?php echo esc_html( Css_Tc_Leave::hours( $css_tc_t['left'] ) ); ?></strong><em><?php echo esc_html( sprintf( /* translators: %s: days */ __( '%s days', 'css-timeclock-addon' ), $css_tc_days( $css_tc_t['left'] ) ) ); ?></em></span>
+							<?php if ( $css_tc_t['pending'] > 0 ) : ?>
+								<span class="css-tc-pto__pending"><?php echo esc_html( sprintf( /* translators: %s: hours */ __( '%s pending approval', 'css-timeclock-addon' ), Css_Tc_Leave::hours( $css_tc_t['pending'] ) ) ); ?></span>
+							<?php endif; ?>
+						</div>
+					<?php endforeach; ?>
+				</div>
+			<?php endif; ?>
+		</section>
 	<?php endif; ?>
 
 	<div class="css-tc-cards">
@@ -188,20 +234,26 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 			<h2><?php echo esc_html__( 'Pay Period Summary', 'css-timeclock-addon' ); ?></h2>
 			<p class="css-tc-card__range"><?php echo esc_html( $period['range'] ); ?></p>
 			<p class="css-tc-card__total">
-				<span class="css-tc-card__hours"><?php echo esc_html( ! empty( $sheet['holiday_seconds'] ) ? $sheet['paid_hm'] : $sheet['total_hm'] ); ?></span>
+				<span class="css-tc-card__hours"><?php echo esc_html( $sheet['paid_hm'] ); ?></span>
 				<span class="css-tc-card__unit"><?php echo esc_html__( 'Total Hours', 'css-timeclock-addon' ); ?></span>
 			</p>
-			<?php if ( ! empty( $sheet['holiday_seconds'] ) ) : ?>
+			<?php if ( (int) $sheet['paid_seconds'] > (int) $sheet['total_seconds'] ) : ?>
 				<p class="css-tc-card__range">
 					<?php
-					echo esc_html(
-						sprintf(
-							/* translators: 1: worked H:MM, 2: holiday H:MM */
-							__( '%1$s worked + %2$s holiday', 'css-timeclock-addon' ),
-							$sheet['total_hm'],
-							css_tc_addon()->time->format_duration( (int) $sheet['holiday_seconds'] )
-						)
-					);
+					$css_tc_parts = array( sprintf( /* translators: %s: H:MM */ __( '%s worked', 'css-timeclock-addon' ), $sheet['total_hm'] ) );
+					if ( ! empty( $sheet['holiday_seconds'] ) ) {
+						/* translators: %s: H:MM */
+						$css_tc_parts[] = sprintf( __( '%s holiday', 'css-timeclock-addon' ), css_tc_addon()->time->format_duration( (int) $sheet['holiday_seconds'] ) );
+					}
+					if ( ! empty( $sheet['leave_seconds']['pto'] ) ) {
+						/* translators: %s: H:MM */
+						$css_tc_parts[] = sprintf( __( '%s PTO', 'css-timeclock-addon' ), css_tc_addon()->time->format_duration( (int) $sheet['leave_seconds']['pto'] ) );
+					}
+					if ( ! empty( $sheet['leave_seconds']['sick'] ) ) {
+						/* translators: %s: H:MM */
+						$css_tc_parts[] = sprintf( __( '%s sick', 'css-timeclock-addon' ), css_tc_addon()->time->format_duration( (int) $sheet['leave_seconds']['sick'] ) );
+					}
+					echo esc_html( implode( ' + ', $css_tc_parts ) );
 					?>
 				</p>
 			<?php endif; ?>
@@ -225,6 +277,9 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 								<?php echo esc_html( css_tc_addon()->time->format_duration( $css_tc_co['total'] ) . ' HRS' ); ?>
 								<?php if ( $css_tc_co['overtime'] > 0 ) : ?>
 									<span class="css-tc-card__range"><?php echo esc_html( sprintf( /* translators: %s: overtime H:MM */ __( 'incl. %s OT', 'css-timeclock-addon' ), css_tc_addon()->time->format_duration( $css_tc_co['overtime'] ) ) ); ?></span>
+								<?php endif; ?>
+								<?php if ( ! empty( $css_tc_co['leave'] ) ) : ?>
+									<span class="css-tc-card__range"><?php echo esc_html( sprintf( /* translators: %s: H:MM */ __( '+ %s time off', 'css-timeclock-addon' ), css_tc_addon()->time->format_duration( (int) $css_tc_co['leave'] ) ) ); ?></span>
 								<?php endif; ?>
 								<?php if ( ! empty( $css_tc_co['holiday'] ) ) : ?>
 									<span class="css-tc-card__range"><?php echo esc_html( sprintf( /* translators: %s: holiday H:MM */ __( '+ %s holiday', 'css-timeclock-addon' ), css_tc_addon()->time->format_duration( (int) $css_tc_co['holiday'] ) ) ); ?></span>
@@ -254,6 +309,14 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 									<?php
 									/* translators: %s: overtime hours H:MM */
 									echo esc_html( sprintf( __( 'incl. %s OT', 'css-timeclock-addon' ), $week['overtime_hm'] ) );
+									?>
+								</span>
+							<?php endif; ?>
+							<?php if ( ! empty( $week['leave_seconds'] ) ) : ?>
+								<span class="css-tc-card__range">
+									<?php
+									/* translators: %s: hours H:MM */
+									echo esc_html( sprintf( __( '+ %s time off', 'css-timeclock-addon' ), $week['leave_hm'] ) );
 									?>
 								</span>
 							<?php endif; ?>
@@ -291,7 +354,7 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 				<?php foreach ( $week['days'] as $day ) : ?>
 					<?php
 					$day_classes = 'css-tc-day';
-					if ( empty( $day['shifts'] ) && ! $day['has_time'] && empty( $day['holiday'] ) ) {
+					if ( empty( $day['shifts'] ) && ! $day['has_time'] && empty( $day['holiday'] ) && empty( $day['leave'] ) ) {
 						$day_classes .= ' is-empty';
 					}
 					if ( ! empty( $day['is_today'] ) ) {
@@ -305,6 +368,9 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 					}
 					if ( ! empty( $day['holiday'] ) ) {
 						$day_classes .= ' is-holiday';
+					}
+					if ( ! empty( $day['leave'] ) ) {
+						$day_classes .= ' has-leave';
 					}
 					if ( 'admin' === $mode && $edit_day === $day['date'] ) {
 						$day_classes .= ' is-editing';
@@ -411,6 +477,14 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 								<?php endif; ?>
 							</p>
 						<?php endif; ?>
+						<?php foreach ( $day['leave'] ?? array() as $css_tc_lv ) : ?>
+							<p class="css-tc-day__leave css-tc-day__leave--<?php echo esc_attr( $css_tc_lv['type'] ); ?><?php echo $css_tc_lv['pending'] ? ' is-pending' : ''; ?>">
+								<span class="css-tc-day__leave-name"><?php echo esc_html( $css_tc_lv['label'] . ' ' . $css_tc_lv['hm'] ); ?></span>
+								<?php if ( $css_tc_lv['pending'] ) : ?>
+									<span class="css-tc-day__leave-note"><?php echo esc_html__( 'requested, not approved yet', 'css-timeclock-addon' ); ?></span>
+								<?php endif; ?>
+							</p>
+						<?php endforeach; ?>
 						<div class="css-tc-day__pairs">
 							<?php foreach ( $day['shifts'] as $pair ) : ?>
 								<div class="css-tc-pair<?php echo ! empty( $pair['is_long'] ) ? ' is-long' : ''; ?><?php echo ! empty( $pair['is_out_before_in'] ) ? ' is-order' : ''; ?>">

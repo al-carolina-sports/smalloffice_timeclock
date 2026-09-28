@@ -188,8 +188,12 @@ class Css_Tc_Reports {
 					$matched[] = $segment;
 				}
 			}
-			// Holiday pay sits with the home department (and its company).
-			$holiday     = (int) $sheet['holiday_seconds'];
+			// Holiday, PTO and sick pay sit with the home department (and its company).
+			$nonwork = array(
+				'holiday' => (int) $sheet['holiday_seconds'],
+				'pto'     => (int) ( $sheet['leave_seconds']['pto'] ?? 0 ),
+				'sick'    => (int) ( $sheet['leave_seconds']['sick'] ?? 0 ),
+			);
 			$hol_dept_id = (int) $sheet['holiday_department_id'];
 			$hol_dept    = $hol_dept_id > 0 ? css_tc_addon()->organization->department( $hol_dept_id ) : null;
 			$hol_where   = array(
@@ -197,9 +201,10 @@ class Css_Tc_Reports {
 				'location_id'   => $hol_dept ? (int) $hol_dept['location_id'] : 0,
 				'company_id'    => $hol_dept ? (int) $hol_dept['company_id'] : 0,
 			);
-			if ( $filtered && $holiday > 0 && ! $this->segment_matches( $hol_where, $org ) ) {
-				$holiday = 0;
+			if ( $filtered && array_sum( $nonwork ) > 0 && ! $this->segment_matches( $hol_where, $org ) ) {
+				$nonwork = array_fill_keys( array_keys( $nonwork ), 0 );
 			}
+			$holiday = array_sum( $nonwork ); // All paid, non-worked hours.
 			if ( $filtered && empty( $matched ) && $holiday < 1 ) {
 				continue;
 			}
@@ -253,6 +258,8 @@ class Css_Tc_Reports {
 						'regular'    => 0,
 						'overtime'   => 0,
 						'holiday'    => 0,
+						'pto'        => 0,
+						'sick'       => 0,
 						'total'      => 0,
 					);
 				};
@@ -271,8 +278,10 @@ class Css_Tc_Reports {
 					if ( ! isset( $emp_rows[ $dkey ] ) ) {
 						$emp_rows[ $dkey ] = $new_row( $dkey, $hol_where, '' );
 					}
-					$emp_rows[ $dkey ]['holiday'] += $holiday;
-					$emp_rows[ $dkey ]['total']   += $holiday;
+					foreach ( $nonwork as $code => $sec ) {
+						$emp_rows[ $dkey ][ $code ] += $sec;
+					}
+					$emp_rows[ $dkey ]['total'] += $holiday;
 				}
 				uasort(
 					$emp_rows,
@@ -285,6 +294,8 @@ class Css_Tc_Reports {
 					'regular'  => 0,
 					'overtime' => 0,
 					'holiday'  => 0,
+					'pto'      => 0,
+					'sick'     => 0,
 					'total'    => 0,
 				);
 				foreach ( $emp_rows as $r ) {
@@ -319,7 +330,7 @@ class Css_Tc_Reports {
 						$by_assignment[ $key ]['codes'][ Css_Tc_Pay_Codes::OVERTIME ] += $segment['overtime'];
 					}
 				}
-				if ( $holiday > 0 && isset( $codes[ Css_Tc_Pay_Codes::HOLIDAY ] ) ) {
+				if ( $holiday > 0 ) {
 					$key = $hol_where['department_id'];
 					if ( ! isset( $by_assignment[ $key ] ) ) {
 						$by_assignment[ $key ] = array(
@@ -332,7 +343,11 @@ class Css_Tc_Reports {
 					}
 					$by_assignment[ $key ]['users'][ (int) $user->ID ] = true;
 					$by_assignment[ $key ]['total'] += $holiday;
-					$by_assignment[ $key ]['codes'][ Css_Tc_Pay_Codes::HOLIDAY ] += $holiday;
+					foreach ( $nonwork as $code => $sec ) {
+						if ( isset( $by_assignment[ $key ]['codes'][ $code ] ) ) {
+							$by_assignment[ $key ]['codes'][ $code ] += $sec;
+						}
+					}
 				}
 			}
 			if ( $filtered ) {
@@ -348,11 +363,13 @@ class Css_Tc_Reports {
 						$code_seconds[ Css_Tc_Pay_Codes::OVERTIME ] += $segment['overtime'];
 					}
 				}
-				if ( isset( $code_seconds[ Css_Tc_Pay_Codes::HOLIDAY ] ) ) {
-					$code_seconds[ Css_Tc_Pay_Codes::HOLIDAY ] = $holiday;
+				foreach ( $nonwork as $code => $sec ) {
+					if ( isset( $code_seconds[ $code ] ) ) {
+						$code_seconds[ $code ] = $sec;
+					}
 				}
 			}
-			// Total is paid hours: worked plus holiday. Week columns stay worked hours.
+			// Total is paid hours: worked plus holiday, PTO and sick. Week columns stay worked hours.
 			$total_seconds += $holiday;
 			$attention = array();
 			if ( $sheet['long_shift_count'] > 0 ) {
@@ -563,6 +580,34 @@ class Css_Tc_Reports {
 	}
 
 	/**
+	 * Link to the Reports screen.
+	 *
+	 * @param array<string,mixed> $args Query args.
+	 * @return string
+	 */
+	public static function url( $args = array() ) {
+		$base = Css_Tc_Plugin::aio_is_active()
+			? admin_url( 'admin.php?page=' . self::AIO_SLUG )
+			: admin_url( 'options-general.php?page=' . self::PAGE_SLUG );
+		return empty( $args ) ? $base : add_query_arg( $args, $base );
+	}
+
+	/**
+	 * Link to one employee's used time off.
+	 *
+	 * @param int    $user_id Employee.
+	 * @param string $year    Leave year start (Y-m-d) or ''.
+	 * @return string
+	 */
+	public static function leave_used_url( $user_id, $year = '' ) {
+		$args = array( 'report' => 'leave', 'employee' => (int) $user_id );
+		if ( '' !== $year ) {
+			$args['year'] = $year;
+		}
+		return self::url( $args ) . '#css-tc-leave-used';
+	}
+
+	/**
 	 * Decimal hours for payroll entry, e.g. 8.5.
 	 *
 	 * @param int $seconds Seconds.
@@ -580,7 +625,7 @@ class Css_Tc_Reports {
 	 */
 	public function filters( $source ) {
 		$report = isset( $source['report'] ) ? sanitize_key( wp_unslash( $source['report'] ) ) : 'summary';
-		if ( ! in_array( $report, array( 'summary', 'shifts', 'by_employee' ), true ) ) {
+		if ( ! in_array( $report, array( 'summary', 'shifts', 'by_employee', 'leave' ), true ) ) {
 			$report = 'summary';
 		}
 
@@ -668,12 +713,12 @@ class Css_Tc_Reports {
 	 * @return array<int,array<int,string>>
 	 */
 	private function by_employee_csv_lines( $summary ) {
-		$lines = array( array( 'Employee', 'Company', 'Department', 'Location', 'Shifts', 'Regular (hours)', 'Overtime (hours)', 'Holiday (hours)', 'Total (hours)' ) );
+		$lines = array( array( 'Employee', 'Company', 'Department', 'Location', 'Shifts', 'Regular (hours)', 'Overtime (hours)', 'Holiday (hours)', 'PTO (hours)', 'Sick (hours)', 'Total (hours)' ) );
 		foreach ( $summary['by_employee'] as $emp ) {
 			foreach ( $emp['rows'] as $row ) {
-				$lines[] = array( $emp['name'], $row['company'], $row['department'], $row['location'], (string) $row['shifts'], self::decimal_hours( $row['regular'] ), self::decimal_hours( $row['overtime'] ), self::decimal_hours( $row['holiday'] ), self::decimal_hours( $row['total'] ) );
+				$lines[] = array( $emp['name'], $row['company'], $row['department'], $row['location'], (string) $row['shifts'], self::decimal_hours( $row['regular'] ), self::decimal_hours( $row['overtime'] ), self::decimal_hours( $row['holiday'] ), self::decimal_hours( $row['pto'] ), self::decimal_hours( $row['sick'] ), self::decimal_hours( $row['total'] ) );
 			}
-			$lines[] = array( $emp['name'], 'Total', '', '', (string) $emp['total']['shifts'], self::decimal_hours( $emp['total']['regular'] ), self::decimal_hours( $emp['total']['overtime'] ), self::decimal_hours( $emp['total']['holiday'] ), self::decimal_hours( $emp['total']['total'] ) );
+			$lines[] = array( $emp['name'], 'Total', '', '', (string) $emp['total']['shifts'], self::decimal_hours( $emp['total']['regular'] ), self::decimal_hours( $emp['total']['overtime'] ), self::decimal_hours( $emp['total']['holiday'] ), self::decimal_hours( $emp['total']['pto'] ), self::decimal_hours( $emp['total']['sick'] ), self::decimal_hours( $emp['total']['total'] ) );
 		}
 		return $lines;
 	}

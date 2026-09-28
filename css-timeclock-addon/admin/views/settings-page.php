@@ -28,6 +28,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<a href="<?php echo esc_url( $base_url . '&tab=settings' ); ?>" class="nav-tab <?php echo 'settings' === $tab ? 'nav-tab-active' : ''; ?>">
 			<?php echo esc_html__( 'TC-Config', 'css-timeclock-addon' ); ?>
 		</a>
+		<a href="<?php echo esc_url( $base_url . '&tab=holidays' ); ?>" class="nav-tab <?php echo 'holidays' === $tab ? 'nav-tab-active' : ''; ?>">
+			<?php echo esc_html__( 'Holidays', 'css-timeclock-addon' ); ?>
+		</a>
+		<a href="<?php echo esc_url( $base_url . '&tab=leave' ); ?>" class="nav-tab <?php echo 'leave' === $tab ? 'nav-tab-active' : ''; ?>">
+			<?php echo esc_html__( 'PTO & sick', 'css-timeclock-addon' ); ?>
+		</a>
 		<a href="<?php echo esc_url( $base_url . '&tab=pins' ); ?>" class="nav-tab <?php echo 'pins' === $tab ? 'nav-tab-active' : ''; ?>">
 			<?php echo esc_html__( 'Employee PINs', 'css-timeclock-addon' ); ?>
 		</a>
@@ -44,7 +50,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 	<div class="css-tc-notice" hidden></div>
 
-	<?php if ( 'locations' === $tab ) : ?>
+	<?php if ( 'holidays' === $tab ) : ?>
+		<?php include CSS_TC_ADDON_DIR . 'admin/views/holiday-settings.php'; ?>
+	<?php elseif ( 'leave' === $tab ) : ?>
+		<?php include CSS_TC_ADDON_DIR . 'admin/views/leave-settings.php'; ?>
+	<?php elseif ( 'locations' === $tab ) : ?>
 		<?php include CSS_TC_ADDON_DIR . 'admin/views/organization-tab.php'; ?>
 	<?php endif; ?>
 
@@ -255,54 +265,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 						<p class="description"><?php echo esc_html__( 'Weeks are the pay period’s Monday–Sunday weeks. US federal overtime is 40 hours per 1 week. A 2-week window needs a biweekly pay period. The timecard and reports show Overtime as its own pay code; pay rates are set in your payroll system.', 'css-timeclock-addon' ); ?></p>
 					</td>
 				</tr>
-				<?php
-				$css_tc_observed = isset( $settings['holidays_observed'] ) ? (array) $settings['holidays_observed'] : Css_Tc_Holidays::default_observed();
-				$css_tc_year     = (int) wp_date( 'Y' );
-				$css_tc_preview  = ( new Css_Tc_Holidays( array_merge( $settings, array( 'holidays_enabled' => 1 ) ) ) )->between( $css_tc_year . '-01-01', $css_tc_year . '-12-31' );
-				?>
-				<tr id="holidays">
-					<th scope="row"><?php echo esc_html__( 'Holidays', 'css-timeclock-addon' ); ?></th>
-					<td>
-						<label>
-							<input type="checkbox" name="holidays_enabled" value="1" <?php checked( ! empty( $settings['holidays_enabled'] ) ); ?> />
-							<?php echo esc_html__( 'Pay holidays', 'css-timeclock-addon' ); ?>
-						</label>
-						<p>
-							<label for="holiday_hours"><?php echo esc_html__( 'Hours paid per holiday', 'css-timeclock-addon' ); ?></label>
-							<input name="holiday_hours" id="holiday_hours" type="number" min="0" max="24" step="0.25" value="<?php echo esc_attr( (string) ( isset( $settings['holiday_hours'] ) ? $settings['holiday_hours'] : 8 ) ); ?>" class="small-text" />
-						</p>
-						<fieldset class="css-tc-holiday-list">
-							<legend><?php echo esc_html__( 'Observed holidays', 'css-timeclock-addon' ); ?></legend>
-							<?php foreach ( Css_Tc_Holidays::catalog() as $css_tc_key => $css_tc_def ) : ?>
-								<label>
-									<input type="checkbox" name="holidays_observed[]" value="<?php echo esc_attr( $css_tc_key ); ?>" <?php checked( in_array( $css_tc_key, $css_tc_observed, true ) ); ?> />
-									<?php echo esc_html( $css_tc_def['label'] ); ?>
-								</label>
-							<?php endforeach; ?>
-						</fieldset>
-						<p>
-							<label for="holidays_custom"><?php echo esc_html__( 'Other holidays', 'css-timeclock-addon' ); ?></label><br />
-							<textarea name="holidays_custom" id="holidays_custom" rows="3" class="large-text code" placeholder="<?php echo esc_attr__( "12-24 Christmas Eve\n2026-10-12 Office closed", 'css-timeclock-addon' ); ?>"><?php echo esc_textarea( (string) ( $settings['holidays_custom'] ?? '' ) ); ?></textarea>
-							<span class="description"><?php echo esc_html__( 'One per line: MM-DD Name for every year, or YYYY-MM-DD Name for one date.', 'css-timeclock-addon' ); ?></span>
-						</p>
-						<label>
-							<input type="checkbox" name="holiday_weekend_shift" value="1" <?php checked( ! isset( $settings['holiday_weekend_shift'] ) || ! empty( $settings['holiday_weekend_shift'] ) ); ?> />
-							<?php echo esc_html__( 'When a holiday falls on a weekend, pay it on Friday (Saturday holidays) or Monday (Sunday holidays)', 'css-timeclock-addon' ); ?>
-						</label>
-						<p class="description"><?php echo esc_html__( 'Christmas Eve and New Year\'s Eve always move back to Friday so they do not land on the holiday after them. One-off dates are paid on the date typed.', 'css-timeclock-addon' ); ?></p>
-						<p class="description"><?php echo esc_html__( 'Each eligible employee gets these hours as the Holiday pay code on that day, whether or not they work. Holiday hours do not count toward overtime. Set each employee\'s hire date and introductory period on their user profile; no holiday pay is due before the hire date or during the introductory period.', 'css-timeclock-addon' ); ?></p>
-						<?php if ( ! empty( $css_tc_preview ) ) : ?>
-							<details class="css-tc-holiday-preview">
-								<summary><?php echo esc_html( sprintf( /* translators: %d: year */ __( 'Paid dates in %d', 'css-timeclock-addon' ), $css_tc_year ) ); ?></summary>
-								<ul>
-									<?php foreach ( $css_tc_preview as $css_tc_date => $css_tc_names ) : ?>
-										<li><strong><?php echo esc_html( css_tc_addon()->time->format_day_label( $css_tc_date ) ); ?></strong> — <?php echo esc_html( implode( ', ', $css_tc_names ) ); ?></li>
-									<?php endforeach; ?>
-								</ul>
-							</details>
-						<?php endif; ?>
-					</td>
-				</tr>
 				<tr id="assignments_enabled">
 					<th scope="row"><?php echo esc_html__( 'Departments at clock-in', 'css-timeclock-addon' ); ?></th>
 					<td>
@@ -417,6 +379,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 							<a href="<?php echo esc_url( get_edit_user_link( (int) $user->ID ) . '#css-tc-employment' ); ?>">
 								<?php echo esc_html( '' !== $css_tc_hire ? wp_date( get_option( 'date_format', 'Y-m-d' ), strtotime( $css_tc_hire . ' 12:00:00' ) ) : __( 'Set', 'css-timeclock-addon' ) ); ?>
 							</a>
+							<?php if ( '' !== $css_tc_hire && css_tc_addon()->leave->any_enabled() ) : ?>
+								<?php $css_tc_lb = css_tc_addon()->leave->balances( (int) $user->ID ); ?>
+								<div class="description">
+									<?php
+									$css_tc_lparts = array();
+									foreach ( $css_tc_lb['banks'] as $css_tc_bank => $css_tc_t ) {
+										$css_tc_lparts[] = ( 'pto' === $css_tc_bank ? 'PTO' : __( 'Sick', 'css-timeclock-addon' ) ) . ' ' . Css_Tc_Leave::hours( $css_tc_t['left'] ) . ' ' . __( 'left', 'css-timeclock-addon' );
+									}
+									echo esc_html( implode( ' · ', $css_tc_lparts ) );
+									?>
+								</div>
+							<?php endif; ?>
 							<?php if ( $css_tc_intro > 0 ) : ?>
 								<div class="description">
 									<?php
@@ -496,7 +470,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<?php endif; ?>
 			</tbody>
 		</table>
-	<?php else : ?>
+	<?php elseif ( 'corrections' === $tab ) : ?>
 		<p>
 			<?php echo esc_html__( 'Employees suggest clock-in or clock-out corrections for the current pay period from My Time Clock. Approving writes the AIO-compatible shift and keeps the original times plus who suggested and who approved. A suggestion that would change a closed pay period is rejected. A manager edit from the timecard is saved immediately and listed under Recently reviewed as Edited by manager.', 'css-timeclock-addon' ); ?>
 		</p>

@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.7.0
+Stable tag: 1.8.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,22 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under USOTC.
 
 == Changelog ==
+
+= 1.8.3 =
+* Fix: the Corrections list (Pending and Recently reviewed) showed under the Holidays, PTO & sick and Locations & departments tabs. It now shows only on the Corrections tab.
+
+= 1.8.2 =
+* Holidays moved to their own TC-Config tab (TC-Config · Holidays · PTO & sick · …) with its own Save button. Saving the main TC-Config tab no longer touches holiday settings.
+
+= 1.8.1 =
+* TC-Config → Holidays: each holiday shows when it falls ("Fourth Thursday in November", "July 4", "Friday before Easter Sunday"). Other holidays you type are described too ("Every year on December 24", "One day only: October 12, 2026"), and the paid-dates preview says which rule each date comes from and when a weekend holiday moved to Friday or Monday.
+
+= 1.8.0 =
+* PTO & sick time (TC-Config → PTO & sick, off by default). Each employee's leave year runs from their hire-date anniversary; the whole year's hours are available at the start of the year and unused hours are lost at the anniversary. Separate first-year amounts (default 24 h PTO; sick blank = same as yearly), usable once the introductory period ends. Settings: hours per year, first-year hours, "Sick time comes out of PTO" (one bank), days of notice for PTO (default 14), length of a day off, smallest amount (15 / 30 / 60 min), allow negative balance.
+* My Time Clock → Request time off: balances, a month calendar (holidays, requested and approved days, days blocked by the notice rule or the introductory period), PTO or Sick, full or partial days, a note; cancel pending or future approved requests.
+* USOTC → Time off (with a pending count): approve or deny (reason required), add time off for an employee for a missed day (requires "Employee agreed" and a note; approved at once, notice rule does not apply), who's-out calendar, recent decisions with cancel.
+* PTO Summary at the top of every timecard (total, used, remaining, pending); Used links to that employee's used days (Reports → PTO & sick for managers, Request time off for employees). PTO and Sick pay codes on timecard days and summaries, in total paid hours, and in Reports (columns, By employee, CSV); never counted toward overtime.
+* Reports → PTO & sick tab: PTO summary by employee (also under the pay period summary) with CSV, and each employee's used days per leave year. Employee profile: per-employee hours, balances and logged adjustments. Employees & PINs shows hours left.
 
 = 1.7.0 =
 * Paid holidays (TC-Config → Holidays, off by default): check the holidays the office observes (New Year's Day, Memorial Day, Independence Day, Labor Day, Thanksgiving and Christmas are pre-checked), add others as MM-DD Name (every year) or YYYY-MM-DD Name (one date), and set the hours paid per holiday (default 8). A weekend holiday is paid on Friday (Saturday) or Monday (Sunday); Christmas Eve and New Year's Eve move back to Friday. Each eligible employee gets the Holiday pay code on that day, shown on the timecard day, in the pay code, weekly and company summaries, and in Reports (Holiday column; Total is worked plus holiday). Holiday hours never count toward overtime and are charged to the employee's home department.
