@@ -13,6 +13,7 @@ require_once CSS_TC_ADDON_DIR . 'includes/compat-aio.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-time.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pay-codes.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-overtime.php';
+require_once CSS_TC_ADDON_DIR . 'includes/class-holidays.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pay-periods.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-employees.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-organization.php';
@@ -59,6 +60,11 @@ class Css_Tc_Plugin {
 	public $overtime;
 
 	/**
+	 * @var Css_Tc_Holidays
+	 */
+	public $holidays;
+
+	/**
 	 * @var Css_Tc_Reports
 	 */
 	public $reports;
@@ -103,6 +109,7 @@ class Css_Tc_Plugin {
 		$this->pay_periods = new Css_Tc_Pay_Periods();
 		$this->timecard    = new Css_Tc_Timecard();
 		$this->overtime    = new Css_Tc_Overtime();
+		$this->holidays    = new Css_Tc_Holidays();
 		$this->reports     = new Css_Tc_Reports();
 		$this->organization = new Css_Tc_Organization();
 		$this->employees   = new Css_Tc_Employees();
@@ -157,6 +164,11 @@ class Css_Tc_Plugin {
 			'overtime_scope'          => 'combined',
 			'assignments_enabled'     => 0,
 			'switch_enabled'          => 1,
+			'holidays_enabled'        => 0,
+			'holiday_hours'           => 8,
+			'holidays_observed'       => Css_Tc_Holidays::default_observed(),
+			'holidays_custom'         => '',
+			'holiday_weekend_shift'   => 1,
 			'wide_layout'             => 1,
 		);
 	}
@@ -397,6 +409,7 @@ class Css_Tc_Plugin {
 		Css_Tc_Admin::register();
 		$this->reports->register_hooks();
 		$this->organization->register_hooks();
+		$this->holidays->register_hooks();
 		Css_Tc_Shortcodes::register();
 	}
 

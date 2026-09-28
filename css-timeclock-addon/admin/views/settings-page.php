@@ -52,34 +52,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<form class="css-tc-settings-form" method="post" action="">
 			<table class="form-table" role="presentation">
 				<tr>
-					<th scope="row"><?php echo esc_html__( 'PIN kiosk', 'css-timeclock-addon' ); ?></th>
+					<th scope="row"><?php echo esc_html__( 'Time clock kiosk', 'css-timeclock-addon' ); ?></th>
 					<td>
 						<label>
 							<input type="checkbox" name="pin_kiosk_enabled" value="1" <?php checked( ! empty( $settings['pin_kiosk_enabled'] ) ); ?> />
-							<?php echo esc_html__( 'Enable the PIN pad kiosk', 'css-timeclock-addon' ); ?>
+							<?php echo esc_html__( 'Enable the time clock kiosk', 'css-timeclock-addon' ); ?>
 						</label>
+						<p class="description"><?php echo esc_html__( 'The main time clock page. Employees type their PIN, or tap their name in the Who\'s working list and then enter their PIN. This replaces the separate name-list kiosk; its old page now opens this one.', 'css-timeclock-addon' ); ?></p>
 						<p class="description">
 							<?php echo esc_html__( 'Shortcode:', 'css-timeclock-addon' ); ?>
 							<code>[css_tc_pin_kiosk]</code>
 							<?php if ( $pin_page ) : ?>
-								— <a href="<?php echo esc_url( $pin_page ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html__( 'Open PIN kiosk page', 'css-timeclock-addon' ); ?></a>
-							<?php endif; ?>
-						</p>
-					</td>
-				</tr>
-				<tr>
-					<th scope="row"><?php echo esc_html__( 'Name-list kiosk', 'css-timeclock-addon' ); ?></th>
-					<td>
-						<label>
-							<input type="checkbox" name="name_kiosk_enabled" value="1" <?php checked( ! empty( $settings['name_kiosk_enabled'] ) ); ?> />
-							<?php echo esc_html__( 'Enable the name-list kiosk', 'css-timeclock-addon' ); ?>
-						</label>
-						<p class="description">
-							<?php echo esc_html__( 'Shortcode:', 'css-timeclock-addon' ); ?>
-							<code>[css_tc_name_kiosk]</code>
-							<?php echo esc_html__( 'Phase 1 always asks for a PIN after a name is tapped.', 'css-timeclock-addon' ); ?>
-							<?php if ( $name_page ) : ?>
-								— <a href="<?php echo esc_url( $name_page ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html__( 'Open name kiosk page', 'css-timeclock-addon' ); ?></a>
+								— <a href="<?php echo esc_url( $pin_page ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html__( 'Open the time clock', 'css-timeclock-addon' ); ?></a>
 							<?php endif; ?>
 						</p>
 					</td>
@@ -271,6 +255,54 @@ if ( ! defined( 'ABSPATH' ) ) {
 						<p class="description"><?php echo esc_html__( 'Weeks are the pay period’s Monday–Sunday weeks. US federal overtime is 40 hours per 1 week. A 2-week window needs a biweekly pay period. The timecard and reports show Overtime as its own pay code; pay rates are set in your payroll system.', 'css-timeclock-addon' ); ?></p>
 					</td>
 				</tr>
+				<?php
+				$css_tc_observed = isset( $settings['holidays_observed'] ) ? (array) $settings['holidays_observed'] : Css_Tc_Holidays::default_observed();
+				$css_tc_year     = (int) wp_date( 'Y' );
+				$css_tc_preview  = ( new Css_Tc_Holidays( array_merge( $settings, array( 'holidays_enabled' => 1 ) ) ) )->between( $css_tc_year . '-01-01', $css_tc_year . '-12-31' );
+				?>
+				<tr id="holidays">
+					<th scope="row"><?php echo esc_html__( 'Holidays', 'css-timeclock-addon' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="holidays_enabled" value="1" <?php checked( ! empty( $settings['holidays_enabled'] ) ); ?> />
+							<?php echo esc_html__( 'Pay holidays', 'css-timeclock-addon' ); ?>
+						</label>
+						<p>
+							<label for="holiday_hours"><?php echo esc_html__( 'Hours paid per holiday', 'css-timeclock-addon' ); ?></label>
+							<input name="holiday_hours" id="holiday_hours" type="number" min="0" max="24" step="0.25" value="<?php echo esc_attr( (string) ( isset( $settings['holiday_hours'] ) ? $settings['holiday_hours'] : 8 ) ); ?>" class="small-text" />
+						</p>
+						<fieldset class="css-tc-holiday-list">
+							<legend><?php echo esc_html__( 'Observed holidays', 'css-timeclock-addon' ); ?></legend>
+							<?php foreach ( Css_Tc_Holidays::catalog() as $css_tc_key => $css_tc_def ) : ?>
+								<label>
+									<input type="checkbox" name="holidays_observed[]" value="<?php echo esc_attr( $css_tc_key ); ?>" <?php checked( in_array( $css_tc_key, $css_tc_observed, true ) ); ?> />
+									<?php echo esc_html( $css_tc_def['label'] ); ?>
+								</label>
+							<?php endforeach; ?>
+						</fieldset>
+						<p>
+							<label for="holidays_custom"><?php echo esc_html__( 'Other holidays', 'css-timeclock-addon' ); ?></label><br />
+							<textarea name="holidays_custom" id="holidays_custom" rows="3" class="large-text code" placeholder="<?php echo esc_attr__( "12-24 Christmas Eve\n2026-10-12 Office closed", 'css-timeclock-addon' ); ?>"><?php echo esc_textarea( (string) ( $settings['holidays_custom'] ?? '' ) ); ?></textarea>
+							<span class="description"><?php echo esc_html__( 'One per line: MM-DD Name for every year, or YYYY-MM-DD Name for one date.', 'css-timeclock-addon' ); ?></span>
+						</p>
+						<label>
+							<input type="checkbox" name="holiday_weekend_shift" value="1" <?php checked( ! isset( $settings['holiday_weekend_shift'] ) || ! empty( $settings['holiday_weekend_shift'] ) ); ?> />
+							<?php echo esc_html__( 'When a holiday falls on a weekend, pay it on Friday (Saturday holidays) or Monday (Sunday holidays)', 'css-timeclock-addon' ); ?>
+						</label>
+						<p class="description"><?php echo esc_html__( 'Christmas Eve and New Year\'s Eve always move back to Friday so they do not land on the holiday after them. One-off dates are paid on the date typed.', 'css-timeclock-addon' ); ?></p>
+						<p class="description"><?php echo esc_html__( 'Each eligible employee gets these hours as the Holiday pay code on that day, whether or not they work. Holiday hours do not count toward overtime. Set each employee\'s hire date and introductory period on their user profile; no holiday pay is due before the hire date or during the introductory period.', 'css-timeclock-addon' ); ?></p>
+						<?php if ( ! empty( $css_tc_preview ) ) : ?>
+							<details class="css-tc-holiday-preview">
+								<summary><?php echo esc_html( sprintf( /* translators: %d: year */ __( 'Paid dates in %d', 'css-timeclock-addon' ), $css_tc_year ) ); ?></summary>
+								<ul>
+									<?php foreach ( $css_tc_preview as $css_tc_date => $css_tc_names ) : ?>
+										<li><strong><?php echo esc_html( css_tc_addon()->time->format_day_label( $css_tc_date ) ); ?></strong> — <?php echo esc_html( implode( ', ', $css_tc_names ) ); ?></li>
+									<?php endforeach; ?>
+								</ul>
+							</details>
+						<?php endif; ?>
+					</td>
+				</tr>
 				<tr id="assignments_enabled">
 					<th scope="row"><?php echo esc_html__( 'Departments at clock-in', 'css-timeclock-addon' ); ?></th>
 					<td>
@@ -348,6 +380,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<tr>
 					<th><?php echo esc_html__( 'Employee', 'css-timeclock-addon' ); ?></th>
 					<th><?php echo esc_html__( 'Role', 'css-timeclock-addon' ); ?></th>
+					<th><?php echo esc_html__( 'Hire date', 'css-timeclock-addon' ); ?></th>
 					<th><?php echo esc_html__( 'PIN status', 'css-timeclock-addon' ); ?></th>
 					<th><?php echo esc_html__( 'PIN', 'css-timeclock-addon' ); ?></th>
 					<th><?php echo esc_html__( 'Set PIN', 'css-timeclock-addon' ); ?></th>
@@ -356,7 +389,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<tbody>
 			<?php if ( empty( $employees ) ) : ?>
 				<tr>
-					<td colspan="5">
+					<td colspan="6">
 						<?php echo esc_html__( 'No time-clock employees found. Create WordPress users with the Employee, Volunteer, Manager, or Contractor role (the roles AIO Lite uses).', 'css-timeclock-addon' ); ?>
 					</td>
 				</tr>
@@ -375,6 +408,29 @@ if ( ! defined( 'ABSPATH' ) ) {
 							</div>
 						</td>
 						<td><?php echo esc_html( $roles ); ?></td>
+						<td class="css-tc-hire">
+							<?php
+							$css_tc_hire  = css_tc_addon()->holidays->hire_date( (int) $user->ID );
+							$css_tc_intro = css_tc_addon()->holidays->intro_days( (int) $user->ID );
+							$css_tc_from  = css_tc_addon()->holidays->eligible_from( (int) $user->ID );
+							?>
+							<a href="<?php echo esc_url( get_edit_user_link( (int) $user->ID ) . '#css-tc-employment' ); ?>">
+								<?php echo esc_html( '' !== $css_tc_hire ? wp_date( get_option( 'date_format', 'Y-m-d' ), strtotime( $css_tc_hire . ' 12:00:00' ) ) : __( 'Set', 'css-timeclock-addon' ) ); ?>
+							</a>
+							<?php if ( $css_tc_intro > 0 ) : ?>
+								<div class="description">
+									<?php
+									echo esc_html(
+										$css_tc_from > wp_date( 'Y-m-d' )
+											/* translators: 1: days, 2: date */
+											? sprintf( __( '%1$d-day intro · holiday pay from %2$s', 'css-timeclock-addon' ), $css_tc_intro, wp_date( get_option( 'date_format', 'Y-m-d' ), strtotime( $css_tc_from . ' 12:00:00' ) ) )
+											/* translators: %d: days */
+											: sprintf( __( '%d-day intro complete', 'css-timeclock-addon' ), $css_tc_intro )
+									);
+									?>
+								</div>
+							<?php endif; ?>
+						</td>
 						<td class="css-tc-pin-status">
 							<?php if ( $has_pin ) : ?>
 								<span class="css-tc-pill css-tc-pill-set"><?php echo esc_html__( 'Set', 'css-timeclock-addon' ); ?></span>

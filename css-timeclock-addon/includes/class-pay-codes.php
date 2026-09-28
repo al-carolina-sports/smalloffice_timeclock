@@ -2,7 +2,8 @@
 /**
  * Pay codes for timecard summaries.
  *
- * Regular is the only built-in code. Holiday and others can be added with the
+ * Regular is always on. Overtime and Holiday appear when their settings are on;
+ * others can be added with the
  * css_tc_pay_codes and css_tc_shift_pay_code filters. Overtime is added when
  * the admin turns on the overtime rule (see Css_Tc_Overtime).
  *
@@ -20,6 +21,7 @@ class Css_Tc_Pay_Codes {
 
 	const REGULAR  = 'regular';
 	const OVERTIME = 'overtime';
+	const HOLIDAY  = 'holiday';
 
 	/**
 	 * @return array<string,array{label:string,order:int}>
@@ -38,8 +40,15 @@ class Css_Tc_Pay_Codes {
 			);
 		}
 
+		if ( css_tc_addon()->holidays->enabled() ) {
+			$codes[ self::HOLIDAY ] = array(
+				'label' => __( 'Holiday', 'css-timeclock-addon' ),
+				'order' => 30,
+			);
+		}
+
 		/**
-		 * Register additional pay codes (for example Holiday).
+		 * Register additional pay codes.
 		 *
 		 * @param array<string,array{label:string,order:int}> $codes Code slug => definition.
 		 */

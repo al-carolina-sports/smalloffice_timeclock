@@ -663,7 +663,9 @@ class Css_Tc_Punches {
 	}
 
 	/**
-	 * Public kiosk board: display names + in/out (+ clock-in time). No IDs, emails, or PINs.
+	 * Public kiosk board: display names + in/out (+ clock-in time), and the
+	 * user ID so a tapped name opens the PIN pad for that person (the PIN is
+	 * still required). No emails or PINs.
 	 *
 	 * @return array{working:array<int,array<string,string>>,out:array<int,array<string,string>>,working_count:int,out_count:int,generated_at:string}
 	 */
@@ -707,7 +709,9 @@ class Css_Tc_Punches {
 		foreach ( $employees as $emp ) {
 			$id  = (int) $emp['id'];
 			$row = array(
-				'name' => (string) $emp['name'],
+				'id'       => $id,
+				'name'     => (string) $emp['name'],
+				'greeting' => css_tc_addon()->employees->greeting_name( $id ),
 			);
 			if ( isset( $open[ $id ] ) ) {
 				$row['clock_in_time'] = $open[ $id ]['clock_in_time'];

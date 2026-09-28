@@ -69,6 +69,15 @@
         overtime_scope: form.overtime_scope ? form.overtime_scope.value : "combined",
         assignments_enabled: form.assignments_enabled && form.assignments_enabled.checked ? 1 : 0,
         switch_enabled: form.switch_enabled && form.switch_enabled.checked ? 1 : 0,
+        holidays_enabled: form.holidays_enabled && form.holidays_enabled.checked ? 1 : 0,
+        holiday_hours: form.holiday_hours ? form.holiday_hours.value : 8,
+        holidays_observed: Array.prototype.map
+          .call(form.querySelectorAll('input[name="holidays_observed[]"]:checked'), function (el) {
+            return el.value;
+          })
+          .join(","),
+        holidays_custom: form.holidays_custom ? form.holidays_custom.value : "",
+        holiday_weekend_shift: form.holiday_weekend_shift && form.holiday_weekend_shift.checked ? 1 : 0,
       };
       post("css_tc_save_settings", data)
         .then(function (result) {

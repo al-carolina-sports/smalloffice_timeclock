@@ -188,9 +188,23 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 			<h2><?php echo esc_html__( 'Pay Period Summary', 'css-timeclock-addon' ); ?></h2>
 			<p class="css-tc-card__range"><?php echo esc_html( $period['range'] ); ?></p>
 			<p class="css-tc-card__total">
-				<span class="css-tc-card__hours"><?php echo esc_html( $sheet['total_hm'] ); ?></span>
+				<span class="css-tc-card__hours"><?php echo esc_html( ! empty( $sheet['holiday_seconds'] ) ? $sheet['paid_hm'] : $sheet['total_hm'] ); ?></span>
 				<span class="css-tc-card__unit"><?php echo esc_html__( 'Total Hours', 'css-timeclock-addon' ); ?></span>
 			</p>
+			<?php if ( ! empty( $sheet['holiday_seconds'] ) ) : ?>
+				<p class="css-tc-card__range">
+					<?php
+					echo esc_html(
+						sprintf(
+							/* translators: 1: worked H:MM, 2: holiday H:MM */
+							__( '%1$s worked + %2$s holiday', 'css-timeclock-addon' ),
+							$sheet['total_hm'],
+							css_tc_addon()->time->format_duration( (int) $sheet['holiday_seconds'] )
+						)
+					);
+					?>
+				</p>
+			<?php endif; ?>
 		</section>
 		<section class="css-tc-card">
 			<h2><?php echo esc_html__( 'Pay Code Summary', 'css-timeclock-addon' ); ?></h2>
@@ -211,6 +225,9 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 								<?php echo esc_html( css_tc_addon()->time->format_duration( $css_tc_co['total'] ) . ' HRS' ); ?>
 								<?php if ( $css_tc_co['overtime'] > 0 ) : ?>
 									<span class="css-tc-card__range"><?php echo esc_html( sprintf( /* translators: %s: overtime H:MM */ __( 'incl. %s OT', 'css-timeclock-addon' ), css_tc_addon()->time->format_duration( $css_tc_co['overtime'] ) ) ); ?></span>
+								<?php endif; ?>
+								<?php if ( ! empty( $css_tc_co['holiday'] ) ) : ?>
+									<span class="css-tc-card__range"><?php echo esc_html( sprintf( /* translators: %s: holiday H:MM */ __( '+ %s holiday', 'css-timeclock-addon' ), css_tc_addon()->time->format_duration( (int) $css_tc_co['holiday'] ) ) ); ?></span>
 								<?php endif; ?>
 							</span>
 						</li>
@@ -240,6 +257,14 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 									?>
 								</span>
 							<?php endif; ?>
+							<?php if ( ! empty( $week['holiday_seconds'] ) ) : ?>
+								<span class="css-tc-card__range">
+									<?php
+									/* translators: %s: holiday hours H:MM */
+									echo esc_html( sprintf( __( '+ %s holiday', 'css-timeclock-addon' ), $week['holiday_hm'] ) );
+									?>
+								</span>
+							<?php endif; ?>
 						</span>
 					</li>
 				<?php endforeach; ?>
@@ -266,7 +291,7 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 				<?php foreach ( $week['days'] as $day ) : ?>
 					<?php
 					$day_classes = 'css-tc-day';
-					if ( empty( $day['shifts'] ) && ! $day['has_time'] ) {
+					if ( empty( $day['shifts'] ) && ! $day['has_time'] && empty( $day['holiday'] ) ) {
 						$day_classes .= ' is-empty';
 					}
 					if ( ! empty( $day['is_today'] ) ) {
@@ -277,6 +302,9 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 					}
 					if ( ! empty( $day['has_long'] ) ) {
 						$day_classes .= ' is-long';
+					}
+					if ( ! empty( $day['holiday'] ) ) {
+						$day_classes .= ' is-holiday';
 					}
 					if ( 'admin' === $mode && $edit_day === $day['date'] ) {
 						$day_classes .= ' is-editing';
@@ -370,6 +398,16 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 									<?php endif; ?>
 								<?php else : ?>
 									<span class="css-tc-day__status"><?php echo esc_html( $day['status_label'] ); ?></span>
+								<?php endif; ?>
+							</p>
+						<?php endif; ?>
+						<?php if ( ! empty( $day['holiday'] ) ) : ?>
+							<p class="css-tc-day__holiday">
+								<span class="css-tc-day__holiday-name"><?php echo esc_html( $day['holiday'] ); ?></span>
+								<?php if ( '' !== $day['holiday_hm'] ) : ?>
+									<span class="css-tc-day__holiday-hours"><?php echo esc_html( sprintf( /* translators: %s: H:MM */ __( '%s holiday pay', 'css-timeclock-addon' ), $day['holiday_hm'] ) ); ?></span>
+								<?php elseif ( '' !== $day['holiday_note'] ) : ?>
+									<span class="css-tc-day__holiday-note"><?php echo esc_html( $day['holiday_note'] ); ?></span>
 								<?php endif; ?>
 							</p>
 						<?php endif; ?>

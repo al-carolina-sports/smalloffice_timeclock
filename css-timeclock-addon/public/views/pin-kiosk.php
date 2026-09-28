@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<span class="css-tc-kiosk__mark" aria-hidden="true"></span>
 			<div>
 				<p class="css-tc-kiosk__eyebrow"><?php echo esc_html__( 'Time clock', 'css-timeclock-addon' ); ?></p>
-				<h1 class="css-tc-kiosk__title"><?php echo esc_html__( 'Clock in with your PIN', 'css-timeclock-addon' ); ?></h1>
+				<h1 class="css-tc-kiosk__title"><?php echo esc_html__( 'Enter your PIN or tap your name', 'css-timeclock-addon' ); ?></h1>
 			</div>
 		</div>
 		<div class="css-tc-kiosk__aside">
@@ -31,13 +31,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<?php if ( ! $enabled ) : ?>
 		<div class="css-tc-kiosk__stage">
 			<div class="css-tc-kiosk__panel css-tc-kiosk__panel--message">
-				<p><?php echo esc_html__( 'This PIN kiosk is turned off. A supervisor can enable it under USOTC.', 'css-timeclock-addon' ); ?></p>
+				<p><?php echo esc_html__( 'This time clock is turned off. A supervisor can enable it under USOTC.', 'css-timeclock-addon' ); ?></p>
 			</div>
 		</div>
 	<?php else : ?>
 		<div class="css-tc-kiosk__stage" data-role="stage">
 			<section class="css-tc-kiosk__panel" data-screen="pin" hidden>
 				<p class="css-tc-kiosk__prompt" data-role="pin-prompt"><?php echo esc_html__( 'Enter your PIN', 'css-timeclock-addon' ); ?></p>
+				<p class="css-tc-kiosk__hint" data-role="pin-hint"><?php echo esc_html__( 'or tap your name in the list', 'css-timeclock-addon' ); ?></p>
 				<p class="css-tc-kiosk__dots" data-role="pin-dots" aria-live="polite"></p>
 				<p class="css-tc-kiosk__error" data-role="error" hidden></p>
 				<div class="css-tc-pad" data-role="pad">
@@ -55,6 +56,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<button type="button" class="css-tc-pad__key css-tc-pad__key--ghost" data-action="back"><?php echo esc_html__( 'Back', 'css-timeclock-addon' ); ?></button>
 				</div>
 				<button type="button" class="css-tc-btn css-tc-btn--in css-tc-btn--wide" data-action="submit-pin"><?php echo esc_html__( 'Continue', 'css-timeclock-addon' ); ?></button>
+				<button type="button" class="css-tc-btn css-tc-btn--text" data-action="cancel" data-role="pin-cancel" hidden><?php echo esc_html__( 'Not you? Cancel', 'css-timeclock-addon' ); ?></button>
 			</section>
 
 			<section class="css-tc-kiosk__panel" data-screen="action" hidden>
