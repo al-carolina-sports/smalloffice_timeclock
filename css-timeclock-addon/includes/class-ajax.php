@@ -454,7 +454,7 @@ class Css_Tc_Ajax {
 
 		wp_send_json_success(
 			array(
-				'message'  => __( 'PIN saved. The digits are stored as a hash only.', 'css-timeclock-addon' ),
+				'message'  => __( 'PIN saved.', 'css-timeclock-addon' ),
 				'user_id'  => $user_id,
 				'has_pin'  => true,
 				'set_at'   => wp_date( get_option( 'date_format', 'Y-m-d' ) . ' ' . get_option( 'time_format', 'g:i a' ) ),

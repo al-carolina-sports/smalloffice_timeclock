@@ -159,7 +159,9 @@
       return;
     }
     var strings = cfg.strings || {};
-    input.type = revealed ? "text" : "password";
+    // A text field masked with CSS, not type=password, so password managers
+    // do not autofill or replace the PIN.
+    input.classList.toggle("is-masked", !revealed);
     toggle.setAttribute("aria-pressed", revealed ? "true" : "false");
     toggle.setAttribute("aria-label", revealed ? strings.hidePin || "Hide PIN" : strings.showPin || "Show PIN");
   }
@@ -174,7 +176,27 @@
           event.preventDefault();
         });
         toggle.addEventListener("click", function () {
-          setPinRevealed(input, toggle, input.type === "password");
+          setPinRevealed(input, toggle, input.classList.contains("is-masked"));
+        });
+      }
+
+      var rowMsg = form.querySelector(".css-tc-pin-row-msg");
+      function rowNotice(message, isError) {
+        if (!rowMsg) {
+          return;
+        }
+        rowMsg.hidden = !message;
+        rowMsg.textContent = message || "";
+        rowMsg.classList.toggle("is-error", !!isError);
+      }
+      if (input) {
+        input.addEventListener("input", function () {
+          // Keep digits only, so a stray character never reaches the server.
+          var digits = input.value.replace(/\D+/g, "");
+          if (digits !== input.value) {
+            input.value = digits;
+          }
+          rowNotice("");
         });
       }
 
@@ -189,9 +211,11 @@
             }
             updateStatus(form.closest("tr"), true);
             notice(result.message || (cfg.strings && cfg.strings.saved));
+            rowNotice(result.message || (cfg.strings && cfg.strings.saved) || "Saved.");
           })
           .catch(function (err) {
             notice(err.message, true);
+            rowNotice(err.message, true);
           });
       });
 

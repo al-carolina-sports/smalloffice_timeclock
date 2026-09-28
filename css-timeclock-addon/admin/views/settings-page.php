@@ -362,7 +362,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 								<?php $pin_input_id = 'css-tc-pin-' . (int) $user->ID; ?>
 								<label class="screen-reader-text" for="<?php echo esc_attr( $pin_input_id ); ?>"><?php echo esc_html__( 'New PIN', 'css-timeclock-addon' ); ?></label>
 								<span class="css-tc-pin-field">
-									<input id="<?php echo esc_attr( $pin_input_id ); ?>" class="css-tc-pin-input" type="password" inputmode="numeric" autocomplete="new-password" maxlength="12" pattern="[0-9]*" />
+									<input id="<?php echo esc_attr( $pin_input_id ); ?>" class="css-tc-pin-input is-masked" type="text" inputmode="numeric" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="12" pattern="[0-9]*" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" />
 									<button type="button" class="css-tc-pin-toggle" aria-pressed="false" aria-controls="<?php echo esc_attr( $pin_input_id ); ?>" aria-label="<?php echo esc_attr__( 'Show PIN', 'css-timeclock-addon' ); ?>">
 										<svg class="css-tc-pin-toggle__show" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
 											<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2" />
@@ -377,6 +377,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 								</span>
 								<button type="submit" class="button button-primary"><?php echo esc_html__( 'Save PIN', 'css-timeclock-addon' ); ?></button>
 								<button type="button" class="button css-tc-clear-pin" <?php disabled( ! $has_pin ); ?>><?php echo esc_html__( 'Clear', 'css-timeclock-addon' ); ?></button>
+								<span class="css-tc-pin-row-msg" role="status" aria-live="polite" hidden></span>
 							</form>
 						</td>
 					</tr>

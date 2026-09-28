@@ -303,3 +303,21 @@
 .css-tc-admin .css-tc-pin-reveal [hidden] {
 	display: none !important;
 }
+
+/* PIN entry: masked text field (not type=password, so password managers stay out) */
+.css-tc-admin .css-tc-pin-input.is-masked {
+	-webkit-text-security: disc;
+	text-security: disc;
+}
+.css-tc-admin .css-tc-pin-row-msg {
+	display: inline-block;
+	margin-left: 8px;
+	color: #00a32a;
+	font-weight: 600;
+}
+.css-tc-admin .css-tc-pin-row-msg.is-error {
+	color: #b32d2e;
+}
+.css-tc-admin .css-tc-pin-row-msg[hidden] {
+	display: none;
+}
