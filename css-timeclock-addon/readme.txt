@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.5.0
+Stable tag: 1.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,25 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under SMOTC.
 
 == Changelog ==
+
+= 1.6.0 =
+* Companies, locations and departments. SMOTC → Locations & departments sets up companies (employers, one payroll each), locations (offices, with their office network IP addresses) and departments (inside a location, owned by one company). "Import AIO departments" builds this from AIO department names written as Location-Department (for example Raleigh-CSS) and assigns employees.
+* Employee assignments on the user profile: tick every department an employee can clock into and mark one as home.
+* Kiosk department picker, turned on by "Ask which department at clock-in, and allow Switch" in Kiosk settings (off by default, so single-site installs see no change). The location comes from the kiosk page (shortcode attribute location="Raleigh"), else the office network, so a desk computer on the office network works when a tablet is down; otherwise the employee picks. Employees only see their assigned departments, home first; with one choice the question is skipped.
+* Cleaner admin menu under the time clock: Timecards, Reports, Who's working, Corrections (with pending count), Employees & PINs, Locations & departments, Settings, and Base clock settings (AIO, administrators only) last. AIO's Employees and Shifts pages, and AIO's Departments page and Users → Department while SMOTC departments are on, are removed from the menu and closed (Shifts edited punches without the correction audit trail). The duplicate Settings → SMOTC entry is gone.
+* Reports → Pay period summary has a "By employee" section: each employee's hours split by company, department and location (shifts, Regular, Overtime, Total) with a subtotal per employee, following the report filters, with its own CSV.
+* Fix: the Set PIN box is a masked text field instead of a password field, so password managers no longer autofill or replace the PIN (which made saves fail with "PIN must be 4 to 8 digits"). Only digits can be typed, and the save result or error now shows next to that row's Save PIN button.
+* Fix: scripts and styles are versioned by install time, so browsers and WP Engine's cache load the new files after every update (the PIN eye was running old cached code).
+* A manager can choose "No home department" on an employee's profile; the kiosk then lists their choices alphabetically with no Home badge.
+* With departments at clock-in on, AIO's single-choice "Department" list is removed from the user profile so only "Time clock departments" shows (saved with Update User).
+* Fix: saving a user profile with an AIO department selected no longer crashes the site. AIO Lite's department taxonomy names a count function it never defines (aio_lite_update_department_count); SMOTC now provides it when AIO does not.
+* Employee PINs tab has a PIN column: managers press the eye to reveal an employee's PIN (hidden again after 20 seconds), and employees can reveal their own PIN on My Time Clock. New PINs are also stored encrypted with a key derived from the site's wp-config.php secret keys; the kiosk still checks the password hash. Each reveal is logged and the last viewer is shown. PINs set before this version show "Set a new PIN to view it".
+* Switch has its own setting, "Allow Switch" (on by default when departments at clock-in is on). Turned off, the Switch button and the "Switch to <office>" prompt are hidden and switch requests are refused, so employees clock out and back in to change departments.
+* Switch: a clocked-in employee can move to another company, location or department in one tap. The open shift ends and the new one starts at the same second. Entering a PIN at a different office while still clocked in offers "Switch to <location>". Missed clock-out and long-shift checks count from the start of the chain. Travel between offices stays in the first segment.
+* A per-employee punch lock stops two taps or two kiosks from opening two shifts.
+* Timecards show company · department · location on every segment, hours by company, and overtime per company. Managers can change a segment's department in the day editor; employees can request a department change as a correction. Both are recorded.
+* Overtime setting "With more than one company": add up hours across companies (default; overtime is charged to the company whose hours crossed the limit) or count each company separately.
+* Reports filter and total by company, location and department. Filtering by company gives that company's payroll CSV. Shift detail shows where each segment was worked, switches, and clock-ins made from another office. Real Time Monitoring and the who's-working board show where people are working.
 
 = 1.5.0 =
 * Overtime setting under SMOTC settings: "Hours worked after X hours per 1 or 2 weeks are overtime." Off by default. US federal overtime is 40 hours per 1 week; other countries or averaging rules can use a different number of hours or a 2-week window (biweekly pay period only). Weeks are the pay period's Monday–Sunday weeks. Timecards show Overtime as its own pay code, with the overtime included in each week's total.

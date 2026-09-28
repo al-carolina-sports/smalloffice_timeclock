@@ -279,7 +279,7 @@ class Css_Tc_Shortcodes {
 			'css-tc-wide-layout',
 			CSS_TC_ADDON_URL . 'public/css/wide-layout.css',
 			array(),
-			CSS_TC_ADDON_VERSION
+			CSS_TC_ADDON_ASSET_VERSION
 		);
 	}
 
@@ -312,7 +312,8 @@ class Css_Tc_Shortcodes {
 	 * @return string
 	 */
 	public static function pin_kiosk( $atts ) {
-		unset( $atts );
+		$atts     = shortcode_atts( array( 'location' => '' ), $atts, 'css_tc_pin_kiosk' );
+		$location = self::location_attr( (string) $atts['location'] );
 		$settings = css_tc_addon()->get_settings();
 		self::enqueue_assets();
 
@@ -328,7 +329,8 @@ class Css_Tc_Shortcodes {
 	 * @return string
 	 */
 	public static function name_kiosk( $atts ) {
-		unset( $atts );
+		$atts     = shortcode_atts( array( 'location' => '' ), $atts, 'css_tc_name_kiosk' );
+		$location = self::location_attr( (string) $atts['location'] );
 		$settings = css_tc_addon()->get_settings();
 		self::enqueue_assets();
 
@@ -337,6 +339,29 @@ class Css_Tc_Shortcodes {
 		$mode    = 'name';
 		include CSS_TC_ADDON_DIR . 'public/views/name-kiosk.php';
 		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Kiosk page location from the shortcode attribute: an ID or a name.
+	 *
+	 * @param string $value Attribute value.
+	 * @return int Location ID or 0.
+	 */
+	private static function location_attr( $value ) {
+		$value = trim( $value );
+		if ( '' === $value ) {
+			return 0;
+		}
+		$org = css_tc_addon()->organization;
+		if ( ctype_digit( $value ) && $org->location( (int) $value ) ) {
+			return (int) $value;
+		}
+		foreach ( $org->locations() as $row ) {
+			if ( 0 === strcasecmp( (string) $row['name'], $value ) ) {
+				return (int) $row['id'];
+			}
+		}
+		return 0;
 	}
 
 	/**
@@ -549,13 +574,13 @@ class Css_Tc_Shortcodes {
 			'css-tc-times',
 			CSS_TC_ADDON_URL . 'public/css/times.css',
 			array(),
-			CSS_TC_ADDON_VERSION
+			CSS_TC_ADDON_ASSET_VERSION
 		);
 		wp_enqueue_style(
 			'css-tc-timecard',
 			CSS_TC_ADDON_URL . 'public/css/timecard.css',
 			array( 'css-tc-times' ),
-			CSS_TC_ADDON_VERSION
+			CSS_TC_ADDON_ASSET_VERSION
 		);
 
 		if ( ! is_user_logged_in() || ! css_tc_addon()->employees->can_view_own_times( get_current_user_id() ) ) {
@@ -566,7 +591,7 @@ class Css_Tc_Shortcodes {
 			'css-tc-timecard',
 			CSS_TC_ADDON_URL . 'public/js/timecard.js',
 			array(),
-			CSS_TC_ADDON_VERSION,
+			CSS_TC_ADDON_ASSET_VERSION,
 			true
 		);
 	}
@@ -586,14 +611,14 @@ class Css_Tc_Shortcodes {
 			'css-tc-kiosk',
 			CSS_TC_ADDON_URL . 'public/css/kiosk.css',
 			array(),
-			CSS_TC_ADDON_VERSION
+			CSS_TC_ADDON_ASSET_VERSION
 		);
 
 		wp_enqueue_script(
 			'css-tc-kiosk',
 			CSS_TC_ADDON_URL . 'public/js/kiosk.js',
 			array(),
-			CSS_TC_ADDON_VERSION,
+			CSS_TC_ADDON_ASSET_VERSION,
 			true
 		);
 
@@ -633,6 +658,13 @@ class Css_Tc_Shortcodes {
 					'everyoneIn'     => __( 'Everyone is clocked in.', 'css-timeclock-addon' ),
 					'updatedAt'      => __( 'Updated', 'css-timeclock-addon' ),
 					'boardError'     => __( 'Could not load who is working.', 'css-timeclock-addon' ),
+					'chooseWhere'    => __( 'Where are you working?', 'css-timeclock-addon' ),
+					'switchTo'       => __( 'Switch to…', 'css-timeclock-addon' ),
+					'switchAway'     => __( 'You are still clocked in at %1$s. Switch to %2$s?', 'css-timeclock-addon' ),
+					'workingAt'      => __( 'Working:', 'css-timeclock-addon' ),
+					'successSwitch'  => __( 'Switched.', 'css-timeclock-addon' ),
+					'notHere'        => __( 'You are not set up for this location. Pick where you are working.', 'css-timeclock-addon' ),
+					'home'           => __( 'Home', 'css-timeclock-addon' ),
 				),
 			)
 		);

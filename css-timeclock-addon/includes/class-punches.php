@@ -132,13 +132,15 @@ class Css_Tc_Punches {
 			}
 			// An open shift older than the configured maximum is a missed
 			// clock-out, not a current clock-in. Leave the row open so a
-			// correction can close it.
-			if ( $this->is_stale_open_shift( $clock_in ) ) {
+			// correction can close it. A switched segment counts from the
+			// start of the chain, so switching does not reset the clock.
+			if ( $this->is_stale_open_shift( $this->stale_basis( (int) $post->ID, (string) $clock_in ) ) ) {
 				continue;
 			}
 			$result['open_shift_id'] = (int) $post->ID;
 			$result['is_clocked_in'] = true;
 			$result['clock_in_time'] = $this->format_time( (string) $clock_in );
+			$result['clock_in_raw']  = (string) $clock_in;
 			break;
 		}
 
@@ -154,15 +156,91 @@ class Css_Tc_Punches {
 	 * @param string $source  pin_kiosk|name_kiosk.
 	 * @return array<string,mixed>|WP_Error
 	 */
-	public function clock_in( $user_id, $source = 'pin_kiosk' ) {
+	public function clock_in( $user_id, $source = 'pin_kiosk', $department_id = 0 ) {
 		$user_id = (int) $user_id;
-		$open    = $this->open_shift_for( $user_id );
-
-		if ( $open['is_clocked_in'] ) {
-			return new WP_Error( 'css_tc_already_in', __( 'You are already clocked in.', 'css-timeclock-addon' ) );
+		if ( ! $this->lock( $user_id ) ) {
+			return new WP_Error( 'css_tc_busy', __( 'Another punch for you is being saved. Try again in a moment.', 'css-timeclock-addon' ) );
 		}
+		try {
+			$open = $this->open_shift_for( $user_id );
+			if ( $open['is_clocked_in'] ) {
+				return new WP_Error( 'css_tc_already_in', __( 'You are already clocked in.', 'css-timeclock-addon' ) );
+			}
+			return $this->open_segment( $user_id, $source, $department_id, $this->current_mysql_time(), 0 );
+		} finally {
+			$this->unlock( $user_id );
+		}
+	}
 
-		$now = $this->current_mysql_time();
+	/**
+	 * Move from the open shift to another department in one step: the open
+	 * shift ends and the new one starts at the same second.
+	 *
+	 * @param int    $user_id       Employee.
+	 * @param string $source        Kiosk source.
+	 * @param int    $department_id New department.
+	 * @return array<string,mixed>|WP_Error
+	 */
+	public function switch_to( $user_id, $source, $department_id ) {
+		$user_id = (int) $user_id;
+		if ( ! $this->lock( $user_id ) ) {
+			return new WP_Error( 'css_tc_busy', __( 'Another punch for you is being saved. Try again in a moment.', 'css-timeclock-addon' ) );
+		}
+		try {
+			$open = $this->open_shift_for( $user_id );
+			if ( ! $open['is_clocked_in'] || $open['open_shift_id'] < 1 ) {
+				return new WP_Error( 'css_tc_not_in', __( 'You are not clocked in.', 'css-timeclock-addon' ) );
+			}
+			$old_id = (int) $open['open_shift_id'];
+			$org    = css_tc_addon()->organization;
+			$before = $org->shift_assignment( $old_id );
+			if ( (int) $before['department_id'] === (int) $department_id ) {
+				return new WP_Error( 'css_tc_same_department', __( 'You are already clocked in there.', 'css-timeclock-addon' ) );
+			}
+
+			$now       = $this->current_mysql_time();
+			$old_in    = (string) get_post_meta( $old_id, 'employee_clock_in_time', true );
+			$chain     = (string) get_post_meta( $old_id, 'css_tc_chain_start', true );
+			$chain     = '' !== $chain ? $chain : $old_in;
+			update_post_meta( $old_id, 'employee_clock_out_time', $now );
+			add_post_meta( $old_id, 'ip_address_out', $this->client_ip(), true );
+			add_post_meta( $old_id, 'css_tc_kiosk_source_out', 'switch', true );
+
+			$result = $this->open_segment( $user_id, $source, $department_id, $now, $old_id, $chain );
+			if ( is_wp_error( $result ) ) {
+				// Put the old shift back the way it was.
+				update_post_meta( $old_id, 'employee_clock_out_time', '' );
+				delete_post_meta( $old_id, 'ip_address_out' );
+				delete_post_meta( $old_id, 'css_tc_kiosk_source_out' );
+				return $result;
+			}
+			update_post_meta( $old_id, 'css_tc_chain_next', (int) $result['shift_id'] );
+
+			/** This action is documented in clock_out(). */
+			do_action( 'css_tc_after_clock_out', $old_id, $user_id, 'switch' );
+
+			$result['action']        = 'switch';
+			$result['from_label']    = $before['label'];
+			$result['from_total']    = $this->elapsed_label( $old_in, $now );
+			return $result;
+		} finally {
+			$this->unlock( $user_id );
+		}
+	}
+
+	/**
+	 * Insert an open shift starting at $start.
+	 *
+	 * @param int    $user_id       Employee.
+	 * @param string $source        Kiosk source.
+	 * @param int    $department_id Department or 0.
+	 * @param string $start         Stored UTC clock-in.
+	 * @param int    $prev_id       Shift this one continues (Switch), or 0.
+	 * @param string $chain_start   Clock-in of the first shift in the chain.
+	 * @return array<string,mixed>|WP_Error
+	 */
+	private function open_segment( $user_id, $source, $department_id, $start, $prev_id = 0, $chain_start = '' ) {
+		$now = $start;
 
 		$shift_id = wp_insert_post(
 			array(
@@ -191,6 +269,14 @@ class Css_Tc_Punches {
 		add_post_meta( $shift_id, 'ip_address_in', $this->client_ip(), true );
 		add_post_meta( $shift_id, 'css_tc_kiosk_source', sanitize_key( $source ), true );
 
+		if ( (int) $department_id > 0 ) {
+			css_tc_addon()->organization->stamp_shift( (int) $shift_id, (int) $department_id );
+		}
+		if ( (int) $prev_id > 0 ) {
+			update_post_meta( $shift_id, 'css_tc_chain_prev', (int) $prev_id );
+			update_post_meta( $shift_id, 'css_tc_chain_start', (string) $chain_start );
+		}
+
 		/**
 		 * Fires after a kiosk clock-in writes an AIO-compatible shift.
 		 *
@@ -208,6 +294,7 @@ class Css_Tc_Punches {
 			'is_clocked_in' => true,
 			'clock_in_time' => $this->format_time( $now ),
 			'time_total'    => '',
+			'assignment'    => (int) $department_id > 0 ? css_tc_addon()->organization->shift_assignment( (int) $shift_id )['label'] : '',
 		);
 	}
 
@@ -220,7 +307,23 @@ class Css_Tc_Punches {
 	 */
 	public function clock_out( $user_id, $source = 'pin_kiosk' ) {
 		$user_id = (int) $user_id;
-		$open    = $this->open_shift_for( $user_id );
+		if ( ! $this->lock( $user_id ) ) {
+			return new WP_Error( 'css_tc_busy', __( 'Another punch for you is being saved. Try again in a moment.', 'css-timeclock-addon' ) );
+		}
+		try {
+			return $this->close_open_shift( $user_id, $source );
+		} finally {
+			$this->unlock( $user_id );
+		}
+	}
+
+	/**
+	 * @param int    $user_id Employee.
+	 * @param string $source  Kiosk source.
+	 * @return array<string,mixed>|WP_Error
+	 */
+	private function close_open_shift( $user_id, $source ) {
+		$open = $this->open_shift_for( $user_id );
 
 		if ( ! $open['is_clocked_in'] || $open['open_shift_id'] < 1 ) {
 			return new WP_Error( 'css_tc_not_in', __( 'You are not clocked in.', 'css-timeclock-addon' ) );
@@ -252,7 +355,85 @@ class Css_Tc_Punches {
 			'clock_in_time'  => $this->format_time( (string) $clock_in ),
 			'clock_out_time' => $this->format_time( $now ),
 			'time_total'     => $this->elapsed_label( (string) $clock_in, $now ),
+			'assignment'     => css_tc_addon()->organization->shift_assignment( $shift_id )['label'],
 		);
+	}
+
+	/**
+	 * Per-employee punch lock so two taps (or two kiosks) cannot open two
+	 * shifts. add_option() is an INSERT on a unique key, so only one request
+	 * gets the lock. A lock older than 30 seconds is treated as abandoned.
+	 *
+	 * @param int $user_id Employee.
+	 * @return bool
+	 */
+	private function lock( $user_id ) {
+		global $wpdb;
+		$key = 'css_tc_punch_lock_' . (int) $user_id;
+		for ( $try = 0; $try < 20; $try++ ) {
+			// INSERT IGNORE on the unique option_name: exactly one request
+			// inserts the row. add_option() is not safe here because it turns
+			// a duplicate into an UPDATE and still reports success.
+			$inserted = $wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'no')", $key, (string) time() ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			if ( 1 === (int) $inserted ) {
+				return true;
+			}
+			$held = (int) $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $key ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			if ( $held > 0 && time() - $held > 30 ) {
+				$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value = %s", $key, (string) $held ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+				continue;
+			}
+			usleep( 150000 );
+		}
+		return false;
+	}
+
+	/**
+	 * @param int $user_id Employee.
+	 * @return void
+	 */
+	private function unlock( $user_id ) {
+		global $wpdb;
+		$wpdb->delete( $wpdb->options, array( 'option_name' => 'css_tc_punch_lock_' . (int) $user_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+	}
+
+	/**
+	 * After a segment's clock-in changes, point every later segment of the
+	 * same switch chain at the (possibly new) first clock-in.
+	 *
+	 * @param int $shift_id Any segment in the chain.
+	 * @return void
+	 */
+	public function restamp_chain( $shift_id ) {
+		$root  = (int) $shift_id;
+		$guard = 0;
+		while ( $guard++ < 50 ) {
+			$prev = (int) get_post_meta( $root, 'css_tc_chain_prev', true );
+			if ( $prev < 1 || ! get_post( $prev ) ) {
+				break;
+			}
+			$root = $prev;
+		}
+		$start = (string) get_post_meta( $root, 'employee_clock_in_time', true );
+		$next  = (int) get_post_meta( $root, 'css_tc_chain_next', true );
+		$guard = 0;
+		while ( $next > 0 && get_post( $next ) && $guard++ < 50 ) {
+			update_post_meta( $next, 'css_tc_chain_start', $start );
+			$next = (int) get_post_meta( $next, 'css_tc_chain_next', true );
+		}
+	}
+
+	/**
+	 * Clock-in used for missed clock-out checks: the chain start for a
+	 * switched segment, else the segment's own clock-in.
+	 *
+	 * @param int    $shift_id Shift.
+	 * @param string $clock_in Segment clock-in.
+	 * @return string
+	 */
+	public function stale_basis( $shift_id, $clock_in ) {
+		$chain = (string) get_post_meta( (int) $shift_id, 'css_tc_chain_start', true );
+		return '' !== $chain ? $chain : (string) $clock_in;
 	}
 
 	/**
@@ -336,12 +517,13 @@ class Css_Tc_Punches {
 				if ( ! $this->is_open_shift_meta( $clock_in, $clock_out ) ) {
 					continue;
 				}
-				if ( $this->is_stale_open_shift( $clock_in ) ) {
+				if ( $this->is_stale_open_shift( $this->stale_basis( (int) $post->ID, (string) $clock_in ) ) ) {
 					continue;
 				}
 
 				$map[ $author ] = array(
 					'clock_in_time' => $this->format_board_time( (string) $clock_in ),
+					'shift_id'      => (int) $post->ID,
 				);
 			}
 		}
@@ -438,7 +620,9 @@ class Css_Tc_Punches {
 			'shift_id'     => (int) $post->ID,
 			'user_id'      => $author,
 			'name'         => css_tc_addon()->employees->display_name( $author ),
-			'department'   => css_tc_addon()->employees->department( $author ),
+			'department'   => css_tc_addon()->organization->enabled()
+				? css_tc_addon()->organization->shift_assignment( (int) $post->ID )['label']
+				: css_tc_addon()->employees->department( $author ),
 			'clock_in'     => $time->format_site( $clock_in, 'F j, Y, g:i A' ),
 			'elapsed'      => $time->format_duration( $age ),
 			'ip'           => $ip,
@@ -527,7 +711,11 @@ class Css_Tc_Punches {
 			);
 			if ( isset( $open[ $id ] ) ) {
 				$row['clock_in_time'] = $open[ $id ]['clock_in_time'];
-				$working[]            = $row;
+				if ( css_tc_addon()->organization->enabled() && ! empty( $open[ $id ]['shift_id'] ) ) {
+					$where       = css_tc_addon()->organization->shift_assignment( (int) $open[ $id ]['shift_id'] );
+					$row['where'] = '' !== $where['location'] ? $where['location'] : '';
+				}
+				$working[] = $row;
 			} else {
 				$out[] = $row;
 			}
@@ -726,7 +914,9 @@ class Css_Tc_Punches {
 
 		$is_open       = $has_in && ! $has_out;
 		$is_missing_in = ( ! $has_in && $has_out );
-		$is_stale      = $is_open && $this->is_stale_open_shift( $clock_in );
+		$is_stale      = $is_open && $this->is_stale_open_shift( $this->stale_basis( (int) $post->ID, $clock_in ) );
+		$assignment    = css_tc_addon()->organization->shift_assignment( (int) $post->ID );
+		$chain_start   = (string) get_post_meta( $post->ID, 'css_tc_chain_start', true );
 		$in_day        = $has_in ? $time->site_date_of( $clock_in ) : '';
 		$out_day       = $has_out ? $time->site_date_of( $clock_out ) : '';
 		$work_date     = '' !== $in_day ? $in_day : $out_day;
@@ -755,6 +945,13 @@ class Css_Tc_Punches {
 			'is_missing_in'     => $is_missing_in,
 			'is_long'           => $is_long,
 			'is_out_before_in'  => $is_out_before_in,
+			'department_id'     => (int) $assignment['department_id'],
+			'location_id'       => (int) $assignment['location_id'],
+			'company_id'        => (int) $assignment['company_id'],
+			'assignment'        => (string) $assignment['label'],
+			'switched'          => (int) get_post_meta( $post->ID, 'css_tc_chain_prev', true ) > 0,
+			'chain_key'         => '' !== $chain_start ? $chain_start : ( $has_in ? $clock_in : 'shift-' . (int) $post->ID ),
+			'punched_at'        => (int) get_post_meta( $post->ID, 'css_tc_punched_at_location', true ),
 		);
 	}
 
@@ -805,6 +1002,10 @@ class Css_Tc_Punches {
 			update_post_meta( $shift_id, 'css_tc_approved_by', (int) $audit['approved_by'] );
 		}
 		update_post_meta( $shift_id, 'css_tc_approved_at', $this->current_mysql_time() );
+
+		if ( '' !== $clock_in && $clock_in !== $old_in && ( get_post_meta( $shift_id, 'css_tc_chain_next', true ) || get_post_meta( $shift_id, 'css_tc_chain_prev', true ) ) ) {
+			$this->restamp_chain( $shift_id );
+		}
 
 		$this->bust_roster_cache();
 

@@ -65,6 +65,9 @@
         overtime_enabled: form.overtime_enabled && form.overtime_enabled.checked ? 1 : 0,
         overtime_hours: form.overtime_hours ? form.overtime_hours.value : 40,
         overtime_weeks: form.overtime_weeks ? form.overtime_weeks.value : 1,
+        overtime_scope: form.overtime_scope ? form.overtime_scope.value : "combined",
+        assignments_enabled: form.assignments_enabled && form.assignments_enabled.checked ? 1 : 0,
+        switch_enabled: form.switch_enabled && form.switch_enabled.checked ? 1 : 0,
       };
       post("css_tc_save_settings", data)
         .then(function (result) {
@@ -89,7 +92,56 @@
     }
   }
 
+  function resetReveal(row, hasPin, viewable) {
+    var mask = row.querySelector("[data-pin-mask]");
+    var btn = row.querySelector(".css-tc-pin-reveal-btn");
+    var note = row.querySelector(".css-tc-pin-note");
+    if (mask) {
+      mask.textContent = hasPin ? "••••" : "—";
+    }
+    if (btn) {
+      btn.hidden = !viewable;
+      btn.setAttribute("aria-pressed", "false");
+      btn.setAttribute("aria-label", (cfg.strings && cfg.strings.showPin) || "Show PIN");
+    }
+    if (note) {
+      note.hidden = !(hasPin && !viewable);
+    }
+  }
+
+  function bindReveal() {
+    document.querySelectorAll(".css-tc-pin-reveal-btn").forEach(function (btn) {
+      var timer = null;
+      btn.addEventListener("click", function () {
+        var row = btn.closest("tr");
+        var mask = row ? row.querySelector("[data-pin-mask]") : null;
+        if (!mask) {
+          return;
+        }
+        if (btn.getAttribute("aria-pressed") === "true") {
+          window.clearTimeout(timer);
+          resetReveal(row, true, true);
+          return;
+        }
+        post("css_tc_reveal_pin", { user_id: btn.getAttribute("data-user-id") })
+          .then(function (data) {
+            mask.textContent = data.pin || "";
+            btn.setAttribute("aria-pressed", "true");
+            btn.setAttribute("aria-label", (cfg.strings && cfg.strings.hidePin) || "Hide PIN");
+            window.clearTimeout(timer);
+            timer = window.setTimeout(function () {
+              resetReveal(row, true, true);
+            }, 20000);
+          })
+          .catch(function (err) {
+            notice(err.message, true);
+          });
+      });
+    });
+  }
+
   function updateStatus(row, hasPin) {
+    resetReveal(row, hasPin, hasPin);
     var cell = row.querySelector(".css-tc-pin-status");
     var clearBtn = row.querySelector(".css-tc-clear-pin");
     if (cell) {
@@ -107,7 +159,9 @@
       return;
     }
     var strings = cfg.strings || {};
-    input.type = revealed ? "text" : "password";
+    // A text field masked with CSS, not type=password, so password managers
+    // do not autofill or replace the PIN.
+    input.classList.toggle("is-masked", !revealed);
     toggle.setAttribute("aria-pressed", revealed ? "true" : "false");
     toggle.setAttribute("aria-label", revealed ? strings.hidePin || "Hide PIN" : strings.showPin || "Show PIN");
   }
@@ -122,7 +176,27 @@
           event.preventDefault();
         });
         toggle.addEventListener("click", function () {
-          setPinRevealed(input, toggle, input.type === "password");
+          setPinRevealed(input, toggle, input.classList.contains("is-masked"));
+        });
+      }
+
+      var rowMsg = form.querySelector(".css-tc-pin-row-msg");
+      function rowNotice(message, isError) {
+        if (!rowMsg) {
+          return;
+        }
+        rowMsg.hidden = !message;
+        rowMsg.textContent = message || "";
+        rowMsg.classList.toggle("is-error", !!isError);
+      }
+      if (input) {
+        input.addEventListener("input", function () {
+          // Keep digits only, so a stray character never reaches the server.
+          var digits = input.value.replace(/\D+/g, "");
+          if (digits !== input.value) {
+            input.value = digits;
+          }
+          rowNotice("");
         });
       }
 
@@ -137,9 +211,11 @@
             }
             updateStatus(form.closest("tr"), true);
             notice(result.message || (cfg.strings && cfg.strings.saved));
+            rowNotice(result.message || (cfg.strings && cfg.strings.saved) || "Saved.");
           })
           .catch(function (err) {
             notice(err.message, true);
+            rowNotice(err.message, true);
           });
       });
 
@@ -214,6 +290,7 @@
   document.addEventListener("DOMContentLoaded", function () {
     bindSettings();
     bindPins();
+    bindReveal();
     bindCorrections();
   });
 })();

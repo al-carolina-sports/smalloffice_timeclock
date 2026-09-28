@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 ?>
-<div class="css-tc-kiosk" data-kiosk="pin" data-enabled="<?php echo $enabled ? '1' : '0'; ?>">
+<div class="css-tc-kiosk" data-kiosk="pin" data-enabled="<?php echo $enabled ? '1' : '0'; ?>" data-location="<?php echo esc_attr( (string) (int) $location ); ?>">
 	<div class="css-tc-kiosk__chrome">
 		<div class="css-tc-kiosk__brand">
 			<span class="css-tc-kiosk__mark" aria-hidden="true"></span>
@@ -64,6 +64,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<div class="css-tc-kiosk__actions">
 					<button type="button" class="css-tc-btn css-tc-btn--in" data-action="clock_in"><?php echo esc_html__( 'Clock in', 'css-timeclock-addon' ); ?></button>
 					<button type="button" class="css-tc-btn css-tc-btn--out" data-action="clock_out"><?php echo esc_html__( 'Clock out', 'css-timeclock-addon' ); ?></button>
+					<button type="button" class="css-tc-btn css-tc-btn--switch" data-action="show-switch" hidden><?php echo esc_html__( 'Switch', 'css-timeclock-addon' ); ?></button>
+				</div>
+				<div class="css-tc-kiosk__choices" data-role="choices" hidden>
+					<p class="css-tc-kiosk__choices-title" data-role="choices-title"></p>
+					<div class="css-tc-kiosk__choice-list" data-role="choice-list"></div>
 				</div>
 				<button type="button" class="css-tc-btn css-tc-btn--text" data-action="cancel"><?php echo esc_html__( 'Cancel', 'css-timeclock-addon' ); ?></button>
 			</section>

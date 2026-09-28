@@ -170,7 +170,7 @@
       if (person.clock_in_time) {
         var time = document.createElement("span");
         time.className = "css-tc-board__time";
-        time.textContent = person.clock_in_time;
+        time.textContent = person.where ? person.where + " · " + person.clock_in_time : person.clock_in_time;
         li.appendChild(time);
       }
       list.appendChild(li);
@@ -267,6 +267,9 @@
     this.busy = false;
     this.resetTimer = null;
     this.selectedName = "";
+    this.location = parseInt(root.getAttribute("data-location") || "0", 10) || 0;
+    this.assign = null;
+    this.choiceMode = "";
 
     this.stage = $(root, '[data-role="stage"]');
     this.screens = {
@@ -296,6 +299,7 @@
       var digit = button.getAttribute("data-digit");
       var action = button.getAttribute("data-action");
       var employee = button.getAttribute("data-employee");
+      var department = button.getAttribute("data-department");
 
       if (digit) {
         self.addDigit(digit);
@@ -309,6 +313,10 @@
         self.reset();
       } else if (action === "clock_in" || action === "clock_out") {
         self.punch(action);
+      } else if (action === "show-switch") {
+        self.showChoices("switch");
+      } else if (department) {
+        self.punch(self.choiceMode === "switch" ? "switch" : "clock_in", parseInt(department, 10));
       } else if (employee) {
         self.chooseEmployee(parseInt(employee, 10), button.getAttribute("data-name") || "");
       }
@@ -476,7 +484,7 @@
       return;
     }
     this.busy = true;
-    var payload = { pin: this.pin, kiosk: this.mode };
+    var payload = { pin: this.pin, kiosk: this.mode, location: this.location };
     if (this.userId) {
       payload.user_id = this.userId;
     }
@@ -512,15 +520,103 @@
 
     var inBtn = $(this.root, '[data-action="clock_in"]');
     var outBtn = $(this.root, '[data-action="clock_out"]');
+    var switchBtn = $(this.root, '[data-action="show-switch"]');
     if (inBtn) {
       inBtn.disabled = !!data.is_clocked_in;
+      show(inBtn, true);
     }
     if (outBtn) {
       outBtn.disabled = !data.is_clocked_in;
+      show(outBtn, true);
+    }
+    show(switchBtn, false);
+    show($(this.root, '[data-role="choices"]'), false);
+    this.choiceMode = "";
+
+    var assign = data.assign || {};
+    this.assign = assign.enabled ? assign : null;
+    if (!this.assign) {
+      return;
+    }
+
+    if (data.is_clocked_in) {
+      if (assign.current) {
+        text(
+          $(this.root, '[data-role="status"]'),
+          (strings.workingAt || "Working:") + " " + assign.current + " · " + (strings.workingSince || "since") + " " + (data.clock_in_time || "")
+        );
+      }
+      if (assign["switch"] && assign["switch"].length) {
+        show(switchBtn, true);
+      }
+      if (assign.away && assign["switch"] && assign["switch"].length) {
+        this.showChoices("switch");
+      }
+      return;
+    }
+
+    if (assign.needs_choice) {
+      show(inBtn, false);
+      show(outBtn, false);
+      this.showChoices("in");
+    } else if (assign.choices && assign.choices.length === 1) {
+      var only = assign.choices[0];
+      text($(this.root, '[data-role="status"]'), only.company + " · " + only.department + " · " + only.location);
     }
   };
 
-  Kiosk.prototype.punch = function (clockAction) {
+  Kiosk.prototype.showChoices = function (mode) {
+    var assign = this.assign || {};
+    var list = mode === "switch" ? assign["switch"] || [] : assign.choices || [];
+    var box = $(this.root, '[data-role="choices"]');
+    var holder = $(this.root, '[data-role="choice-list"]');
+    if (!box || !holder) {
+      return;
+    }
+    this.choiceMode = mode;
+    var title = mode === "switch" ? strings.switchTo || "Switch to…" : strings.chooseWhere || "Where are you working?";
+    if (mode === "switch" && assign.away && assign.location && assign.location.name) {
+      title = (strings.switchAway || "You are still clocked in at %1$s. Switch to %2$s?")
+        .replace("%1$s", assign.current || "")
+        .replace("%2$s", assign.location.name);
+    } else if (!assign.at_location && assign.location && assign.location.id) {
+      title = strings.notHere || title;
+    }
+    text($(this.root, '[data-role="choices-title"]'), title);
+
+    holder.innerHTML = "";
+    var lastLocation = null;
+    var grouped = !assign.at_location;
+    list.forEach(function (choice) {
+      if (grouped && choice.location !== lastLocation) {
+        var head = document.createElement("p");
+        head.className = "css-tc-choice__group";
+        head.textContent = choice.location;
+        holder.appendChild(head);
+        lastLocation = choice.location;
+      }
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "css-tc-choice";
+      button.setAttribute("data-department", String(choice.department_id));
+      var company = document.createElement("strong");
+      company.textContent = choice.company;
+      button.appendChild(company);
+      var where = document.createElement("span");
+      where.textContent = choice.department + " · " + choice.location;
+      button.appendChild(where);
+      if (choice.is_home) {
+        var badge = document.createElement("em");
+        badge.textContent = strings.home || "Home";
+        button.appendChild(badge);
+      }
+      holder.appendChild(button);
+    });
+    show(box, true);
+    show($(this.root, '[data-action="show-switch"]'), false);
+  };
+
+  Kiosk.prototype.punch = function (clockAction, departmentId) {
     var self = this;
     if (this.busy) {
       return;
@@ -530,7 +626,11 @@
       pin: this.pin,
       kiosk: this.mode,
       clock_action: clockAction,
+      location: this.location,
     };
+    if (departmentId) {
+      payload.department_id = departmentId;
+    }
     if (this.userId) {
       payload.user_id = this.userId;
     }
@@ -556,8 +656,14 @@
     this.showScreen("success");
     var title =
       data.action === "clock_out" ? strings.successOut || "You are clocked out." : strings.successIn || "You are clocked in.";
+    if (data.action === "switch") {
+      title = strings.successSwitch || "Switched.";
+    }
     text($(this.root, '[data-role="success-title"]'), title);
     var detail = data.name || "";
+    if (data.assignment) {
+      detail += (detail ? " · " : "") + data.assignment;
+    }
     if (data.time_total) {
       detail += (detail ? " · " : "") + (strings.shiftTotal || "Shift time") + " " + data.time_total;
     } else if (data.clock_in_time) {
@@ -581,7 +687,10 @@
     this.userId = 0;
     this.busy = false;
     this.selectedName = "";
+    this.assign = null;
+    this.choiceMode = "";
     this.updateDots();
+    show($(this.root, '[data-role="choices"]'), false);
     show($(this.root, '[data-role="error"]'), false);
     show($(this.root, '[data-role="action-error"]'), false);
     var search = $(this.root, '[data-role="search"]');

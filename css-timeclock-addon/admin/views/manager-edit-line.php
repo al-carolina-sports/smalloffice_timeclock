@@ -49,6 +49,28 @@ $css_tc_shift_hours = '' !== $css_tc_problem['short'] ? $css_tc_problem['short']
 		<span><?php echo esc_html__( 'Clock out', 'css-timeclock-addon' ); ?></span>
 		<input type="time" step="1" name="lines[<?php echo esc_attr( $key ); ?>][proposed_out]" value="<?php echo esc_attr( (string) $line['out_hms'] ); ?>" />
 	</label>
+	<?php
+	$css_tc_org_view = css_tc_addon()->organization;
+	if ( $css_tc_org_view->enabled() ) :
+		$css_tc_dept_now = isset( $line['department_id'] ) ? (int) $line['department_id'] : 0;
+		if ( $css_tc_dept_now < 1 && (int) $line['id'] < 1 ) {
+			$css_tc_dept_now = $css_tc_org_view->home( (int) $user_id );
+		}
+		$css_tc_mine = $css_tc_org_view->assigned( (int) $user_id );
+		?>
+		<label class="css-tc-correct__dept">
+			<span><?php echo esc_html__( 'Worked in', 'css-timeclock-addon' ); ?></span>
+			<select name="lines[<?php echo esc_attr( $key ); ?>][department_id]">
+				<?php if ( $css_tc_dept_now < 1 ) : ?>
+					<option value="0" selected><?php echo esc_html__( 'Not set', 'css-timeclock-addon' ); ?></option>
+				<?php endif; ?>
+				<?php foreach ( $css_tc_org_view->departments() as $css_tc_opt_row ) : ?>
+					<?php $css_tc_opt = (int) $css_tc_opt_row['id']; ?>
+					<option value="<?php echo esc_attr( (string) $css_tc_opt ); ?>" <?php selected( $css_tc_dept_now, $css_tc_opt ); ?>><?php echo esc_html( $css_tc_org_view->company_name( (int) $css_tc_opt_row['company_id'] ) . ' · ' . $css_tc_org_view->label( $css_tc_opt ) . ( in_array( $css_tc_opt, $css_tc_mine, true ) ? '' : ' ' . __( '(not assigned)', 'css-timeclock-addon' ) ) ); ?></option>
+				<?php endforeach; ?>
+			</select>
+		</label>
+	<?php endif; ?>
 	<div class="css-tc-correct__pair">
 		<label class="css-tc-correct__check">
 			<input type="checkbox" name="lines[<?php echo esc_attr( $key ); ?>][out_next_day]" value="1" <?php checked( ! empty( $line['out_next_day'] ) ); ?> />

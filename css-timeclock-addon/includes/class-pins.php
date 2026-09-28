@@ -15,8 +15,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Css_Tc_Pins {
 
-	const META_HASH = 'css_tc_pin_hash';
-	const META_SET  = 'css_tc_pin_set_at';
+	const META_HASH    = 'css_tc_pin_hash';
+	const META_SET     = 'css_tc_pin_set_at';
+	const META_ENC     = 'css_tc_pin_enc';
+	const META_REVEALS = 'css_tc_pin_reveals';
 
 	/**
 	 * @param int $user_id User ID.
@@ -94,7 +96,111 @@ class Css_Tc_Pins {
 		update_user_meta( $user_id, self::META_HASH, $hash );
 		update_user_meta( $user_id, self::META_SET, time() );
 
+		// Encrypted copy so managers and the employee can reveal the PIN.
+		// The hash above is still what the kiosk checks.
+		$enc = $this->encrypt( $pin );
+		if ( '' !== $enc ) {
+			update_user_meta( $user_id, self::META_ENC, $enc );
+		} else {
+			delete_user_meta( $user_id, self::META_ENC );
+		}
+
 		return true;
+	}
+
+	/**
+	 * 32-byte key derived from this site's secret keys in wp-config.php.
+	 * Changing those keys makes stored PINs unreadable (they then need a reset).
+	 *
+	 * @return string
+	 */
+	private function key() {
+		return hash( 'sha256', wp_salt( 'auth' ) . '|css_tc_pin', true );
+	}
+
+	/**
+	 * @param string $pin Plain PIN.
+	 * @return string base64(nonce . ciphertext), or '' when encryption is unavailable.
+	 */
+	private function encrypt( $pin ) {
+		if ( ! function_exists( 'sodium_crypto_secretbox' ) ) {
+			return '';
+		}
+		try {
+			$nonce = random_bytes( SODIUM_CRYPTO_SECRETBOX_NONCEBYTES );
+			return base64_encode( $nonce . sodium_crypto_secretbox( (string) $pin, $nonce, $this->key() ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+		} catch ( Exception $e ) {
+			return '';
+		}
+	}
+
+	/**
+	 * @param string $blob Stored value.
+	 * @return string Plain PIN or ''.
+	 */
+	private function decrypt( $blob ) {
+		if ( ! function_exists( 'sodium_crypto_secretbox_open' ) || '' === (string) $blob ) {
+			return '';
+		}
+		$raw = base64_decode( (string) $blob, true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
+		if ( false === $raw || strlen( $raw ) <= SODIUM_CRYPTO_SECRETBOX_NONCEBYTES ) {
+			return '';
+		}
+		try {
+			$plain = sodium_crypto_secretbox_open( substr( $raw, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES ), substr( $raw, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES ), $this->key() );
+		} catch ( Exception $e ) {
+			return '';
+		}
+		return false === $plain ? '' : (string) $plain;
+	}
+
+	/**
+	 * Whether this employee's PIN can be shown (set since reveal was added).
+	 *
+	 * @param int $user_id Employee.
+	 * @return bool
+	 */
+	public function is_viewable( $user_id ) {
+		return self::user_has_pin( $user_id ) && '' !== (string) get_user_meta( (int) $user_id, self::META_ENC, true );
+	}
+
+	/**
+	 * Return the PIN and record who looked.
+	 *
+	 * @param int $user_id   Employee whose PIN is shown.
+	 * @param int $viewer_id Who is looking.
+	 * @return string|WP_Error
+	 */
+	public function reveal( $user_id, $viewer_id ) {
+		if ( ! self::user_has_pin( $user_id ) ) {
+			return new WP_Error( 'css_tc_no_pin', __( 'No PIN is set.', 'css-timeclock-addon' ) );
+		}
+		$pin = $this->decrypt( (string) get_user_meta( (int) $user_id, self::META_ENC, true ) );
+		if ( '' === $pin || ! wp_check_password( $pin, (string) get_user_meta( (int) $user_id, self::META_HASH, true ) ) ) {
+			return new WP_Error( 'css_tc_pin_hidden', __( 'This PIN was set before PINs could be shown. Set a new PIN to view it.', 'css-timeclock-addon' ) );
+		}
+		$log = get_user_meta( (int) $user_id, self::META_REVEALS, true );
+		$log = is_array( $log ) ? $log : array();
+		array_unshift(
+			$log,
+			array(
+				'by' => (int) $viewer_id,
+				'at' => time(),
+			)
+		);
+		update_user_meta( (int) $user_id, self::META_REVEALS, array_slice( $log, 0, 20 ) );
+		return $pin;
+	}
+
+	/**
+	 * Most recent reveal: who and when.
+	 *
+	 * @param int $user_id Employee.
+	 * @return array{by:int,at:int}|null
+	 */
+	public function last_reveal( $user_id ) {
+		$log = get_user_meta( (int) $user_id, self::META_REVEALS, true );
+		return ( is_array( $log ) && ! empty( $log[0]['at'] ) ) ? $log[0] : null;
 	}
 
 	/**
@@ -104,6 +210,7 @@ class Css_Tc_Pins {
 	public function clear_pin( $user_id ) {
 		delete_user_meta( (int) $user_id, self::META_HASH );
 		delete_user_meta( (int) $user_id, self::META_SET );
+		delete_user_meta( (int) $user_id, self::META_ENC );
 	}
 
 	/**

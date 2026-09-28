@@ -43,7 +43,10 @@ class Css_Tc_Overtime {
 			$enabled = false;
 		}
 
+		$scope = isset( $settings['overtime_scope'] ) && 'per_company' === $settings['overtime_scope'] ? 'per_company' : 'combined';
+
 		return array(
+			'scope'             => $scope,
 			'enabled'           => $enabled,
 			'hours'             => $hours,
 			'weeks'             => $weeks,
@@ -102,6 +105,42 @@ class Css_Tc_Overtime {
 		}
 
 		return $overtime;
+	}
+
+	/**
+	 * Overtime per work segment, in time order.
+	 *
+	 * Each segment has a week index, worked seconds and a group (company).
+	 * Within each window the running total grows segment by segment; the
+	 * part of a segment past the threshold is overtime. So overtime lands on
+	 * whichever company's hours crossed the limit.
+	 *
+	 * With $per_group, each company keeps its own running total, so hours
+	 * are not added up across companies.
+	 *
+	 * Pure function: no WordPress calls.
+	 *
+	 * @param array<int|string,array{week:int,seconds:int,group:int|string}> $segments          Time order.
+	 * @param int                                                           $threshold_seconds Regular limit per window.
+	 * @param int                                                           $window_weeks      Weeks per window.
+	 * @param bool                                                          $per_group         Separate totals per group.
+	 * @return array<int|string,int> Overtime seconds keyed like $segments.
+	 */
+	public static function allocate( $segments, $threshold_seconds, $window_weeks, $per_group = false ) {
+		$threshold_seconds = max( 0, (int) $threshold_seconds );
+		$window_weeks      = max( 1, (int) $window_weeks );
+		$running           = array();
+		$out               = array();
+		foreach ( $segments as $key => $segment ) {
+			$window = (int) floor( max( 0, (int) $segment['week'] ) / $window_weeks );
+			$bucket = $window . '|' . ( $per_group ? (string) $segment['group'] : '*' );
+			$before = isset( $running[ $bucket ] ) ? $running[ $bucket ] : 0;
+			$worked = max( 0, (int) $segment['seconds'] );
+			$after  = $before + $worked;
+			$running[ $bucket ] = $after;
+			$out[ $key ] = $after > $threshold_seconds ? $after - max( $before, $threshold_seconds ) : 0;
+		}
+		return $out;
 	}
 
 	/**

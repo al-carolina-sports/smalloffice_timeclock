@@ -90,31 +90,69 @@ class Css_Tc_Timecard {
 			);
 		}
 
-		// Overtime: hours past the configured threshold per window of weeks.
-		// Worked seconds of every code count toward the threshold; the
-		// overtime itself is taken out of Regular.
-		$rule = css_tc_addon()->overtime->rule();
+		// Overtime: hours past the configured threshold per window of weeks,
+		// allocated segment by segment in time order so each company is
+		// charged for the overtime its hours caused. Worked seconds of every
+		// code count toward the threshold; overtime is taken out of Regular.
+		$rule     = css_tc_addon()->overtime->rule();
+		$segments = array();
+		foreach ( $week_rows as $w => $week_row ) {
+			foreach ( $shifts as $shift ) {
+				if ( $shift['seconds'] > 0 && $shift['work_date'] >= $week_row['start'] && $shift['work_date'] <= $week_row['end'] ) {
+					$segments[ (int) $shift['id'] ] = array(
+						'week'          => (int) $w,
+						'seconds'       => (int) $shift['seconds'],
+						'group'         => (int) $shift['company_id'],
+						'shift_id'      => (int) $shift['id'],
+						'work_date'     => (string) $shift['work_date'],
+						'department_id' => (int) $shift['department_id'],
+						'location_id'   => (int) $shift['location_id'],
+						'company_id'    => (int) $shift['company_id'],
+						'label'         => (string) $shift['assignment'],
+						'overtime'      => 0,
+					);
+				}
+			}
+		}
 		$overtime_total = 0;
 		if ( $rule['enabled'] ) {
-			$per_week = Css_Tc_Overtime::split(
-				wp_list_pluck( $week_rows, 'seconds' ),
-				$rule['threshold_seconds'],
-				$rule['weeks']
-			);
-			foreach ( $week_rows as $i => $week_row ) {
-				$ot = isset( $per_week[ $i ] ) ? (int) $per_week[ $i ] : 0;
-				$week_rows[ $i ]['overtime_seconds'] = $ot;
-				$week_rows[ $i ]['overtime_hm']      = css_tc_addon()->time->format_duration( $ot );
-				$overtime_total += $ot;
+			$alloc = Css_Tc_Overtime::allocate( $segments, $rule['threshold_seconds'], $rule['weeks'], 'per_company' === $rule['scope'] );
+			foreach ( $alloc as $sid => $ot ) {
+				$segments[ $sid ]['overtime'] = (int) $ot;
+				$overtime_total += (int) $ot;
 			}
+		}
+		foreach ( $week_rows as $i => $week_row ) {
+			$ot = 0;
+			foreach ( $segments as $segment ) {
+				if ( $segment['week'] === $i ) {
+					$ot += $segment['overtime'];
+				}
+			}
+			$week_rows[ $i ]['overtime_seconds'] = $ot;
+			$week_rows[ $i ]['overtime_hm']      = $ot > 0 ? css_tc_addon()->time->format_duration( $ot ) : '';
+		}
+		if ( $rule['enabled'] ) {
 			$overtime_total = min( $overtime_total, (int) $buckets[ Css_Tc_Pay_Codes::REGULAR ] );
 			$buckets[ Css_Tc_Pay_Codes::REGULAR ] -= $overtime_total;
 			$buckets[ Css_Tc_Pay_Codes::OVERTIME ] = $overtime_total;
-		} else {
-			foreach ( $week_rows as $i => $week_row ) {
-				$week_rows[ $i ]['overtime_seconds'] = 0;
-				$week_rows[ $i ]['overtime_hm']      = '';
+		}
+
+		$by_company = array();
+		foreach ( $segments as $segment ) {
+			$cid = $segment['company_id'];
+			if ( ! isset( $by_company[ $cid ] ) ) {
+				$by_company[ $cid ] = array(
+					'company_id' => $cid,
+					'name'       => $cid > 0 ? css_tc_addon()->organization->company_name( $cid ) : __( 'No company', 'css-timeclock-addon' ),
+					'total'      => 0,
+					'overtime'   => 0,
+					'regular'    => 0,
+				);
 			}
+			$by_company[ $cid ]['total']    += $segment['seconds'];
+			$by_company[ $cid ]['overtime'] += $segment['overtime'];
+			$by_company[ $cid ]['regular']   = $by_company[ $cid ]['total'] - $by_company[ $cid ]['overtime'];
 		}
 
 		$pay_rows = array();
@@ -132,16 +170,14 @@ class Css_Tc_Timecard {
 			);
 		}
 
-		$long_count = 0;
-		foreach ( $week_rows as $week_row ) {
-			foreach ( $week_row['days'] as $day_row ) {
-				foreach ( $day_row['shifts'] as $pair ) {
-					if ( ! empty( $pair['is_long'] ) ) {
-						++$long_count;
-					}
-				}
+		// A long switched chain counts once, not once per segment.
+		$long_chains = array();
+		foreach ( $shifts as $shift ) {
+			if ( ! empty( $shift['is_long'] ) ) {
+				$long_chains[ (string) $shift['chain_key'] ] = true;
 			}
 		}
+		$long_count = count( $long_chains );
 
 		return array(
 			'user_id'          => $user_id,
@@ -154,6 +190,8 @@ class Css_Tc_Timecard {
 			'weeks'            => $week_rows,
 			'long_shift_count' => $long_count,
 			'overtime_seconds' => $overtime_total,
+			'segments'         => array_values( $segments ),
+			'by_company'       => array_values( $by_company ),
 			'overtime_rule'    => $rule,
 			'overtime_note'    => css_tc_addon()->overtime->describe( $rule ),
 			'long_shift_max'   => css_tc_addon()->punches->long_shift_hours(),
@@ -217,6 +255,19 @@ class Css_Tc_Timecard {
 		}
 		wp_reset_postdata();
 
+		// Switched segments form one continuous shift. Flag the whole chain as
+		// long when the chain is, even if each segment is short.
+		$chains = array();
+		foreach ( $rows as $row ) {
+			$chains[ $row['chain_key'] ] = ( isset( $chains[ $row['chain_key'] ] ) ? $chains[ $row['chain_key'] ] : 0 ) + (int) $row['seconds'];
+		}
+		$long_limit = css_tc_addon()->punches->long_shift_hours() * HOUR_IN_SECONDS;
+		foreach ( $rows as $i => $row ) {
+			if ( $chains[ $row['chain_key'] ] > $long_limit ) {
+				$rows[ $i ]['is_long'] = true;
+			}
+		}
+
 		usort(
 			$rows,
 			static function ( $a, $b ) {
@@ -278,6 +329,9 @@ class Css_Tc_Timecard {
 				'is_long'          => ! empty( $shift['is_long'] ),
 				'is_out_before_in' => ! empty( $shift['is_out_before_in'] ),
 				'out_next_day'     => ! empty( $shift['out_next_day'] ),
+				'department_id'    => (int) $shift['department_id'],
+				'assignment'       => (string) $shift['assignment'],
+				'switched'         => ! empty( $shift['switched'] ),
 			);
 		}
 
@@ -388,6 +442,7 @@ class Css_Tc_Timecard {
 					'is_missing_in' => ! empty( $shift['is_missing_in'] ),
 					'is_long'       => ! empty( $shift['is_long'] ),
 					'pending'       => (bool) $overlay,
+					'department_id' => ( $overlay && ! empty( $overlay['proposed_department_id'] ) ) ? (int) $overlay['proposed_department_id'] : (int) $shift['department_id'],
 				);
 			}
 
@@ -407,6 +462,7 @@ class Css_Tc_Timecard {
 					'is_missing_in' => false,
 					'is_long'       => false,
 					'pending'       => true,
+					'department_id' => ! empty( $suggestion['proposed_department_id'] ) ? (int) $suggestion['proposed_department_id'] : 0,
 				);
 			}
 
@@ -423,6 +479,7 @@ class Css_Tc_Timecard {
 					'is_missing_in' => false,
 					'is_long'       => false,
 					'pending'       => false,
+					'department_id' => 0,
 				);
 			}
 

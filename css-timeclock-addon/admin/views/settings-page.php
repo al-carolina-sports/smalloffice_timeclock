@@ -31,6 +31,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<a href="<?php echo esc_url( $base_url . '&tab=pins' ); ?>" class="nav-tab <?php echo 'pins' === $tab ? 'nav-tab-active' : ''; ?>">
 			<?php echo esc_html__( 'Employee PINs', 'css-timeclock-addon' ); ?>
 		</a>
+		<a href="<?php echo esc_url( $base_url . '&tab=locations' ); ?>" class="nav-tab <?php echo 'locations' === $tab ? 'nav-tab-active' : ''; ?>">
+			<?php echo esc_html__( 'Locations & departments', 'css-timeclock-addon' ); ?>
+		</a>
 		<a href="<?php echo esc_url( $base_url . '&tab=corrections' ); ?>" class="nav-tab <?php echo 'corrections' === $tab ? 'nav-tab-active' : ''; ?>">
 			<?php echo esc_html__( 'Corrections', 'css-timeclock-addon' ); ?>
 			<?php if ( ! empty( $queue['pending_count'] ) ) : ?>
@@ -40,6 +43,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	</nav>
 
 	<div class="css-tc-notice" hidden></div>
+
+	<?php if ( 'locations' === $tab ) : ?>
+		<?php include CSS_TC_ADDON_DIR . 'admin/views/organization-tab.php'; ?>
+	<?php endif; ?>
 
 	<?php if ( 'settings' === $tab ) : ?>
 		<form class="css-tc-settings-form" method="post" action="">
@@ -198,7 +205,35 @@ if ( ! defined( 'ABSPATH' ) ) {
 							</select>
 							<?php echo esc_html__( 'are overtime.', 'css-timeclock-addon' ); ?>
 						</p>
+						<p>
+							<label for="overtime_scope"><?php echo esc_html__( 'With more than one company:', 'css-timeclock-addon' ); ?></label>
+							<select name="overtime_scope" id="overtime_scope">
+								<option value="combined" <?php selected( isset( $settings['overtime_scope'] ) ? $settings['overtime_scope'] : 'combined', 'combined' ); ?>><?php echo esc_html__( 'Add up hours across all companies', 'css-timeclock-addon' ); ?></option>
+								<option value="per_company" <?php selected( isset( $settings['overtime_scope'] ) ? $settings['overtime_scope'] : 'combined', 'per_company' ); ?>><?php echo esc_html__( 'Count each company separately', 'css-timeclock-addon' ); ?></option>
+							</select>
+						</p>
+						<p class="description"><?php echo esc_html__( 'When hours are added up across companies, overtime is charged to the company whose hours crossed the limit. Companies under common ownership may have to add hours up; check with your payroll provider.', 'css-timeclock-addon' ); ?></p>
 						<p class="description"><?php echo esc_html__( 'Weeks are the pay period’s Monday–Sunday weeks. US federal overtime is 40 hours per 1 week. A 2-week window needs a biweekly pay period. The timecard and reports show Overtime as its own pay code; pay rates are set in your payroll system.', 'css-timeclock-addon' ); ?></p>
+					</td>
+				</tr>
+				<tr id="assignments_enabled">
+					<th scope="row"><?php echo esc_html__( 'Departments at clock-in', 'css-timeclock-addon' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="assignments_enabled" value="1" <?php checked( ! empty( $settings['assignments_enabled'] ) ); ?> />
+							<?php echo esc_html__( 'Ask which department at clock-in', 'css-timeclock-addon' ); ?>
+						</label>
+						<p class="description"><?php echo esc_html__( 'Uses the companies, locations and departments on the Locations & departments tab. Employees only see departments assigned on their profile. The kiosk page location (shortcode attribute location="Raleigh") or the office network decides the location; otherwise the employee picks it. With one choice, the question is skipped.', 'css-timeclock-addon' ); ?></p>
+					</td>
+				</tr>
+				<tr id="switch_enabled">
+					<th scope="row"><?php echo esc_html__( 'Switch', 'css-timeclock-addon' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="switch_enabled" value="1" <?php checked( ! isset( $settings['switch_enabled'] ) || ! empty( $settings['switch_enabled'] ) ); ?> />
+							<?php echo esc_html__( 'Allow Switch: move to another department without clocking out', 'css-timeclock-addon' ); ?>
+						</label>
+						<p class="description"><?php echo esc_html__( 'Shows a Switch button to clocked-in employees and offers "Switch to <office>" when they enter their PIN at another office. The current shift ends and the next one starts at the same second. Turned off, employees clock out and clock back in to change departments. Needs "Ask which department at clock-in".', 'css-timeclock-addon' ); ?></p>
 					</td>
 				</tr>
 				<tr>
@@ -245,7 +280,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</div>
 	<?php elseif ( 'pins' === $tab ) : ?>
 		<p>
-			<?php echo esc_html__( 'PINs are stored with WordPress password hashing. They are never saved in plaintext. The eye on each PIN field only reveals the digits you are typing. Each PIN must be unique. Employees without a PIN do not appear on the name-list kiosk.', 'css-timeclock-addon' ); ?>
+			<?php echo esc_html__( 'The kiosk checks PINs against a WordPress password hash. An encrypted copy (key from this site\'s wp-config.php secret keys) lets managers reveal a PIN with the eye in the PIN column; employees can reveal their own on My Time Clock. Each reveal is logged. PINs set before this version cannot be shown until a new PIN is set. Each PIN must be unique. Employees without a PIN do not appear on the name-list kiosk.', 'css-timeclock-addon' ); ?>
 		</p>
 
 		<p>
@@ -259,13 +294,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<th><?php echo esc_html__( 'Employee', 'css-timeclock-addon' ); ?></th>
 					<th><?php echo esc_html__( 'Role', 'css-timeclock-addon' ); ?></th>
 					<th><?php echo esc_html__( 'PIN status', 'css-timeclock-addon' ); ?></th>
+					<th><?php echo esc_html__( 'PIN', 'css-timeclock-addon' ); ?></th>
 					<th><?php echo esc_html__( 'Set PIN', 'css-timeclock-addon' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php if ( empty( $employees ) ) : ?>
 				<tr>
-					<td colspan="4">
+					<td colspan="5">
 						<?php echo esc_html__( 'No time-clock employees found. Create WordPress users with the Employee, Volunteer, Manager, or Contractor role (the roles AIO Lite uses).', 'css-timeclock-addon' ); ?>
 					</td>
 				</tr>
@@ -294,12 +330,39 @@ if ( ! defined( 'ABSPATH' ) ) {
 								<span class="css-tc-pill css-tc-pill-unset"><?php echo esc_html__( 'Not set', 'css-timeclock-addon' ); ?></span>
 							<?php endif; ?>
 						</td>
+						<?php
+						$css_tc_viewable = css_tc_addon()->pins->is_viewable( (int) $user->ID );
+						$css_tc_last     = css_tc_addon()->pins->last_reveal( (int) $user->ID );
+						?>
+						<td class="css-tc-pin-reveal">
+							<span class="css-tc-pin-field css-tc-pin-field--reveal">
+								<code class="css-tc-pin-mask" data-pin-mask><?php echo $has_pin ? '••••' : '—'; ?></code>
+								<button type="button" class="css-tc-pin-toggle css-tc-pin-reveal-btn" data-user-id="<?php echo esc_attr( (string) (int) $user->ID ); ?>" aria-pressed="false" aria-label="<?php echo esc_attr__( 'Show PIN', 'css-timeclock-addon' ); ?>" <?php echo $css_tc_viewable ? '' : 'hidden'; ?>>
+									<svg class="css-tc-pin-toggle__show" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2" /><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2" /></svg><svg class="css-tc-pin-toggle__hide" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M3 3l18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M10.6 6.2A10.4 10.4 0 0 1 12 6c6.5 0 10 6 10 6a18.2 18.2 0 0 1-3.2 3.8M6.1 6.7C3.7 8.3 2 12 2 12s3.5 6 10 6c1.2 0 2.3-.2 3.3-.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+								</button>
+							</span>
+							<span class="description css-tc-pin-note" <?php echo ( $has_pin && ! $css_tc_viewable ) ? '' : 'hidden'; ?>><?php echo esc_html__( 'Set a new PIN to view it', 'css-timeclock-addon' ); ?></span>
+							<?php if ( $css_tc_last ) : ?>
+								<span class="description css-tc-pin-last">
+									<?php
+									echo esc_html(
+										sprintf(
+											/* translators: 1: who viewed, 2: date/time */
+											__( 'Last viewed by %1$s, %2$s', 'css-timeclock-addon' ),
+											css_tc_addon()->employees->display_name( (int) $css_tc_last['by'] ),
+											wp_date( get_option( 'date_format', 'Y-m-d' ) . ' ' . get_option( 'time_format', 'g:i a' ), (int) $css_tc_last['at'] )
+										)
+									);
+									?>
+								</span>
+							<?php endif; ?>
+						</td>
 						<td>
 							<form class="css-tc-pin-form" data-user-id="<?php echo esc_attr( (string) (int) $user->ID ); ?>">
 								<?php $pin_input_id = 'css-tc-pin-' . (int) $user->ID; ?>
 								<label class="screen-reader-text" for="<?php echo esc_attr( $pin_input_id ); ?>"><?php echo esc_html__( 'New PIN', 'css-timeclock-addon' ); ?></label>
 								<span class="css-tc-pin-field">
-									<input id="<?php echo esc_attr( $pin_input_id ); ?>" class="css-tc-pin-input" type="password" inputmode="numeric" autocomplete="new-password" maxlength="12" pattern="[0-9]*" />
+									<input id="<?php echo esc_attr( $pin_input_id ); ?>" class="css-tc-pin-input is-masked" type="text" inputmode="numeric" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="12" pattern="[0-9]*" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" />
 									<button type="button" class="css-tc-pin-toggle" aria-pressed="false" aria-controls="<?php echo esc_attr( $pin_input_id ); ?>" aria-label="<?php echo esc_attr__( 'Show PIN', 'css-timeclock-addon' ); ?>">
 										<svg class="css-tc-pin-toggle__show" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
 											<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2" />
@@ -314,6 +377,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 								</span>
 								<button type="submit" class="button button-primary"><?php echo esc_html__( 'Save PIN', 'css-timeclock-addon' ); ?></button>
 								<button type="button" class="button css-tc-clear-pin" <?php disabled( ! $has_pin ); ?>><?php echo esc_html__( 'Clear', 'css-timeclock-addon' ); ?></button>
+								<span class="css-tc-pin-row-msg" role="status" aria-live="polite" hidden></span>
 							</form>
 						</td>
 					</tr>

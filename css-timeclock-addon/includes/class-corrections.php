@@ -623,6 +623,7 @@ class Css_Tc_Corrections {
 		update_post_meta( $post->ID, 'css_tc_reviewed_at', $punches->current_mysql_time() );
 		update_post_meta( $post->ID, 'css_tc_review_note', $this->sanitize_note( $note ) );
 		update_post_meta( $post->ID, 'css_tc_applied_shift_id', (int) $applied['id'] );
+		$this->apply_department( (int) $post->ID, (int) $applied['id'] );
 		$this->store_review_snapshot(
 			(int) $post->ID,
 			$this->fresh_day_hours( $user_id, $work_date, $shift_id ),
@@ -780,6 +781,11 @@ class Css_Tc_Corrections {
 			return new WP_Error( 'css_tc_bad_time', __( 'Enter a valid clock time.', 'css-timeclock-addon' ) );
 		}
 
+		$dept = $this->parse_department( $input, $shift_id, css_tc_addon()->organization->assigned( $user_id ) );
+		if ( is_wp_error( $dept ) ) {
+			return $dept;
+		}
+
 		$proposed_in  = $punches->combine_day_time( $date, $raw_in, false, $original_in );
 		$proposed_out = $punches->combine_day_time( $date, $raw_out, $out_next_day, $original_out );
 
@@ -803,7 +809,7 @@ class Css_Tc_Corrections {
 			return new WP_Error( 'css_tc_order', __( 'Clock-out is earlier than clock-in. Fix the time, or check "Clock-out is the next day" if the shift ended after midnight.', 'css-timeclock-addon' ) );
 		}
 
-		if ( $shift_id > 0 && $proposed_in === $original_in && $proposed_out === $original_out && ! $missing && ! $clear_out ) {
+		if ( $shift_id > 0 && $proposed_in === $original_in && $proposed_out === $original_out && ! $missing && ! $clear_out && $dept['proposed'] === $dept['original'] ) {
 			return new WP_Error( 'css_tc_unchanged', __( 'Change a time or note a missing punch before sending this.', 'css-timeclock-addon' ) );
 		}
 
@@ -839,8 +845,54 @@ class Css_Tc_Corrections {
 				'css_tc_missing'      => $missing ? '1' : '',
 				'css_tc_out_next_day' => $out_next_day ? '1' : '',
 				'css_tc_reason'       => $reason,
+				'css_tc_original_department' => $dept['original'],
+				'css_tc_proposed_department' => $dept['proposed'],
 			),
 		);
+	}
+
+	/**
+	 * Department on a correction line. Blank keeps the shift's department.
+	 *
+	 * @param array<string,mixed> $input    Line.
+	 * @param int                 $shift_id Shift being corrected, or 0.
+	 * @param int[]|null          $allowed  Department IDs allowed, or null for any.
+	 * @return array{original:int,proposed:int}|WP_Error
+	 */
+	private function parse_department( $input, $shift_id, $allowed ) {
+		$org      = css_tc_addon()->organization;
+		$original = $shift_id > 0 ? (int) get_post_meta( (int) $shift_id, Css_Tc_Organization::META_DEPARTMENT, true ) : 0;
+		$proposed = isset( $input['department_id'] ) ? absint( $input['department_id'] ) : 0;
+		if ( ! $org->enabled() || $proposed < 1 ) {
+			return array(
+				'original' => $original,
+				'proposed' => $original,
+			);
+		}
+		if ( ! $org->department( $proposed ) || ( is_array( $allowed ) && ! in_array( $proposed, $allowed, true ) && $proposed !== $original ) ) {
+			return new WP_Error( 'css_tc_bad_department', __( 'Choose one of your departments.', 'css-timeclock-addon' ) );
+		}
+		return array(
+			'original' => $original,
+			'proposed' => $proposed,
+		);
+	}
+
+	/**
+	 * Stamp the department from an approved or manager change onto the shift.
+	 *
+	 * @param int $correction_id Correction post.
+	 * @param int $shift_id      Shift the change was applied to.
+	 * @return void
+	 */
+	private function apply_department( $correction_id, $shift_id ) {
+		$proposed = (int) get_post_meta( (int) $correction_id, 'css_tc_proposed_department', true );
+		$original = (int) get_post_meta( (int) $correction_id, 'css_tc_original_department', true );
+		// Only a requested change is applied. A time-only correction stores
+		// proposed = original and must not undo a later department edit.
+		if ( $shift_id > 0 && $proposed > 0 && $proposed !== $original ) {
+			css_tc_addon()->organization->stamp_shift( (int) $shift_id, $proposed );
+		}
 	}
 
 	/**
@@ -883,6 +935,8 @@ class Css_Tc_Corrections {
 			'submitted_at'    => $punches->format_time( $post->post_date ),
 			'manager_edit'    => ( '1' === (string) get_post_meta( $post->ID, 'css_tc_manager_edit', true ) ),
 			'deleted_shift'   => ( '1' === (string) get_post_meta( $post->ID, 'css_tc_deleted', true ) ),
+			'proposed_department_id' => (int) get_post_meta( $post->ID, 'css_tc_proposed_department', true ),
+			'department_change'      => $this->department_change_label( $post->ID ),
 		);
 
 		$time = css_tc_addon()->time;
@@ -929,6 +983,23 @@ class Css_Tc_Corrections {
 		}
 
 		return $row;
+	}
+
+	/**
+	 * "CSS · Raleigh → BFM/TRM · Raleigh" when a correction moves the shift.
+	 *
+	 * @param int $post_id Correction post.
+	 * @return string
+	 */
+	private function department_change_label( $post_id ) {
+		$from = (int) get_post_meta( (int) $post_id, 'css_tc_original_department', true );
+		$to   = (int) get_post_meta( (int) $post_id, 'css_tc_proposed_department', true );
+		if ( $to < 1 || $to === $from ) {
+			return '';
+		}
+		$org  = css_tc_addon()->organization;
+		$from_label = $from > 0 ? $org->label( $from ) : __( 'No department', 'css-timeclock-addon' );
+		return $from_label . ' → ' . $org->label( $to );
 	}
 
 	/**
@@ -1150,7 +1221,7 @@ class Css_Tc_Corrections {
 		if ( empty( $ops ) ) {
 			return new WP_Error(
 				'css_tc_unchanged',
-				__( 'Change a clock-in or clock-out, add a punch, or delete a shift before saving.', 'css-timeclock-addon' )
+				__( 'Change a clock-in, clock-out or department, add a punch, or delete a shift before saving.', 'css-timeclock-addon' )
 			);
 		}
 
@@ -1226,6 +1297,11 @@ class Css_Tc_Corrections {
 				return new WP_Error( 'css_tc_bad_time', __( 'Enter a valid clock time.', 'css-timeclock-addon' ) );
 			}
 
+			$dept = $this->parse_department( $line, $shift_id, null );
+			if ( is_wp_error( $dept ) ) {
+				return $dept;
+			}
+
 			$proposed_in  = $punches->combine_day_time( $date, $raw_in, false, $original_in );
 			$proposed_out = $punches->combine_day_time( $date, $raw_out, $next_day, $original_out );
 
@@ -1242,11 +1318,13 @@ class Css_Tc_Corrections {
 				return new WP_Error( 'css_tc_order', __( 'Clock-out is earlier than clock-in. Fix the time, or check "Clock-out is the next day" if the shift ended after midnight.', 'css-timeclock-addon' ) );
 			}
 
-			if ( $shift_id > 0 && $proposed_in === $original_in && $proposed_out === $original_out ) {
+			if ( $shift_id > 0 && $proposed_in === $original_in && $proposed_out === $original_out && $dept['proposed'] === $dept['original'] ) {
 				continue;
 			}
 
 			$ops[] = array(
+				'original_department' => $dept['original'],
+				'proposed_department' => $dept['proposed'],
 				'action'       => $shift_id > 0 ? 'edit' : 'add',
 				'shift_id'     => $shift_id,
 				'original_in'  => $original_in,
@@ -1302,6 +1380,8 @@ class Css_Tc_Corrections {
 			'css_tc_out_next_day' => ! empty( $op['out_next_day'] ) ? '1' : '',
 			'css_tc_deleted'      => ( 'delete' === $op['action'] ) ? '1' : '',
 			'css_tc_reason'       => __( 'Edited by manager', 'css-timeclock-addon' ),
+			'css_tc_original_department' => isset( $op['original_department'] ) ? (int) $op['original_department'] : 0,
+			'css_tc_proposed_department' => isset( $op['proposed_department'] ) ? (int) $op['proposed_department'] : 0,
 			'css_tc_manager_edit' => '1',
 			'css_tc_reviewer_id'  => (int) $reviewer_id,
 			'css_tc_review_note'  => $note,
@@ -1349,6 +1429,7 @@ class Css_Tc_Corrections {
 
 		update_post_meta( $post_id, 'css_tc_applied_shift_id', $applied_id );
 		update_post_meta( $post_id, 'css_tc_reviewed_at', $punches->current_mysql_time() );
+		$this->apply_department( (int) $post_id, (int) $applied_id );
 
 		$correction = get_post( $post_id );
 		$hours      = $correction ? $this->stored_shift_hours( $correction ) : array(
