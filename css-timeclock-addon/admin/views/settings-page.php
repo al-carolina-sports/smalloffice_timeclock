@@ -122,8 +122,49 @@ if ( ! defined( 'ABSPATH' ) ) {
 						<label for="ip_allowlist" class="screen-reader-text"><?php echo esc_html__( 'Allowed IPs and CIDR ranges', 'css-timeclock-addon' ); ?></label>
 						<textarea name="ip_allowlist" id="ip_allowlist" rows="6" class="large-text code css-tc-allowlist" placeholder="<?php echo esc_attr__( '203.0.113.10', 'css-timeclock-addon' ); ?>"><?php echo esc_textarea( $office_raw ); ?></textarea>
 						<p class="description">
-							<?php echo esc_html__( 'One IPv4 or IPv6 address or CIDR per line (for example 203.0.113.10 or 203.0.113.0/24). Lines starting with # are comments.', 'css-timeclock-addon' ); ?>
+							<?php echo esc_html__( 'One IPv4 or IPv6 address, CIDR, or hostname per line (for example 66.76.190.146, 76.195.93.0/24, or csswilson.ddns.net). Lines starting with # are comments. A hostname is checked when someone punches, and the result is remembered for about two minutes.', 'css-timeclock-addon' ); ?>
 						</p>
+						<?php
+						$css_tc_hosts = array();
+						foreach ( $office_parsed['entries'] as $css_tc_entry ) {
+							if ( css_tc_addon()->pins->is_hostname_entry( $css_tc_entry ) ) {
+								$css_tc_hosts[] = $css_tc_entry;
+							}
+						}
+						if ( ! empty( $css_tc_hosts ) ) :
+							?>
+							<table class="widefat striped css-tc-host-status">
+								<thead>
+									<tr>
+										<th><?php echo esc_html__( 'Hostname', 'css-timeclock-addon' ); ?></th>
+										<th><?php echo esc_html__( 'Resolved IP', 'css-timeclock-addon' ); ?></th>
+										<th><?php echo esc_html__( 'Last checked', 'css-timeclock-addon' ); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ( $css_tc_hosts as $css_tc_host ) : ?>
+										<?php
+										$css_tc_status = css_tc_addon()->pins->hostname_status( $css_tc_host );
+										$css_tc_ips    = ! empty( $css_tc_status['ips'] ) ? implode( ', ', $css_tc_status['ips'] ) : '—';
+										$css_tc_when   = css_tc_addon()->pins->format_eastern( (int) $css_tc_status['checked'] );
+										if ( '' === $css_tc_when ) {
+											$css_tc_when = __( 'Not checked yet', 'css-timeclock-addon' );
+										}
+										?>
+										<tr>
+											<td><code><?php echo esc_html( $css_tc_host ); ?></code></td>
+											<td>
+												<code><?php echo esc_html( $css_tc_ips ); ?></code>
+												<?php if ( ! empty( $css_tc_status['failed'] ) ) : ?>
+													<span class="css-tc-allowlist-warn"><?php echo esc_html__( 'Lookup failed', 'css-timeclock-addon' ); ?></span>
+												<?php endif; ?>
+											</td>
+											<td><?php echo esc_html( $css_tc_when ); ?></td>
+										</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+						<?php endif; ?>
 						<p class="description">
 							<?php echo esc_html__( 'Uses the same client address as the failed-PIN limit and office detection. Forwarded headers (X-Forwarded-For and similar) are only believed when they come from the hosting network or a trusted proxy listed below, so a visitor cannot pretend to be at the office.', 'css-timeclock-addon' ); ?>
 						</p>
@@ -174,6 +215,39 @@ if ( ! defined( 'ABSPATH' ) ) {
 								</tbody>
 							</table>
 						</details>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php echo esc_html__( 'Refused kiosk requests', 'css-timeclock-addon' ); ?></th>
+					<td>
+						<?php
+						$css_tc_refused = array_reverse( css_tc_addon()->pins->refused_kiosk_log() );
+						$css_tc_refused = array_slice( $css_tc_refused, 0, 50 );
+						?>
+						<?php if ( empty( $css_tc_refused ) ) : ?>
+							<p class="description"><?php echo esc_html__( 'No refused kiosk requests.', 'css-timeclock-addon' ); ?></p>
+						<?php else : ?>
+							<table class="widefat striped css-tc-refused-log">
+								<thead>
+									<tr>
+										<th><?php echo esc_html__( 'Time', 'css-timeclock-addon' ); ?></th>
+										<th><?php echo esc_html__( 'IP', 'css-timeclock-addon' ); ?></th>
+										<th><?php echo esc_html__( 'Action', 'css-timeclock-addon' ); ?></th>
+										<th><?php echo esc_html__( 'Employee', 'css-timeclock-addon' ); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ( $css_tc_refused as $css_tc_row ) : ?>
+										<tr>
+											<td><?php echo esc_html( css_tc_addon()->pins->format_eastern( (int) $css_tc_row['time'] ) ); ?></td>
+											<td><code><?php echo esc_html( (string) $css_tc_row['ip'] ); ?></code></td>
+											<td><code><?php echo esc_html( (string) $css_tc_row['action'] ); ?></code></td>
+											<td><?php echo esc_html( '' !== (string) $css_tc_row['name'] ? (string) $css_tc_row['name'] : '—' ); ?></td>
+										</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+						<?php endif; ?>
 					</td>
 				</tr>
 				<tr>

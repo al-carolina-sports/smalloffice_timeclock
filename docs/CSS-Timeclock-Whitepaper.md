@@ -300,6 +300,7 @@ Optional commercial shortcut: AIO **Pro** (~$40/year) documents PIN/QR/locations
 | 1.4.9 | 2026-09-27 | A pencil on today and earlier days in the pay period, including days with no punches. Later days stay closed for employees and managers. Manager edits are recorded as Edited by manager. |
 | 1.4.10 | 2026-09-27 | Manager Save changes stays enabled and explains an invalid punch. A confirmed shift over 16 hours is stored as entered and flagged long, not missed. Clock-out before clock-in counts as 0 and is flagged. Day pencils are red, green, or gray. |
 | 1.4.11 | 2026-09-27 | Day icons use a standard scheme: blue pencil to edit, green check when a change is completed, amber for a pending request, red only for a real problem, and a gray lock when the pay period is closed. |
+| 1.6.2 | 2026-09-28 | Office allowlist and location networks accept a hostname such as csswilson.ddns.net. Refused kiosk requests are logged, and a manager notice can add that IP. |
 
 ---
 

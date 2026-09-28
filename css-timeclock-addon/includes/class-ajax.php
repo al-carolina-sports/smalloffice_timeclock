@@ -47,6 +47,8 @@ class Css_Tc_Ajax {
 		add_action( 'admin_post_css_tc_flag_day', array( $self, 'flag_day' ) );
 		add_action( 'admin_post_css_tc_cancel_day', array( $self, 'cancel_day' ) );
 		add_action( 'admin_post_css_tc_manager_edit_day', array( $self, 'manager_edit_day' ) );
+		add_action( 'admin_post_css_tc_allow_refused_ip', array( $self, 'allow_refused_ip' ) );
+		add_action( 'admin_post_css_tc_dismiss_refused', array( $self, 'dismiss_refused' ) );
 	}
 
 	/**
@@ -343,7 +345,7 @@ class Css_Tc_Ajax {
 				array(
 					'message' => sprintf(
 						/* translators: %s: invalid allowlist lines the admin typed */
-						__( 'These lines are not IPv4, IPv6, or CIDR ranges: %s', 'css-timeclock-addon' ),
+						__( 'These lines are not IPv4, IPv6, CIDR ranges, or hostnames: %s', 'css-timeclock-addon' ),
 						implode( ', ', array_map( 'sanitize_text_field', array_slice( $parsed['invalid'], 0, 8 ) ) )
 					),
 				),
@@ -352,13 +354,14 @@ class Css_Tc_Ajax {
 		}
 		$settings['ip_allowlist_enabled'] = empty( $_POST['ip_allowlist_enabled'] ) ? 0 : 1;
 		$settings['ip_allowlist']         = $allow_raw;
+		css_tc_addon()->pins->warm_hostnames( $allow_raw );
 
 		$proxy_raw = isset( $_POST['trusted_proxies'] ) ? (string) wp_unslash( $_POST['trusted_proxies'] ) : '';
 		$proxy_raw = sanitize_textarea_field( str_replace( array( "\r\n", "\r" ), "\n", $proxy_raw ) );
 		if ( strlen( $proxy_raw ) > 2000 ) {
 			wp_send_json_error( array( 'message' => __( 'The trusted proxy list is too long.', 'css-timeclock-addon' ) ), 400 );
 		}
-		$proxy_parsed = css_tc_addon()->pins->parse_allowlist( $proxy_raw );
+		$proxy_parsed = css_tc_addon()->pins->parse_allowlist( $proxy_raw, false );
 		if ( ! empty( $proxy_parsed['invalid'] ) ) {
 			wp_send_json_error(
 				array(
@@ -779,13 +782,86 @@ class Css_Tc_Ajax {
 			return;
 		}
 
+		$this->log_refused_kiosk();
+
 		wp_send_json_error(
 			array(
-				'message' => __( 'This kiosk only works from the office network.', 'css-timeclock-addon' ),
+				'message' => __( 'This kiosk only works from the office network. Please tell your manager.', 'css-timeclock-addon' ),
 				'code'    => 'office_only',
 			),
 			403
 		);
+	}
+
+	/**
+	 * Server-side log of a refused kiosk request. The JSON message stays a
+	 * fixed sentence. A PIN is never written here. The employee is included
+	 * only when this request already carries an identified employee id.
+	 *
+	 * @return void
+	 */
+	private function log_refused_kiosk() {
+		$pins    = css_tc_addon()->pins;
+		$action  = isset( $_REQUEST['action'] ) ? wp_unslash( $_REQUEST['action'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$user_id = 0;
+		$name    = '';
+		if ( isset( $_POST['user_id'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$candidate = absint( wp_unslash( $_POST['user_id'] ) );
+			if ( $candidate > 0 && css_tc_addon()->employees->is_employee( $candidate ) ) {
+				$user_id = $candidate;
+				$name    = css_tc_addon()->employees->greeting_name( $candidate );
+			}
+		}
+		$pins->record_refused_kiosk( $pins->client_ip(), $action, $user_id, $name );
+	}
+
+	/**
+	 * Add the IP from a refused-punch notice to the office allowlist.
+	 *
+	 * @return void
+	 */
+	public function allow_refused_ip() {
+		if ( ! Css_Tc_Plugin::user_can_manage() ) {
+			wp_die( esc_html__( 'You do not have permission to manage kiosk settings.', 'css-timeclock-addon' ), '', array( 'response' => 403 ) );
+		}
+		$ip = isset( $_GET['ip'] ) ? css_tc_addon()->pins->canonical_ip( wp_unslash( $_GET['ip'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		check_admin_referer( 'css_tc_allow_ip_' . $ip );
+		if ( '' === $ip ) {
+			wp_die( esc_html__( 'That address cannot be added.', 'css-timeclock-addon' ), '', array( 'response' => 400 ) );
+		}
+
+		$settings = css_tc_addon()->get_settings();
+		$raw      = isset( $settings['ip_allowlist'] ) ? (string) $settings['ip_allowlist'] : '';
+		$settings['ip_allowlist'] = css_tc_addon()->pins->append_allowlist_ip( $raw, $ip );
+		css_tc_addon()->update_settings( $settings );
+
+		wp_safe_redirect( Css_Tc_Admin::settings_url( 'settings' ) );
+		exit;
+	}
+
+	/**
+	 * Hide the refused-punch notice for this IP until a newer refusal arrives.
+	 *
+	 * @return void
+	 */
+	public function dismiss_refused() {
+		if ( ! Css_Tc_Plugin::user_can_manage() ) {
+			wp_die( esc_html__( 'You do not have permission to manage kiosk settings.', 'css-timeclock-addon' ), '', array( 'response' => 403 ) );
+		}
+		$ip = isset( $_GET['ip'] ) ? css_tc_addon()->pins->canonical_ip( wp_unslash( $_GET['ip'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		check_admin_referer( 'css_tc_dismiss_refused_' . $ip );
+		$user_id   = get_current_user_id();
+		$dismissed = get_user_meta( $user_id, 'css_tc_refused_dismissed', true );
+		if ( ! is_array( $dismissed ) ) {
+			$dismissed = array();
+		}
+		if ( '' !== $ip ) {
+			$dismissed[ $ip ] = time();
+			update_user_meta( $user_id, 'css_tc_refused_dismissed', $dismissed );
+		}
+		$back = wp_get_referer();
+		wp_safe_redirect( $back ? $back : admin_url() );
+		exit;
 	}
 
 	/**

@@ -285,12 +285,13 @@ class Css_Tc_Organization {
 					'css_tc_org_ips',
 					sprintf(
 						/* translators: %s: invalid lines */
-						__( 'These lines are not IPv4, IPv6, or CIDR ranges: %s', 'css-timeclock-addon' ),
+						__( 'These lines are not IPv4, IPv6, CIDR ranges, or hostnames: %s', 'css-timeclock-addon' ),
 						implode( ', ', array_slice( $parsed['invalid'], 0, 5 ) )
 					)
 				);
 			}
 			$clean['ips'] = $ips;
+			css_tc_addon()->pins->warm_hostnames( $ips );
 		}
 
 		if ( 'departments' === $kind ) {

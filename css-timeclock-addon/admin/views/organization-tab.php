@@ -91,7 +91,7 @@ $css_tc_hidden = static function ( $op, $kind = '', $id = 0 ) {
 	</table>
 
 	<h2><?php echo esc_html__( 'Locations', 'css-timeclock-addon' ); ?></h2>
-	<p class="description"><?php echo esc_html__( 'Office network: the public IP addresses or CIDR ranges of that office, one per line. Any tablet or desk computer on that network clocks in at this location. Leave blank and employees pick the location themselves.', 'css-timeclock-addon' ); ?></p>
+	<p class="description"><?php echo esc_html__( 'Office network: the public IP addresses, CIDR ranges, or a hostname such as csswilson.ddns.net, one per line. Any tablet or desk computer on that network clocks in at this location. Leave blank and employees pick the location themselves.', 'css-timeclock-addon' ); ?></p>
 	<?php
 	$css_tc_here     = css_tc_addon()->pins->client_ip();
 	$css_tc_here_loc = '' !== $css_tc_here ? css_tc_addon()->organization->location_for_ip( $css_tc_here ) : 0;

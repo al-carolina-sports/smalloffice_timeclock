@@ -32,6 +32,7 @@ mkdir -p "${STAGE}/${NAME}"
       -name 'tmp-wp' -o \
       -name 'agent-tools' -o \
       -name 'node_modules' -o \
+      -name 'bin' -o \
       -name '*.zip' -o \
       -name '.DS_Store' \
     \) -prune -o \
