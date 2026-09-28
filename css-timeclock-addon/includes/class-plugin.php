@@ -115,7 +115,8 @@ class Css_Tc_Plugin {
 		add_action( 'init', array( $this, 'register_runtime' ) );
 		Css_Tc_Branding::register();
 		add_action( 'admin_init', array( $this, 'maybe_create_times_page' ) );
-		add_action( 'init', array( __CLASS__, 'maybe_grant_caps' ), 20 );
+		add_action( 'init', array( __CLASS__, 'maybe_grant_caps' ), 0 );
+		add_action( 'init', array( __CLASS__, 'maybe_grant_caps' ), 20 ); // After AIO registers its roles.
 		add_action( 'admin_init', array( $this, 'guard_admin_pages' ), 1 );
 		add_action( 'admin_notices', array( $this, 'maybe_missing_aio_notice' ) );
 		add_filter( 'plugin_action_links_' . CSS_TC_ADDON_BASENAME, array( $this, 'plugin_action_links' ) );
@@ -236,6 +237,15 @@ class Css_Tc_Plugin {
 		}
 		update_option( 'css_tc_caps_version', self::CAPS_VERSION, true );
 		update_option( 'css_tc_caps_roles', array_values( array_unique( $seen ) ), true );
+
+		// The signed-in user's capabilities may already be loaded for this
+		// request; refresh them so the first page after an upgrade works.
+		if ( function_exists( 'wp_get_current_user' ) && did_action( 'set_current_user' ) ) {
+			$user = wp_get_current_user();
+			if ( $user && $user->exists() ) {
+				$user->get_role_caps();
+			}
+		}
 	}
 
 	/**
