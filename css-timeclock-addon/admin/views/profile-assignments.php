@@ -44,6 +44,11 @@ $css_tc_org = css_tc_addon()->organization;
 					<td><?php echo esc_html( $css_tc_org->company_name( (int) $dept['company_id'] ) ); ?></td>
 				</tr>
 			<?php endforeach; ?>
+			<tr>
+				<td></td>
+				<td><input type="radio" id="css-tc-no-home" name="css_tc_home_department" value="<?php echo esc_attr( (string) Css_Tc_Organization::NO_HOME ); ?>" <?php checked( $css_tc_org->has_no_home( (int) $user->ID ) ); ?> /></td>
+				<td colspan="3"><label for="css-tc-no-home"><?php echo esc_html__( 'No home department (choices are listed alphabetically at the kiosk)', 'css-timeclock-addon' ); ?></label></td>
+			</tr>
 		</tbody>
 	</table>
 <?php endif; ?>

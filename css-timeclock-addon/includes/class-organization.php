@@ -30,6 +30,7 @@ class Css_Tc_Organization {
 	const USER_HOME     = 'css_tc_home_department';
 	const ADMIN_ACTION  = 'css_tc_org';
 	const PROFILE_NONCE = 'css_tc_assignments';
+	const NO_HOME       = -1;
 
 	const META_DEPARTMENT = 'css_tc_department_id';
 	const META_LOCATION   = 'css_tc_location_id';
@@ -388,11 +389,24 @@ class Css_Tc_Organization {
 	 */
 	public function home( $user_id ) {
 		$home     = (int) get_user_meta( (int) $user_id, self::USER_HOME, true );
+		if ( self::NO_HOME === $home ) {
+			return 0;
+		}
 		$assigned = $this->assigned( $user_id );
 		if ( in_array( $home, $assigned, true ) ) {
 			return $home;
 		}
 		return empty( $assigned ) ? 0 : $assigned[0];
+	}
+
+	/**
+	 * Whether a manager chose "No home department" for this employee.
+	 *
+	 * @param int $user_id Employee.
+	 * @return bool
+	 */
+	public function has_no_home( $user_id ) {
+		return self::NO_HOME === (int) get_user_meta( (int) $user_id, self::USER_HOME, true );
 	}
 
 	/**
@@ -411,7 +425,9 @@ class Css_Tc_Organization {
 		}
 		$clean = array_values( array_unique( $clean ) );
 		$home  = (int) $home;
-		if ( ! in_array( $home, $clean, true ) ) {
+		if ( self::NO_HOME === $home ) {
+			$home = empty( $clean ) ? 0 : self::NO_HOME;
+		} elseif ( ! in_array( $home, $clean, true ) ) {
 			$home = empty( $clean ) ? 0 : $clean[0];
 		}
 		update_user_meta( (int) $user_id, self::USER_ASSIGNED, $clean );
@@ -828,7 +844,8 @@ class Css_Tc_Organization {
 		}
 		check_admin_referer( self::PROFILE_NONCE, 'css_tc_assign_nonce' );
 		$assigned = isset( $_POST['css_tc_departments'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['css_tc_departments'] ) ) : array();
-		$home     = isset( $_POST['css_tc_home_department'] ) ? absint( $_POST['css_tc_home_department'] ) : 0;
+		$home     = isset( $_POST['css_tc_home_department'] ) ? (int) $_POST['css_tc_home_department'] : 0;
+		$home     = ( self::NO_HOME === $home ) ? self::NO_HOME : max( 0, $home );
 		$this->set_assignments( (int) $user_id, $assigned, $home );
 	}
 }
