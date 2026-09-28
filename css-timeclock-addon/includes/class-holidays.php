@@ -457,20 +457,32 @@ class Css_Tc_Holidays {
 	 * @param string $start Y-m-d.
 	 * @param string $end   Y-m-d.
 	 * @param string $from  First eligible day, or '' for always.
+	 * @param array<string,string>|null $status Employment status record (no automatic holiday pay on leave or after the last day).
 	 * Before the first eligible day the holiday is listed with 0 seconds so
 	 * the timecard can say why it is unpaid.
 	 *
 	 * @return array<string,array{names:string[],seconds:int,eligible:bool}>
 	 */
-	public function for_range( $start, $end, $from ) {
+	public function for_range( $start, $end, $from, $status = null ) {
 		$out = array();
 		$sec = $this->seconds_per_holiday();
 		foreach ( $this->between( $start, $end ) as $date => $names ) {
-			$eligible     = ( '' === $from || $date >= $from );
+			$eligible = ( '' === $from || $date >= $from );
+			$blocked  = '';
+			if ( $eligible && is_array( $status ) ) {
+				$on = Css_Tc_Status::status_on( $status, $date );
+				if ( Css_Tc_Status::LEAVE === $on ) {
+					$blocked = 'leave';
+				} elseif ( Css_Tc_Status::INACTIVE === $on ) {
+					$blocked = 'inactive';
+				}
+				$eligible = '' === $blocked;
+			}
 			$out[ $date ] = array(
 				'names'    => $names,
 				'seconds'  => $eligible ? $sec : 0, // One paid holiday per day.
 				'eligible' => $eligible,
+				'blocked'  => $blocked, // '' | leave | inactive (status); intro/hire otherwise.
 			);
 		}
 		return $out;
@@ -483,6 +495,6 @@ class Css_Tc_Holidays {
 	 * @return array<string,array{names:string[],seconds:int,eligible:bool}>
 	 */
 	public function for_employee( $user_id, $start, $end ) {
-		return $this->for_range( $start, $end, $this->eligible_from( $user_id ) );
+		return $this->for_range( $start, $end, $this->eligible_from( $user_id ), css_tc_addon()->status->record( $user_id ) );
 	}
 }

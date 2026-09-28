@@ -123,7 +123,7 @@ $css_tc_status = array(
 				</label>
 				<label><?php echo esc_html__( 'Type', 'css-timeclock-addon' ); ?>
 					<select name="type">
-						<?php foreach ( Css_Tc_Leave::TYPES as $t ) : ?>
+						<?php foreach ( Css_Tc_Leave::MANAGER_TYPES as $t ) : ?>
 							<?php if ( $leave->type_enabled( $t ) ) : ?>
 								<option value="<?php echo esc_attr( $t ); ?>"><?php echo esc_html( Css_Tc_Leave::label( $t ) ); ?></option>
 							<?php endif; ?>
@@ -136,11 +136,28 @@ $css_tc_status = array(
 				<label><input type="checkbox" name="skip_weekends" value="1" checked /> <?php echo esc_html__( 'Skip weekends', 'css-timeclock-addon' ); ?></label>
 			</p>
 			<p>
-				<label><input type="checkbox" name="agreed" value="1" required /> <strong><?php echo esc_html__( 'Employee agreed', 'css-timeclock-addon' ); ?></strong></label>
+				<label data-css-tc-agreed><input type="checkbox" name="agreed" value="1" required /> <strong><?php echo esc_html__( 'Employee agreed', 'css-timeclock-addon' ); ?></strong></label>
 				<input type="text" name="note" class="regular-text" maxlength="500" required placeholder="<?php echo esc_attr__( 'How they agreed, e.g. "Talked to Jane 10/2, she asked to use PTO for the missed afternoon"', 'css-timeclock-addon' ); ?>" style="width:min(640px,100%)" />
 				<button type="submit" class="button button-primary"><?php echo esc_html__( 'Add time off', 'css-timeclock-addon' ); ?></button>
 			</p>
 		</form>
+
+		<p class="description"><?php echo esc_html__( 'Holiday: pays a holiday by hand, for example to someone on leave or in their introductory period. It uses the Holiday pay code and no PTO balance; add a note saying why.', 'css-timeclock-addon' ); ?></p>
+		<script>
+		( function () {
+			var form = document.querySelector( '.css-tc-leave-add' );
+			if ( ! form ) { return; }
+			var type = form.querySelector( 'select[name=type]' );
+			var box  = form.querySelector( '[data-css-tc-agreed]' );
+			function sync() {
+				var hol = type.value === 'holiday';
+				box.hidden = hol;
+				box.querySelector( 'input' ).required = ! hol;
+			}
+			type.addEventListener( 'change', sync );
+			sync();
+		} )();
+		</script>
 
 		<h2><?php echo esc_html__( 'Who\'s out', 'css-timeclock-addon' ); ?></h2>
 		<?php

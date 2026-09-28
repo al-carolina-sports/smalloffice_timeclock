@@ -179,7 +179,11 @@ class Css_Tc_Timecard {
 					}
 					$info = $holiday_days[ $day['date'] ];
 					$note = '';
-					if ( ! $info['eligible'] ) {
+					if ( ! $info['eligible'] && 'leave' === ( $info['blocked'] ?? '' ) ) {
+						$note = __( 'on leave, not paid (a manager can add it under Time off)', 'css-timeclock-addon' );
+					} elseif ( ! $info['eligible'] && 'inactive' === ( $info['blocked'] ?? '' ) ) {
+						$note = __( 'after last day worked, not paid', 'css-timeclock-addon' );
+					} elseif ( ! $info['eligible'] ) {
 						$hire = css_tc_addon()->holidays->hire_date( $user_id );
 						$note = ( '' !== $hire && $day['date'] < $hire )
 							? __( 'before hire date, not paid', 'css-timeclock-addon' )
@@ -225,7 +229,12 @@ class Css_Tc_Timecard {
 							'hm'      => css_tc_addon()->time->format_duration( (int) $row['seconds'] ),
 							'pending' => 'pending' === $row['status'],
 						);
-						if ( 'approved' === $row['status'] && isset( $leave_seconds[ $row['type'] ] ) ) {
+						if ( 'approved' === $row['status'] && 'holiday' === $row['type'] ) {
+							// Holiday added by a manager: Holiday pay code, like an automatic holiday.
+							$holiday_seconds                     += (int) $row['seconds'];
+							$buckets[ Css_Tc_Pay_Codes::HOLIDAY ] = ( $buckets[ Css_Tc_Pay_Codes::HOLIDAY ] ?? 0 ) + (int) $row['seconds'];
+							$week_leave                          += (int) $row['seconds'];
+						} elseif ( 'approved' === $row['status'] && isset( $leave_seconds[ $row['type'] ] ) ) {
 							$leave_seconds[ $row['type'] ] += (int) $row['seconds'];
 							$week_leave                   += (int) $row['seconds'];
 						}

@@ -26,6 +26,8 @@ class Css_Tc_Leave {
 	const META_ALLOW     = 'css_tc_leave_allow';
 	const META_ADJUST    = 'css_tc_leave_adjust';
 	const TYPES          = array( 'pto', 'sick' );
+	// Managers can also record a holiday by hand (e.g. for someone on leave).
+	const MANAGER_TYPES  = array( 'pto', 'sick', 'holiday' );
 	const STATUSES       = array( 'pending', 'approved', 'denied', 'cancelled' );
 	const EMPLOYEE_NONCE = 'css_tc_employee';
 	const ADMIN_ACTION   = 'css_tc_leave';
@@ -105,6 +107,9 @@ class Css_Tc_Leave {
 		}
 		if ( 'sick' === $type ) {
 			return ! empty( $s['sick_enabled'] );
+		}
+		if ( 'holiday' === $type ) {
+			return ! empty( $s['holidays_enabled'] );
 		}
 		return false;
 	}
@@ -195,6 +200,9 @@ class Css_Tc_Leave {
 	 * @return string
 	 */
 	public static function label( $type ) {
+		if ( 'holiday' === $type ) {
+			return __( 'Holiday', 'css-timeclock-addon' );
+		}
 		return 'sick' === $type ? __( 'Sick', 'css-timeclock-addon' ) : __( 'PTO', 'css-timeclock-addon' );
 	}
 
@@ -343,7 +351,7 @@ class Css_Tc_Leave {
 	 * @return true|WP_Error
 	 */
 	public function check_request( $ctx, $days, $type, $manager ) {
-		if ( ! in_array( $type, self::TYPES, true ) || ! $this->type_enabled( $type ) ) {
+		if ( ! in_array( $type, $manager ? self::MANAGER_TYPES : self::TYPES, true ) || ! $this->type_enabled( $type ) ) {
 			return new WP_Error( 'css_tc_leave_type', __( 'That kind of time off is not turned on.', 'css-timeclock-addon' ) );
 		}
 		if ( empty( $days ) ) {
@@ -388,6 +396,17 @@ class Css_Tc_Leave {
 				/* translators: %s: date */
 				return new WP_Error( 'css_tc_leave_holiday', sprintf( __( '%s is a paid holiday, so no time off is needed.', 'css-timeclock-addon' ), $nice ) );
 			}
+			if ( ! empty( $ctx['status'] ) && class_exists( 'Css_Tc_Status' ) ) {
+				$on = Css_Tc_Status::status_on( $ctx['status'], $date );
+				if ( Css_Tc_Status::INACTIVE === $on ) {
+					/* translators: %s: date */
+					return new WP_Error( 'css_tc_leave_inactive', sprintf( __( '%s is after the last day worked.', 'css-timeclock-addon' ), $nice ) );
+				}
+				if ( Css_Tc_Status::LEAVE === $on && ! $manager ) {
+					/* translators: %s: date */
+					return new WP_Error( 'css_tc_leave_onleave', sprintf( __( 'You are on leave on %s. Ask a manager about using PTO.', 'css-timeclock-addon' ), $nice ) );
+				}
+			}
 			if ( ! $manager ) {
 				if ( 'pto' === $type && $date < $cutoff ) {
 					return new WP_Error(
@@ -403,8 +422,8 @@ class Css_Tc_Leave {
 			}
 		}
 
-		// Balance per leave year the days fall in.
-		if ( ! $this->allow_negative() ) {
+		// Balance per leave year the days fall in (a hand-entered holiday has no balance).
+		if ( 'holiday' !== $type && ! $this->allow_negative() ) {
 			$bank   = $this->bank_for( $type );
 			$years  = array();
 			foreach ( $days as $date => $seconds ) {
@@ -587,6 +606,7 @@ class Css_Tc_Leave {
 			'adjustments'  => $this->adjustments( $user_id ),
 			'holidays'     => $hdays,
 			'period_start' => $period ? (string) $period['start'] : '',
+			'status'       => css_tc_addon()->status->record( $user_id ),
 		);
 	}
 
@@ -601,6 +621,10 @@ class Css_Tc_Leave {
 	public function balances( $user_id, $date = '', $ctx = null ) {
 		$ctx   = $ctx ? $ctx : $this->context( $user_id );
 		$date  = '' !== $date ? $date : $this->today();
+		// Inactive: the balance stops at the last day worked (for payout).
+		if ( ! empty( $ctx['status'] ) && Css_Tc_Status::INACTIVE === ( $ctx['status']['status'] ?? '' ) && '' !== (string) ( $ctx['status']['last_day'] ?? '' ) && $date > $ctx['status']['last_day'] ) {
+			$date = $ctx['status']['last_day'];
+		}
 		$cycle = self::cycle( $ctx['hire'], max( $date, (string) $ctx['hire'] ) );
 		$out   = array(
 			'hire'        => $ctx['hire'],
@@ -631,7 +655,10 @@ class Css_Tc_Leave {
 	 */
 	public function create( $user_id, $days, $type, $note, $actor, $manager = false, $agreed = false ) {
 		$note = sanitize_textarea_field( (string) $note );
-		if ( $manager && ( ! $agreed || '' === trim( $note ) ) ) {
+		if ( $manager && 'holiday' === $type && '' === trim( $note ) ) {
+			return new WP_Error( 'css_tc_leave_agreed', __( 'Add a note saying why this holiday is being paid.', 'css-timeclock-addon' ) );
+		}
+		if ( $manager && 'holiday' !== $type && ( ! $agreed || '' === trim( $note ) ) ) {
 			return new WP_Error( 'css_tc_leave_agreed', __( 'Tick "Employee agreed" and add a note saying how they agreed.', 'css-timeclock-addon' ) );
 		}
 		if ( strlen( $note ) > 500 ) {

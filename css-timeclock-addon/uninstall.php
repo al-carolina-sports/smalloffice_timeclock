@@ -107,3 +107,8 @@ foreach ( $css_tc_leave_ids as $css_tc_leave_id ) {
 }
 delete_metadata( 'user', 0, 'css_tc_leave_allow', '', true );
 delete_metadata( 'user', 0, 'css_tc_leave_adjust', '', true );
+
+// Employment status.
+foreach ( array( 'css_tc_status', 'css_tc_leave_from', 'css_tc_leave_to', 'css_tc_last_day', 'css_tc_status_log' ) as $css_tc_meta_key ) {
+	delete_metadata( 'user', 0, $css_tc_meta_key, '', true );
+}

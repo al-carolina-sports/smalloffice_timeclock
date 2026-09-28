@@ -369,3 +369,12 @@ tr.is-pending td { color: #787c82; font-style: italic; }
 .css-tc-holiday input { margin-top: 3px; }
 .css-tc-holiday__when { display: block; color: #646970; font-size: 12px; }
 .css-tc-holiday-custom { margin: 4px 0 8px 18px; list-style: disc; color: #3c434a; }
+
+/* Employment status */
+.css-tc-status-badge { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; background: #f0f0f1; color: #50575e; }
+.css-tc-status-badge--leave { background: #fef3c7; color: #92400e; }
+.css-tc-status-badge--inactive { background: #fee2e2; color: #991b1b; }
+.css-tc-pin-row.css-tc-status--inactive td { opacity: .7; }
+.css-tc-show-inactive { margin-left: 12px; }
+.css-tc-status-fields label { margin-left: 8px; }
+.css-tc-pto-summary .css-tc-status-badge { margin-left: 4px; }

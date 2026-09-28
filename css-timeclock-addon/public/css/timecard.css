@@ -1196,3 +1196,6 @@ span.css-tc-lock {
 		background: none;
 	}
 }
+
+.css-tc-pto__status { margin: 4px 0 6px; padding: 4px 10px; border-radius: 6px; font-size: 13px; background: #fef3c7; color: #92400e; }
+.css-tc-pto__status--inactive { background: #fee2e2; color: #991b1b; }

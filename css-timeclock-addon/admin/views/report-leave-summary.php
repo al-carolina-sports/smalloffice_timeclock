@@ -54,7 +54,15 @@ $css_tc_csv = wp_nonce_url( admin_url( 'admin-post.php?action=css_tc_leave_csv' 
 		<?php foreach ( $css_tc_emps as $css_tc_u ) : ?>
 			<?php $css_tc_b = $css_tc_leave->balances( (int) $css_tc_u->ID ); ?>
 			<tr>
-				<td><a href="<?php echo esc_url( Css_Tc_Reports::leave_used_url( (int) $css_tc_u->ID ) ); ?>"><?php echo esc_html( css_tc_addon()->employees->display_name( (int) $css_tc_u->ID ) ); ?></a></td>
+				<?php $css_tc_now = css_tc_addon()->status->current( (int) $css_tc_u->ID ); ?>
+				<td><a href="<?php echo esc_url( Css_Tc_Reports::leave_used_url( (int) $css_tc_u->ID ) ); ?>"><?php echo esc_html( css_tc_addon()->employees->display_name( (int) $css_tc_u->ID ) ); ?></a>
+					<?php if ( Css_Tc_Status::ACTIVE !== $css_tc_now ) : ?>
+						<span class="css-tc-status-badge css-tc-status-badge--<?php echo esc_attr( $css_tc_now ); ?>"><?php echo esc_html( css_tc_addon()->status->describe( (int) $css_tc_u->ID ) ); ?></span>
+						<?php if ( Css_Tc_Status::INACTIVE === $css_tc_now ) : ?>
+							<div class="description"><?php echo esc_html__( 'Balance as of the last day worked (for payout).', 'css-timeclock-addon' ); ?></div>
+						<?php endif; ?>
+					<?php endif; ?>
+				</td>
 				<?php if ( ! $css_tc_b['cycle'] ) : ?>
 					<td colspan="<?php echo esc_attr( (string) ( 1 + 4 * count( $css_tc_banks ) ) ); ?>" class="description">
 						<a href="<?php echo esc_url( get_edit_user_link( (int) $css_tc_u->ID ) . '#css-tc-employment' ); ?>"><?php echo esc_html__( 'Set a hire date to start PTO', 'css-timeclock-addon' ); ?></a>

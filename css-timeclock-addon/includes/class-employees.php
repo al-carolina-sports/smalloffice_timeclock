@@ -198,7 +198,16 @@ class Css_Tc_Employees {
 	 * @return array<int,array<string,mixed>>
 	 */
 	public function list_for_board() {
-		return $this->list_for_kiosk( false );
+		// People on leave or inactive are left off. Anyone still clocked in is
+		// added back by the board itself so an open shift is never hidden.
+		return array_values(
+			array_filter(
+				$this->list_for_kiosk( false ),
+				static function ( $row ) {
+					return css_tc_addon()->status->can_punch( (int) $row['id'] );
+				}
+			)
+		);
 	}
 
 	/**

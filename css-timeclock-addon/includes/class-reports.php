@@ -176,6 +176,13 @@ class Css_Tc_Reports {
 
 		foreach ( $this->employees( $use_org ? '' : $department ) as $user ) {
 			$sheet = css_tc_addon()->timecard->build( (int) $user->ID, $period );
+			// Someone who left before this period and has nothing in it is not listed.
+			// Anyone with hours or paid time in the period always is.
+			if ( Css_Tc_Status::INACTIVE === css_tc_addon()->status->on( (int) $user->ID, (string) $period['start'] ) && (int) $sheet['paid_seconds'] < 1 && empty( $sheet['segments'] ) ) {
+				continue;
+			}
+			$status_note = css_tc_addon()->status->describe( (int) $user->ID );
+			$status_note = __( 'Active', 'css-timeclock-addon' ) === $status_note ? '' : $status_note;
 
 			$code_seconds = array_fill_keys( array_keys( $codes ), 0 );
 			foreach ( $sheet['pay_codes'] as $code ) {
@@ -395,6 +402,7 @@ class Css_Tc_Reports {
 			$row = array(
 				'user_id'      => (int) $user->ID,
 				'name'         => css_tc_addon()->employees->display_name( (int) $user->ID ),
+				'status_note'  => $status_note,
 				'department'   => $dept_name,
 				'shifts'       => $shift_count,
 				'codes'        => $code_seconds,
