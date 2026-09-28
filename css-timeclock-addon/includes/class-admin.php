@@ -47,7 +47,7 @@ class Css_Tc_Admin {
 				'aio-tc-lite',
 				Css_Tc_Branding::BRAND,
 				Css_Tc_Branding::BRAND,
-				'edit_posts',
+				Css_Tc_Plugin::admin_capability(),
 				$page,
 				array( $this, 'render_page' )
 			);
@@ -55,7 +55,7 @@ class Css_Tc_Admin {
 				'aio-tc-lite',
 				__( 'Timecards', 'css-timeclock-addon' ),
 				__( 'Timecards', 'css-timeclock-addon' ),
-				'edit_posts',
+				Css_Tc_Plugin::admin_capability(),
 				'css-tc-timecards',
 				array( $this, 'render_timecards' )
 			);
@@ -374,7 +374,11 @@ class Css_Tc_Admin {
 			}
 		}
 
-		$cap     = 'edit_posts';
+		if ( ! Css_Tc_Plugin::user_can_manage() ) {
+			remove_menu_page( $parent ); // AIO shows it to anyone with edit_posts.
+			return;
+		}
+		$cap     = Css_Tc_Plugin::admin_capability();
 		$pending = css_tc_addon()->corrections->pending_count();
 		$badge   = $pending > 0
 			? ' <span class="awaiting-mod count-' . (int) $pending . '"><span class="pending-count">' . (int) $pending . '</span></span>'
@@ -388,11 +392,13 @@ class Css_Tc_Admin {
 		if ( isset( $by_slug['aio-reports-sub'] ) ) {
 			$item      = $by_slug['aio-reports-sub'];
 			$item[0]   = __( 'Reports', 'css-timeclock-addon' );
+			$item[1]   = $cap;
 			$ordered[] = $item;
 		}
 		if ( isset( $by_slug['aio-monitoring-sub'] ) ) {
 			$item      = $by_slug['aio-monitoring-sub'];
 			$item[0]   = __( 'Who\'s working', 'css-timeclock-addon' );
+			$item[1]   = $cap;
 			$ordered[] = $item;
 		}
 		$ordered[] = array( __( 'Corrections', 'css-timeclock-addon' ) . $badge, $cap, $tab_url( 'corrections' ), __( 'Corrections', 'css-timeclock-addon' ) );

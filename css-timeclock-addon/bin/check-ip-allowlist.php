@@ -74,25 +74,59 @@ css_tc_check( $pins->ip_allowed_by_list( '203.0.113.10', true, $list ), 'listed 
 css_tc_check( ! $pins->ip_allowed_by_list( '198.51.100.4', true, $list ), 'other network refused' );
 css_tc_check( ! $pins->ip_allowed_by_list( '', true, $list ), 'unknown client refused when list is active' );
 
-$_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.10, 10.1.2.3';
+$pins->extra_trusted_proxies( array() );
+$reset = static function () {
+	unset( $_SERVER['HTTP_X_FORWARDED_FOR'], $_SERVER['HTTP_TRUE_CLIENT_IP'], $_SERVER['HTTP_X_REAL_IP'] );
+};
+
+$reset();
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.10';
 $_SERVER['REMOTE_ADDR']          = '10.1.2.3';
-css_tc_check( '203.0.113.10' === $pins->client_ip(), 'X-Forwarded-For first address wins' );
+css_tc_check( '203.0.113.10' === $pins->client_ip(), 'private proxy: forwarded client used' );
 
-$_SERVER['HTTP_X_FORWARDED_FOR'] = 'not-an-ip, 203.0.113.50';
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.10, 198.51.100.77';
+$_SERVER['REMOTE_ADDR']          = '10.1.2.3';
+css_tc_check( '198.51.100.77' === $pins->client_ip(), 'spoofed left X-Forwarded-For entry is ignored' );
+
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.10, 198.51.100.77, 10.9.9.9';
+css_tc_check( '198.51.100.77' === $pins->client_ip(), 'internal hops on the right are skipped' );
+
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.10';
 $_SERVER['REMOTE_ADDR']          = '198.51.100.8';
-css_tc_check( '198.51.100.8' === $pins->client_ip(), 'invalid X-Forwarded-For does not skip to a later spoofed address' );
+css_tc_check( '198.51.100.8' === $pins->client_ip(), 'public REMOTE_ADDR ignores forwarded headers' );
 
-unset( $_SERVER['HTTP_X_FORWARDED_FOR'] );
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.50, not-an-ip';
+$_SERVER['REMOTE_ADDR']          = '10.1.2.3';
+css_tc_check( '10.1.2.3' === $pins->client_ip(), 'unreadable entry stops the walk' );
+
+$reset();
 $_SERVER['HTTP_TRUE_CLIENT_IP'] = '203.0.113.20';
 $_SERVER['REMOTE_ADDR']         = '10.0.0.4';
-css_tc_check( '203.0.113.20' === $pins->client_ip(), 'True-Client-IP when X-Forwarded-For is absent' );
+css_tc_check( '203.0.113.20' === $pins->client_ip(), 'True-Client-IP from a private proxy' );
 
-unset( $_SERVER['HTTP_TRUE_CLIENT_IP'] );
+$_SERVER['REMOTE_ADDR'] = '198.51.100.3';
+css_tc_check( '198.51.100.3' === $pins->client_ip(), 'True-Client-IP ignored from a public client' );
+
+$reset();
 $_SERVER['REMOTE_ADDR'] = '198.51.100.9';
 css_tc_check( '198.51.100.9' === $pins->client_ip(), 'REMOTE_ADDR fallback' );
 
+$_SERVER['REMOTE_ADDR'] = '192.168.1.20';
+css_tc_check( '192.168.1.20' === $pins->client_ip(), 'LAN client without headers' );
+
+$_SERVER['REMOTE_ADDR']          = '127.0.0.1';
 $_SERVER['HTTP_X_FORWARDED_FOR'] = '::ffff:203.0.113.10';
 css_tc_check( '203.0.113.10' === $pins->client_ip(), 'forwarded IPv4-mapped address canonicalizes' );
+
+$reset();
+$pins->extra_trusted_proxies( array( '198.51.100.0/24' ) );
+$_SERVER['REMOTE_ADDR']          = '198.51.100.5';
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.99';
+css_tc_check( '203.0.113.99' === $pins->client_ip(), 'listed public proxy is trusted' );
+$pins->extra_trusted_proxies( array() );
+css_tc_check( '198.51.100.5' === $pins->client_ip(), 'unlisted public proxy is the client' );
+css_tc_check( $pins->is_trusted_proxy( '100.64.3.4' ), 'CGNAT range counts as internal' );
+$reset();
 
 $ajax = file_get_contents( dirname( __DIR__ ) . '/includes/class-ajax.php' );
 css_tc_check( false !== strpos( $ajax, $office ), 'kiosk error string is present' );

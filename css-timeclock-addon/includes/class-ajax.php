@@ -353,6 +353,26 @@ class Css_Tc_Ajax {
 		$settings['ip_allowlist_enabled'] = empty( $_POST['ip_allowlist_enabled'] ) ? 0 : 1;
 		$settings['ip_allowlist']         = $allow_raw;
 
+		$proxy_raw = isset( $_POST['trusted_proxies'] ) ? (string) wp_unslash( $_POST['trusted_proxies'] ) : '';
+		$proxy_raw = sanitize_textarea_field( str_replace( array( "\r\n", "\r" ), "\n", $proxy_raw ) );
+		if ( strlen( $proxy_raw ) > 2000 ) {
+			wp_send_json_error( array( 'message' => __( 'The trusted proxy list is too long.', 'css-timeclock-addon' ) ), 400 );
+		}
+		$proxy_parsed = css_tc_addon()->pins->parse_allowlist( $proxy_raw );
+		if ( ! empty( $proxy_parsed['invalid'] ) ) {
+			wp_send_json_error(
+				array(
+					'message' => sprintf(
+						/* translators: %s: invalid trusted proxy lines */
+						__( 'Trusted proxies: these lines are not IPv4, IPv6, or CIDR ranges: %s', 'css-timeclock-addon' ),
+						implode( ', ', array_map( 'sanitize_text_field', array_slice( $proxy_parsed['invalid'], 0, 8 ) ) )
+					),
+				),
+				400
+			);
+		}
+		$settings['trusted_proxies'] = $proxy_raw;
+
 		$settings['idle_reset_ms']         = min( 30000, max( 3000, isset( $_POST['idle_reset_ms'] ) ? absint( $_POST['idle_reset_ms'] ) : 8000 ) );
 		$settings['times_lookback_days']   = min( 60, max( 7, isset( $_POST['times_lookback_days'] ) ? absint( $_POST['times_lookback_days'] ) : 21 ) );
 

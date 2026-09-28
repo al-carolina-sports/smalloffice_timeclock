@@ -70,3 +70,13 @@ foreach ( array( 'css_tc_departments', 'css_tc_home_department' ) as $css_tc_met
 }
 global $wpdb;
 $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like( 'css_tc_punch_lock_' ) . '%' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+
+// Manager capability granted on activation.
+foreach ( array( 'administrator', 'time_clock_admin' ) as $css_tc_role_name ) {
+	$css_tc_role = get_role( $css_tc_role_name );
+	if ( $css_tc_role ) {
+		$css_tc_role->remove_cap( 'css_tc_manage' );
+	}
+}
+delete_option( 'css_tc_caps_version' );
+delete_option( 'css_tc_caps_roles' );

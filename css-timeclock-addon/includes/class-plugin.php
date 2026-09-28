@@ -115,6 +115,9 @@ class Css_Tc_Plugin {
 		add_action( 'init', array( $this, 'register_runtime' ) );
 		Css_Tc_Branding::register();
 		add_action( 'admin_init', array( $this, 'maybe_create_times_page' ) );
+		add_action( 'init', array( __CLASS__, 'maybe_grant_caps' ), 0 );
+		add_action( 'init', array( __CLASS__, 'maybe_grant_caps' ), 20 ); // After AIO registers its roles.
+		add_action( 'admin_init', array( $this, 'guard_admin_pages' ), 1 );
 		add_action( 'admin_notices', array( $this, 'maybe_missing_aio_notice' ) );
 		add_filter( 'plugin_action_links_' . CSS_TC_ADDON_BASENAME, array( $this, 'plugin_action_links' ) );
 	}
@@ -134,6 +137,7 @@ class Css_Tc_Plugin {
 			'rate_limit_window'  => 900,
 			'ip_allowlist_enabled' => 0,
 			'ip_allowlist'         => '',
+			'trusted_proxies'      => '',
 			'idle_reset_ms'      => 8000,
 			'pin_kiosk_page_id'       => 0,
 			'name_kiosk_page_id'      => 0,
@@ -184,16 +188,79 @@ class Css_Tc_Plugin {
 	}
 
 	/**
-	 * Capability used for admin screens.
+	 * Capability that makes someone a timeclock manager.
+	 */
+	const MANAGE_CAP = 'css_tc_manage';
+
+	/**
+	 * Bump when the roles that get MANAGE_CAP change.
+	 */
+	const CAPS_VERSION = '1';
+
+	/**
+	 * Roles that manage the time clock.
 	 *
-	 * Matches AIO's Time Clock menu (`edit_posts`) so Time Clock Admins can
-	 * manage PINs. Falls back to Settings → manage_options when AIO is absent.
+	 * @return string[]
+	 */
+	public static function manager_roles() {
+		return array( 'administrator', 'time_clock_admin' );
+	}
+
+	/**
+	 * Give manager roles the SMOTC capability (activation, and once after an
+	 * upgrade, or when AIO's Time Clock Admin role appears later).
+	 *
+	 * @param bool $force Grant even if already recorded.
+	 * @return void
+	 */
+	public static function maybe_grant_caps( $force = false ) {
+		if ( ! function_exists( 'get_role' ) ) {
+			return;
+		}
+		$have = get_option( 'css_tc_caps_version', '' );
+		$seen = (array) get_option( 'css_tc_caps_roles', array() );
+		$todo = array();
+		foreach ( self::manager_roles() as $role_name ) {
+			if ( $force || self::CAPS_VERSION !== $have || ! in_array( $role_name, $seen, true ) ) {
+				$todo[] = $role_name;
+			}
+		}
+		if ( empty( $todo ) ) {
+			return;
+		}
+		foreach ( $todo as $role_name ) {
+			$role = get_role( $role_name );
+			if ( $role ) {
+				$role->add_cap( self::MANAGE_CAP );
+				$seen[] = $role_name;
+			}
+		}
+		update_option( 'css_tc_caps_version', self::CAPS_VERSION, true );
+		update_option( 'css_tc_caps_roles', array_values( array_unique( $seen ) ), true );
+
+		// The signed-in user's capabilities may already be loaded for this
+		// request; refresh them so the first page after an upgrade works.
+		if ( function_exists( 'wp_get_current_user' ) && did_action( 'set_current_user' ) ) {
+			$user = wp_get_current_user();
+			if ( $user && $user->exists() ) {
+				$user->get_role_caps();
+			}
+		}
+	}
+
+	/**
+	 * Capability used for SMOTC admin screens.
+	 *
+	 * With AIO active this is css_tc_manage (administrators and AIO's Time
+	 * Clock Admin role). AIO itself only asks for edit_posts, which every
+	 * Contributor, Author and Editor has — too broad for payroll and PINs.
+	 * Without AIO, Settings → manage_options.
 	 *
 	 * @return string
 	 */
 	public static function admin_capability() {
 		if ( self::aio_is_active() ) {
-			return 'edit_posts';
+			return self::MANAGE_CAP;
 		}
 		return 'manage_options';
 	}
@@ -202,11 +269,30 @@ class Css_Tc_Plugin {
 	 * @return bool
 	 */
 	public static function user_can_manage() {
-		if ( current_user_can( 'manage_options' ) || current_user_can( self::admin_capability() ) ) {
-			return true;
+		return current_user_can( 'manage_options' ) || current_user_can( self::MANAGE_CAP );
+	}
+
+	/**
+	 * Time Clock admin pages (AIO's and SMOTC's) are for managers only.
+	 * AIO registers them with edit_posts; turn everyone else away.
+	 *
+	 * @return void
+	 */
+	public function guard_admin_pages() {
+		if ( ! is_admin() || wp_doing_ajax() || ! self::aio_is_active() ) {
+			return;
 		}
-		$user = wp_get_current_user();
-		return $user && in_array( 'time_clock_admin', (array) $user->roles, true );
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( '' === $page ) {
+			return;
+		}
+		if ( 0 !== strpos( $page, 'aio-' ) && 0 !== strpos( $page, 'css-tc-' ) ) {
+			return;
+		}
+		if ( self::user_can_manage() ) {
+			return;
+		}
+		wp_die( esc_html__( 'Only time clock managers can open this page.', 'css-timeclock-addon' ), '', array( 'response' => 403 ) );
 	}
 
 	public function load_textdomain() {
@@ -296,6 +382,7 @@ class Css_Tc_Plugin {
 
 		Css_Tc_Shortcodes::create_public_pages();
 		css_tc_addon()->corrections->maybe_upgrade_schema();
+		self::maybe_grant_caps( true );
 	}
 
 	/**
