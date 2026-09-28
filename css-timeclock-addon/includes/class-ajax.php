@@ -35,6 +35,8 @@ class Css_Tc_Ajax {
 		add_action( 'wp_ajax_css_tc_save_settings', array( $self, 'save_settings' ) );
 		add_action( 'wp_ajax_css_tc_save_pin', array( $self, 'save_pin' ) );
 		add_action( 'wp_ajax_css_tc_clear_pin', array( $self, 'clear_pin' ) );
+		add_action( 'wp_ajax_css_tc_reveal_pin', array( $self, 'reveal_pin' ) );
+		add_action( 'wp_ajax_css_tc_reveal_my_pin', array( $self, 'reveal_my_pin' ) );
 		add_action( 'wp_ajax_css_tc_create_pages', array( $self, 'create_pages' ) );
 		add_action( 'wp_ajax_css_tc_review_correction', array( $self, 'review_correction' ) );
 
@@ -396,6 +398,44 @@ class Css_Tc_Ajax {
 				'settings' => $settings,
 			)
 		);
+	}
+
+	/**
+	 * Manager reveals an employee's PIN (SMOTC → Employee PINs).
+	 *
+	 * @return void
+	 */
+	public function reveal_pin() {
+		$this->verify_admin();
+		$user_id = isset( $_POST['user_id'] ) ? absint( $_POST['user_id'] ) : 0;
+		if ( ! css_tc_addon()->employees->is_employee( $user_id ) ) {
+			wp_send_json_error( array( 'message' => __( 'That user is not a time-clock employee.', 'css-timeclock-addon' ) ), 400 );
+		}
+		$pin = css_tc_addon()->pins->reveal( $user_id, get_current_user_id() );
+		if ( is_wp_error( $pin ) ) {
+			wp_send_json_error( array( 'message' => $pin->get_error_message() ), 409 );
+		}
+		wp_send_json_success( array( 'pin' => $pin ) );
+	}
+
+	/**
+	 * Signed-in employee reveals their own PIN (My Time Clock).
+	 *
+	 * @return void
+	 */
+	public function reveal_my_pin() {
+		if ( ! check_ajax_referer( 'css_tc_my_pin', 'nonce', false ) ) {
+			wp_send_json_error( array( 'message' => __( 'Session expired. Refresh the page.', 'css-timeclock-addon' ) ), 403 );
+		}
+		$user_id = get_current_user_id();
+		if ( $user_id < 1 || ! css_tc_addon()->employees->can_view_own_times( $user_id ) ) {
+			wp_send_json_error( array( 'message' => __( 'Sign in with your employee account.', 'css-timeclock-addon' ) ), 403 );
+		}
+		$pin = css_tc_addon()->pins->reveal( $user_id, $user_id );
+		if ( is_wp_error( $pin ) ) {
+			wp_send_json_error( array( 'message' => $pin->get_error_message() ), 409 );
+		}
+		wp_send_json_success( array( 'pin' => $pin ) );
 	}
 
 	/**

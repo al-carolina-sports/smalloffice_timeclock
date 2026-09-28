@@ -275,3 +275,31 @@
 .css-tc-org__row input[type=text] { min-width: 220px; }
 .css-tc-org__del { width: 90px; text-align: right; vertical-align: middle; }
 .css-tc-org__table .num { text-align: right; width: 90px; }
+
+/* PIN column with reveal */
+.css-tc-admin .css-tc-pin-field--reveal {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+.css-tc-admin .css-tc-pin-mask {
+	min-width: 5.5em;
+	display: inline-block;
+	font-size: 15px;
+	letter-spacing: 0.12em;
+	background: transparent;
+}
+.css-tc-admin .css-tc-pin-note,
+.css-tc-admin .css-tc-pin-last {
+	display: block;
+	margin-top: 4px;
+}
+.css-tc-admin .css-tc-pin-field--reveal .css-tc-pin-toggle {
+	position: static;
+	height: 30px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+}
+.css-tc-admin .css-tc-pin-reveal [hidden] {
+	display: none !important;
+}

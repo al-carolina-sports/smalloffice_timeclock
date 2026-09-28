@@ -35,6 +35,8 @@ $user_ids = get_users(
 foreach ( $user_ids as $user_id ) {
 	delete_user_meta( (int) $user_id, 'css_tc_pin_hash' );
 	delete_user_meta( (int) $user_id, 'css_tc_pin_set_at' );
+	delete_user_meta( (int) $user_id, 'css_tc_pin_enc' );
+	delete_user_meta( (int) $user_id, 'css_tc_pin_reveals' );
 }
 
 $flagged_users = get_users(

@@ -317,3 +317,65 @@
     boot();
   }
 })();
+
+// "Your PIN" reveal on My Time Clock. The PIN is fetched only when the eye is
+// pressed, and hidden again after 20 seconds.
+(function () {
+  "use strict";
+
+  function bindMyPin() {
+    var box = document.querySelector("[data-css-tc-mypin]");
+    if (!box) {
+      return;
+    }
+    var value = box.querySelector("[data-mypin-value]");
+    var toggle = box.querySelector("[data-mypin-toggle]");
+    if (!value || !toggle) {
+      return;
+    }
+    var timer = null;
+
+    function hide() {
+      window.clearTimeout(timer);
+      value.textContent = "••••";
+      toggle.setAttribute("aria-pressed", "false");
+      toggle.setAttribute("aria-label", toggle.getAttribute("data-label-show") || "Show PIN");
+    }
+
+    toggle.addEventListener("click", function () {
+      if (toggle.getAttribute("aria-pressed") === "true") {
+        hide();
+        return;
+      }
+      var body = new URLSearchParams();
+      body.set("action", "css_tc_reveal_my_pin");
+      body.set("nonce", box.getAttribute("data-nonce") || "");
+      fetch(box.getAttribute("data-ajax-url"), {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+        body: body.toString(),
+      })
+        .then(function (res) {
+          return res.json();
+        })
+        .then(function (json) {
+          if (!json || !json.success) {
+            value.textContent = (json && json.data && json.data.message) || "";
+            return;
+          }
+          value.textContent = json.data.pin;
+          toggle.setAttribute("aria-pressed", "true");
+          toggle.setAttribute("aria-label", toggle.getAttribute("data-label-hide") || "Hide PIN");
+          window.clearTimeout(timer);
+          timer = window.setTimeout(hide, 20000);
+        });
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bindMyPin);
+  } else {
+    bindMyPin();
+  }
+})();

@@ -101,7 +101,22 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 			</div>
 		<?php endif; ?>
 
+		<div class="css-tc-sheet__right">
+		<?php if ( 'employee' === $mode && Css_Tc_Pins::user_has_pin( get_current_user_id() ) ) : ?>
+			<?php $css_tc_my_viewable = css_tc_addon()->pins->is_viewable( get_current_user_id() ); ?>
+			<span class="css-tc-mypin css-tc-no-print" data-css-tc-mypin data-ajax-url="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( 'css_tc_my_pin' ) ); ?>">
+				<span class="css-tc-mypin__label"><?php echo esc_html__( 'Your PIN', 'css-timeclock-addon' ); ?></span>
+				<code class="css-tc-mypin__value" data-mypin-value>••••</code>
+				<?php if ( $css_tc_my_viewable ) : ?>
+					<button type="button" class="css-tc-mypin__toggle" data-mypin-toggle aria-pressed="false" aria-label="<?php echo esc_attr__( 'Show PIN', 'css-timeclock-addon' ); ?>" data-label-show="<?php echo esc_attr__( 'Show PIN', 'css-timeclock-addon' ); ?>" data-label-hide="<?php echo esc_attr__( 'Hide PIN', 'css-timeclock-addon' ); ?>"><svg class="css-tc-mypin__show" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2" /><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2" /></svg><svg class="css-tc-mypin__hide" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M3 3l18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M10.6 6.2A10.4 10.4 0 0 1 12 6c6.5 0 10 6 10 6a18.2 18.2 0 0 1-3.2 3.8M6.1 6.7C3.7 8.3 2 12 2 12s3.5 6 10 6c1.2 0 2.3-.2 3.3-.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg></button>
+				<?php else : ?>
+					<span class="css-tc-mypin__note"><?php echo esc_html__( 'Ask a manager to set a new PIN to view it here', 'css-timeclock-addon' ); ?></span>
+				<?php endif; ?>
+			</span>
+		<?php endif; ?>
+
 		<button type="button" class="css-tc-print" onclick="window.print()"><?php echo esc_html__( 'Print', 'css-timeclock-addon' ); ?></button>
+		</div>
 	</div>
 
 	<p class="css-tc-print-only">

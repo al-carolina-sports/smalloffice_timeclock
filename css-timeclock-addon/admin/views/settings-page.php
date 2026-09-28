@@ -280,7 +280,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</div>
 	<?php elseif ( 'pins' === $tab ) : ?>
 		<p>
-			<?php echo esc_html__( 'PINs are stored with WordPress password hashing. They are never saved in plaintext. The eye on each PIN field only reveals the digits you are typing. Each PIN must be unique. Employees without a PIN do not appear on the name-list kiosk.', 'css-timeclock-addon' ); ?>
+			<?php echo esc_html__( 'The kiosk checks PINs against a WordPress password hash. An encrypted copy (key from this site\'s wp-config.php secret keys) lets managers reveal a PIN with the eye in the PIN column; employees can reveal their own on My Time Clock. Each reveal is logged. PINs set before this version cannot be shown until a new PIN is set. Each PIN must be unique. Employees without a PIN do not appear on the name-list kiosk.', 'css-timeclock-addon' ); ?>
 		</p>
 
 		<p>
@@ -294,13 +294,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<th><?php echo esc_html__( 'Employee', 'css-timeclock-addon' ); ?></th>
 					<th><?php echo esc_html__( 'Role', 'css-timeclock-addon' ); ?></th>
 					<th><?php echo esc_html__( 'PIN status', 'css-timeclock-addon' ); ?></th>
+					<th><?php echo esc_html__( 'PIN', 'css-timeclock-addon' ); ?></th>
 					<th><?php echo esc_html__( 'Set PIN', 'css-timeclock-addon' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php if ( empty( $employees ) ) : ?>
 				<tr>
-					<td colspan="4">
+					<td colspan="5">
 						<?php echo esc_html__( 'No time-clock employees found. Create WordPress users with the Employee, Volunteer, Manager, or Contractor role (the roles AIO Lite uses).', 'css-timeclock-addon' ); ?>
 					</td>
 				</tr>
@@ -327,6 +328,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 								<?php endif; ?>
 							<?php else : ?>
 								<span class="css-tc-pill css-tc-pill-unset"><?php echo esc_html__( 'Not set', 'css-timeclock-addon' ); ?></span>
+							<?php endif; ?>
+						</td>
+						<?php
+						$css_tc_viewable = css_tc_addon()->pins->is_viewable( (int) $user->ID );
+						$css_tc_last     = css_tc_addon()->pins->last_reveal( (int) $user->ID );
+						?>
+						<td class="css-tc-pin-reveal">
+							<span class="css-tc-pin-field css-tc-pin-field--reveal">
+								<code class="css-tc-pin-mask" data-pin-mask><?php echo $has_pin ? '••••' : '—'; ?></code>
+								<button type="button" class="css-tc-pin-toggle css-tc-pin-reveal-btn" data-user-id="<?php echo esc_attr( (string) (int) $user->ID ); ?>" aria-pressed="false" aria-label="<?php echo esc_attr__( 'Show PIN', 'css-timeclock-addon' ); ?>" <?php echo $css_tc_viewable ? '' : 'hidden'; ?>>
+									<svg class="css-tc-pin-toggle__show" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2" /><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2" /></svg><svg class="css-tc-pin-toggle__hide" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M3 3l18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M10.6 6.2A10.4 10.4 0 0 1 12 6c6.5 0 10 6 10 6a18.2 18.2 0 0 1-3.2 3.8M6.1 6.7C3.7 8.3 2 12 2 12s3.5 6 10 6c1.2 0 2.3-.2 3.3-.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+								</button>
+							</span>
+							<span class="description css-tc-pin-note" <?php echo ( $has_pin && ! $css_tc_viewable ) ? '' : 'hidden'; ?>><?php echo esc_html__( 'Set a new PIN to view it', 'css-timeclock-addon' ); ?></span>
+							<?php if ( $css_tc_last ) : ?>
+								<span class="description css-tc-pin-last">
+									<?php
+									echo esc_html(
+										sprintf(
+											/* translators: 1: who viewed, 2: date/time */
+											__( 'Last viewed by %1$s, %2$s', 'css-timeclock-addon' ),
+											css_tc_addon()->employees->display_name( (int) $css_tc_last['by'] ),
+											wp_date( get_option( 'date_format', 'Y-m-d' ) . ' ' . get_option( 'time_format', 'g:i a' ), (int) $css_tc_last['at'] )
+										)
+									);
+									?>
+								</span>
 							<?php endif; ?>
 						</td>
 						<td>
