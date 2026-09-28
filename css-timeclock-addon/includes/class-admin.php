@@ -80,7 +80,7 @@ class Css_Tc_Admin {
 		}
 
 		$is_timecards  = ( false !== strpos( (string) $hook, 'css-tc-timecards' ) );
-		$is_monitoring = ( false !== strpos( (string) $hook, 'aio-monitoring-sub' ) );
+		$is_monitoring = ( false !== strpos( (string) $hook, 'aio-monitoring-sub' ) ) || ( false !== strpos( (string) $hook, Css_Tc_Leave_Ui::PAGE ) );
 		$is_ours       = $is_timecards || $is_monitoring || ( false !== strpos( (string) $hook, 'css-tc-addon' ) );
 		if ( ! $is_ours ) {
 			return;
@@ -217,7 +217,7 @@ class Css_Tc_Admin {
 		$settings  = css_tc_addon()->get_settings();
 		$employees = css_tc_addon()->employees->list_for_admin();
 		$tab       = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'settings'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( ! in_array( $tab, array( 'settings', 'pins', 'locations', 'corrections' ), true ) ) {
+		if ( ! in_array( $tab, array( 'settings', 'leave', 'pins', 'locations', 'corrections' ), true ) ) {
 			$tab = 'settings';
 		}
 
@@ -402,11 +402,18 @@ class Css_Tc_Admin {
 			$ordered[] = $item;
 		}
 		$ordered[] = array( __( 'Corrections', 'css-timeclock-addon' ) . $badge, $cap, $tab_url( 'corrections' ), __( 'Corrections', 'css-timeclock-addon' ) );
+		if ( css_tc_addon()->leave->any_enabled() ) {
+			$leave_pending = css_tc_addon()->leave->pending_count();
+			$leave_badge   = $leave_pending > 0
+				? ' <span class="awaiting-mod count-' . (int) $leave_pending . '"><span class="pending-count">' . (int) $leave_pending . '</span></span>'
+				: '';
+			$ordered[] = array( __( 'Time off', 'css-timeclock-addon' ) . $leave_badge, $cap, Css_Tc_Leave_Ui::PAGE, __( 'Time off', 'css-timeclock-addon' ) );
+		}
 		$ordered[] = array( __( 'Employees & PINs', 'css-timeclock-addon' ), $cap, $tab_url( 'pins' ), __( 'Employees & PINs', 'css-timeclock-addon' ) );
 		$ordered[] = array( __( 'Locations & departments', 'css-timeclock-addon' ), $cap, $tab_url( 'locations' ), __( 'Locations & departments', 'css-timeclock-addon' ) );
 		$ordered[] = array( __( 'TC-Config', 'css-timeclock-addon' ), $cap, 'css-tc-addon', __( 'TC-Config', 'css-timeclock-addon' ) );
 
-		$hide = array( 'aio-tc-lite', 'aio-reports-sub', 'aio-monitoring-sub', 'css-tc-timecards', 'css-tc-addon', 'aio-employees-sub', 'aio-shifts-sub' );
+		$hide = array( 'aio-tc-lite', 'aio-reports-sub', 'aio-monitoring-sub', 'css-tc-timecards', 'css-tc-addon', 'aio-employees-sub', 'aio-shifts-sub', Css_Tc_Leave_Ui::PAGE );
 		if ( css_tc_addon()->organization->enabled() ) {
 			$hide[] = 'aio-department-sub';
 		}

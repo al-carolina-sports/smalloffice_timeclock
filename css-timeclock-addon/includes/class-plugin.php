@@ -14,6 +14,8 @@ require_once CSS_TC_ADDON_DIR . 'includes/class-time.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pay-codes.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-overtime.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-holidays.php';
+require_once CSS_TC_ADDON_DIR . 'includes/class-leave.php';
+require_once CSS_TC_ADDON_DIR . 'includes/class-leave-ui.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pay-periods.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-employees.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-organization.php';
@@ -65,6 +67,11 @@ class Css_Tc_Plugin {
 	public $holidays;
 
 	/**
+	 * @var Css_Tc_Leave
+	 */
+	public $leave;
+
+	/**
 	 * @var Css_Tc_Reports
 	 */
 	public $reports;
@@ -110,6 +117,7 @@ class Css_Tc_Plugin {
 		$this->timecard    = new Css_Tc_Timecard();
 		$this->overtime    = new Css_Tc_Overtime();
 		$this->holidays    = new Css_Tc_Holidays();
+		$this->leave       = new Css_Tc_Leave();
 		$this->reports     = new Css_Tc_Reports();
 		$this->organization = new Css_Tc_Organization();
 		$this->employees   = new Css_Tc_Employees();
@@ -139,37 +147,40 @@ class Css_Tc_Plugin {
 	 * @return array<string,mixed>
 	 */
 	public static function default_settings() {
-		return array(
-			'pin_kiosk_enabled'  => 1,
-			'name_kiosk_enabled' => 1,
-			'pin_min_length'     => 4,
-			'pin_max_length'     => 8,
-			'rate_limit_max'     => 5,
-			'rate_limit_window'  => 900,
-			'ip_allowlist_enabled' => 0,
-			'ip_allowlist'         => '',
-			'trusted_proxies'      => '',
-			'idle_reset_ms'      => 8000,
-			'pin_kiosk_page_id'       => 0,
-			'name_kiosk_page_id'      => 0,
-			'employee_times_page_id'  => 0,
-			'times_lookback_days'     => 21,
-			'pay_period_length'       => 'biweekly',
-			'pay_period_anchor'       => '2026-09-07',
-			'missed_clock_out_hours'  => 16,
-			'long_shift_hours'        => 16,
-			'overtime_enabled'        => 0,
-			'overtime_hours'          => 40,
-			'overtime_weeks'          => 1,
-			'overtime_scope'          => 'combined',
-			'assignments_enabled'     => 0,
-			'switch_enabled'          => 1,
-			'holidays_enabled'        => 0,
-			'holiday_hours'           => 8,
-			'holidays_observed'       => Css_Tc_Holidays::default_observed(),
-			'holidays_custom'         => '',
-			'holiday_weekend_shift'   => 1,
-			'wide_layout'             => 1,
+		return array_merge(
+			Css_Tc_Leave::default_settings(),
+			array(
+				'pin_kiosk_enabled'  => 1,
+				'name_kiosk_enabled' => 1,
+				'pin_min_length'     => 4,
+				'pin_max_length'     => 8,
+				'rate_limit_max'     => 5,
+				'rate_limit_window'  => 900,
+				'ip_allowlist_enabled' => 0,
+				'ip_allowlist'         => '',
+				'trusted_proxies'      => '',
+				'idle_reset_ms'      => 8000,
+				'pin_kiosk_page_id'       => 0,
+				'name_kiosk_page_id'      => 0,
+				'employee_times_page_id'  => 0,
+				'times_lookback_days'     => 21,
+				'pay_period_length'       => 'biweekly',
+				'pay_period_anchor'       => '2026-09-07',
+				'missed_clock_out_hours'  => 16,
+				'long_shift_hours'        => 16,
+				'overtime_enabled'        => 0,
+				'overtime_hours'          => 40,
+				'overtime_weeks'          => 1,
+				'overtime_scope'          => 'combined',
+				'assignments_enabled'     => 0,
+				'switch_enabled'          => 1,
+				'holidays_enabled'        => 0,
+				'holiday_hours'           => 8,
+				'holidays_observed'       => Css_Tc_Holidays::default_observed(),
+				'holidays_custom'         => '',
+				'holiday_weekend_shift'   => 1,
+				'wide_layout'             => 1,
+			)
 		);
 	}
 
@@ -410,6 +421,8 @@ class Css_Tc_Plugin {
 		$this->reports->register_hooks();
 		$this->organization->register_hooks();
 		$this->holidays->register_hooks();
+		$this->leave->register();
+		Css_Tc_Leave_Ui::register();
 		Css_Tc_Shortcodes::register();
 	}
 

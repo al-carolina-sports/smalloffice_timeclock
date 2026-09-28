@@ -209,12 +209,61 @@ class Css_Tc_Timecard {
 				$by_company[ $cid ]['holiday'] = $holiday_seconds;
 			}
 		}
-		$paid_seconds = $total_seconds + $holiday_seconds;
+		// Approved PTO and sick time: paid, not worked, never overtime.
+		// Pending requests are shown on the day but add no hours.
+		$leave_seconds = array( 'pto' => 0, 'sick' => 0 );
+		if ( css_tc_addon()->leave->any_enabled() ) {
+			$leave_days = css_tc_addon()->leave->by_date( $user_id, (string) $period['start'], (string) $period['end'] );
+			foreach ( $week_rows as $w => $week_row ) {
+				$week_leave = 0;
+				foreach ( $week_row['days'] as $d => $day ) {
+					$items = array();
+					foreach ( $leave_days[ $day['date'] ] ?? array() as $row ) {
+						$items[] = array(
+							'type'    => $row['type'],
+							'label'   => Css_Tc_Leave::label( $row['type'] ),
+							'hm'      => css_tc_addon()->time->format_duration( (int) $row['seconds'] ),
+							'pending' => 'pending' === $row['status'],
+						);
+						if ( 'approved' === $row['status'] && isset( $leave_seconds[ $row['type'] ] ) ) {
+							$leave_seconds[ $row['type'] ] += (int) $row['seconds'];
+							$week_leave                   += (int) $row['seconds'];
+						}
+					}
+					$week_rows[ $w ]['days'][ $d ]['leave'] = $items;
+				}
+				$week_rows[ $w ]['leave_seconds'] = $week_leave;
+				$week_rows[ $w ]['leave_hm']      = $week_leave > 0 ? css_tc_addon()->time->format_duration( $week_leave ) : '';
+			}
+			foreach ( $leave_seconds as $code => $sec ) {
+				if ( css_tc_addon()->leave->type_enabled( $code ) ) {
+					$buckets[ $code ] = $sec;
+				}
+			}
+			$leave_total = array_sum( $leave_seconds );
+			if ( $leave_total > 0 ) {
+				if ( 0 === $holiday_dept && css_tc_addon()->organization->enabled() ) {
+					$holiday_dept = css_tc_addon()->organization->home( $user_id );
+				}
+				$cid = $holiday_dept > 0 && css_tc_addon()->organization->department( $holiday_dept ) ? (int) css_tc_addon()->organization->department( $holiday_dept )['company_id'] : 0;
+				if ( ! isset( $by_company[ $cid ] ) ) {
+					$by_company[ $cid ] = array(
+						'company_id' => $cid,
+						'name'       => $cid > 0 ? css_tc_addon()->organization->company_name( $cid ) : __( 'No company', 'css-timeclock-addon' ),
+						'total'      => 0,
+						'overtime'   => 0,
+						'regular'    => 0,
+					);
+				}
+				$by_company[ $cid ]['leave'] = $leave_total;
+			}
+		}
+		$paid_seconds = $total_seconds + $holiday_seconds + array_sum( $leave_seconds );
 
 		$pay_rows = array();
 		foreach ( $defs as $slug => $def ) {
 			$seconds = isset( $buckets[ $slug ] ) ? (int) $buckets[ $slug ] : 0;
-			$always  = in_array( $slug, array( Css_Tc_Pay_Codes::REGULAR, Css_Tc_Pay_Codes::OVERTIME, Css_Tc_Pay_Codes::HOLIDAY ), true );
+			$always  = in_array( $slug, array( Css_Tc_Pay_Codes::REGULAR, Css_Tc_Pay_Codes::OVERTIME, Css_Tc_Pay_Codes::HOLIDAY, Css_Tc_Pay_Codes::PTO, Css_Tc_Pay_Codes::SICK ), true );
 			if ( ! $always && $seconds < 1 ) {
 				continue;
 			}
@@ -244,6 +293,8 @@ class Css_Tc_Timecard {
 			'total_hm'         => css_tc_addon()->time->format_duration( $total_seconds ),
 			'holiday_seconds'  => $holiday_seconds,
 			'holiday_department_id' => $holiday_dept,
+			'leave_seconds'    => $leave_seconds,
+			'nonwork_department_id' => $holiday_dept,
 			'paid_seconds'     => $paid_seconds,
 			'paid_hm'          => css_tc_addon()->time->format_duration( $paid_seconds ),
 			'pay_codes'        => $pay_rows,

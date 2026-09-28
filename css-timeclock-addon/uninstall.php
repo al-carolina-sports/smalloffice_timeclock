@@ -92,3 +92,18 @@ delete_metadata( 'user', 0, 'css_tc_refused_dismissed', '', true );
 // Hire dates and introductory periods.
 delete_metadata( 'user', 0, 'css_tc_hire_date', '', true );
 delete_metadata( 'user', 0, 'css_tc_intro_days', '', true );
+
+// PTO & sick: time-off records, allowance overrides and adjustments.
+$css_tc_leave_ids = get_posts(
+	array(
+		'post_type'      => 'css_tc_leave',
+		'post_status'    => 'any',
+		'posts_per_page' => -1,
+		'fields'         => 'ids',
+	)
+);
+foreach ( $css_tc_leave_ids as $css_tc_leave_id ) {
+	wp_delete_post( (int) $css_tc_leave_id, true );
+}
+delete_metadata( 'user', 0, 'css_tc_leave_allow', '', true );
+delete_metadata( 'user', 0, 'css_tc_leave_adjust', '', true );

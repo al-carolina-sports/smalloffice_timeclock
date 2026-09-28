@@ -46,8 +46,14 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 	<h2 class="nav-tab-wrapper">
 		<a href="<?php echo esc_url( $css_tc_tab_url( 'summary' ) ); ?>" class="nav-tab <?php echo 'summary' === $filters['report'] ? 'nav-tab-active' : ''; ?>"><?php echo esc_html__( 'Pay period summary', 'css-timeclock-addon' ); ?></a>
 		<a href="<?php echo esc_url( $css_tc_tab_url( 'shifts' ) ); ?>" class="nav-tab <?php echo 'shifts' === $filters['report'] ? 'nav-tab-active' : ''; ?>"><?php echo esc_html__( 'Shift detail', 'css-timeclock-addon' ); ?></a>
+		<?php if ( css_tc_addon()->leave->any_enabled() ) : ?>
+			<a href="<?php echo esc_url( Css_Tc_Reports::url( array( 'report' => 'leave' ) ) ); ?>" class="nav-tab <?php echo 'leave' === $filters['report'] ? 'nav-tab-active' : ''; ?>"><?php echo esc_html__( 'PTO & sick', 'css-timeclock-addon' ); ?></a>
+		<?php endif; ?>
 	</h2>
 
+	<?php if ( 'leave' === $filters['report'] ) : ?>
+		<?php include CSS_TC_ADDON_DIR . 'admin/views/report-leave.php'; ?>
+	<?php else : ?>
 	<form method="get" class="css-tc-report-filters">
 		<input type="hidden" name="page" value="<?php echo esc_attr( $page_slug ); ?>" />
 		<input type="hidden" name="report" value="<?php echo esc_attr( $filters['report'] ); ?>" />
@@ -204,10 +210,22 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 			<?php endif; ?>
 		</table>
 
-		<?php $css_tc_holidays_on = css_tc_addon()->holidays->enabled(); ?>
-		<?php if ( $css_tc_holidays_on ) : ?>
+		<?php
+		$css_tc_holidays_on = css_tc_addon()->holidays->enabled();
+		$css_tc_extra       = array();
+		if ( $css_tc_holidays_on ) {
+			$css_tc_extra['holiday'] = __( 'Holiday', 'css-timeclock-addon' );
+		}
+		if ( css_tc_addon()->leave->type_enabled( 'pto' ) ) {
+			$css_tc_extra['pto'] = __( 'PTO', 'css-timeclock-addon' );
+		}
+		if ( css_tc_addon()->leave->type_enabled( 'sick' ) ) {
+			$css_tc_extra['sick'] = __( 'Sick', 'css-timeclock-addon' );
+		}
+		?>
+		<?php if ( ! empty( $css_tc_extra ) ) : ?>
 			<p class="description">
-				<?php echo esc_html__( 'Holiday is paid holiday hours (TC-Config → Holidays). Total is paid hours: worked plus holiday. The week columns are hours worked.', 'css-timeclock-addon' ); ?>
+				<?php echo esc_html__( 'Holiday is paid holiday hours (TC-Config → Holidays). Total is paid hours: worked plus holiday, PTO and sick. The week columns are hours worked.', 'css-timeclock-addon' ); ?>
 				<?php if ( $css_tc_use_org ) : ?>
 					<?php echo esc_html__( 'Holiday hours are charged to each employee\'s home department and its company.', 'css-timeclock-addon' ); ?>
 				<?php endif; ?>
@@ -228,9 +246,9 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 						<th class="num"><?php echo esc_html__( 'Shifts', 'css-timeclock-addon' ); ?></th>
 						<th class="num"><?php echo esc_html__( 'Regular', 'css-timeclock-addon' ); ?></th>
 						<th class="num"><?php echo esc_html__( 'Overtime', 'css-timeclock-addon' ); ?></th>
-						<?php if ( $css_tc_holidays_on ) : ?>
-							<th class="num"><?php echo esc_html__( 'Holiday', 'css-timeclock-addon' ); ?></th>
-						<?php endif; ?>
+						<?php foreach ( $css_tc_extra as $css_tc_x => $css_tc_xl ) : ?>
+							<th class="num"><?php echo esc_html( $css_tc_xl ); ?></th>
+						<?php endforeach; ?>
 						<th class="num"><?php echo esc_html__( 'Total', 'css-timeclock-addon' ); ?></th>
 					</tr>
 				</thead>
@@ -248,9 +266,9 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 								<td class="num"><?php echo esc_html( (string) $css_tc_r['shifts'] ); ?></td>
 								<td class="num"><?php echo esc_html( $css_tc_hm( $css_tc_r['regular'] ) ); ?></td>
 								<td class="num<?php echo $css_tc_r['overtime'] > 0 ? ' is-overtime' : ''; ?>"><?php echo esc_html( $css_tc_hm( $css_tc_r['overtime'] ) ); ?></td>
-								<?php if ( $css_tc_holidays_on ) : ?>
-									<td class="num"><?php echo esc_html( $css_tc_hm( $css_tc_r['holiday'] ) ); ?></td>
-								<?php endif; ?>
+								<?php foreach ( array_keys( $css_tc_extra ) as $css_tc_x ) : ?>
+									<td class="num"><?php echo esc_html( $css_tc_hm( $css_tc_r[ $css_tc_x ] ) ); ?></td>
+								<?php endforeach; ?>
 								<td class="num"><?php echo esc_html( $css_tc_hm( $css_tc_r['total'] ) ); ?></td>
 							</tr>
 						<?php endforeach; ?>
@@ -259,9 +277,9 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 							<td class="num"><?php echo esc_html( (string) $css_tc_emp['total']['shifts'] ); ?></td>
 							<td class="num"><?php echo esc_html( $css_tc_hm( $css_tc_emp['total']['regular'] ) ); ?></td>
 							<td class="num<?php echo $css_tc_emp['total']['overtime'] > 0 ? ' is-overtime' : ''; ?>"><?php echo esc_html( $css_tc_hm( $css_tc_emp['total']['overtime'] ) ); ?></td>
-							<?php if ( $css_tc_holidays_on ) : ?>
-								<td class="num"><?php echo esc_html( $css_tc_hm( $css_tc_emp['total']['holiday'] ) ); ?></td>
-							<?php endif; ?>
+							<?php foreach ( array_keys( $css_tc_extra ) as $css_tc_x ) : ?>
+								<td class="num"><?php echo esc_html( $css_tc_hm( $css_tc_emp['total'][ $css_tc_x ] ) ); ?></td>
+							<?php endforeach; ?>
 							<td class="num"><strong><?php echo esc_html( $css_tc_hm( $css_tc_emp['total']['total'] ) ); ?></strong></td>
 						</tr>
 					</tbody>
@@ -343,5 +361,10 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 				<?php endforeach; ?>
 			</tbody>
 		</table>
+	<?php endif; ?>
+	<?php if ( 'summary' === $filters['report'] && css_tc_addon()->leave->any_enabled() ) : ?>
+		<?php $css_tc_leave_compact = true; ?>
+		<?php include CSS_TC_ADDON_DIR . 'admin/views/report-leave-summary.php'; ?>
+	<?php endif; ?>
 	<?php endif; ?>
 </div>

@@ -343,3 +343,25 @@
 .css-tc-holiday-list legend { font-weight: 600; margin-bottom: 4px; }
 .css-tc-holiday-preview { margin-top: 8px; }
 .css-tc-holiday-preview ul { margin: 6px 0 0 18px; list-style: disc; }
+
+/* Time off */
+.css-tc-leave-tag { display: inline-block; margin: 1px 2px 1px 0; padding: 1px 6px; border-radius: 10px; font-size: 12px; line-height: 1.6; background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
+.css-tc-leave-tag--sick { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.css-tc-leave-tag.is-pending { background: transparent; border-style: dashed; }
+.css-tc-leave-table td { vertical-align: top; }
+.css-tc-leave-decide form { display: inline-flex; gap: 4px; margin: 0 6px 4px 0; flex-wrap: wrap; }
+.css-tc-leave-deny input[type=text] { width: 160px; }
+.css-tc-leave-add p { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.css-tc-out-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; max-width: 1100px; background: #dcdcde; border: 1px solid #dcdcde; }
+.css-tc-out-cal__dow { background: #f6f7f7; padding: 4px 6px; font-weight: 600; font-size: 12px; }
+.css-tc-out-cal__day { background: #fff; min-height: 64px; padding: 4px 6px; font-size: 12px; }
+.css-tc-out-cal__day.is-past { background: #f6f7f7; color: #787c82; }
+.css-tc-out-cal__day.is-today { box-shadow: inset 0 0 0 2px #2271b1; }
+.css-tc-out-cal__num { display: block; color: #50575e; font-weight: 600; }
+.css-tc-out-cal__hol { display: block; color: #6d28d9; font-style: italic; }
+.css-tc-leave-log { margin: 8px 0 0; color: #50575e; }
+.css-tc-pto-summary .css-tc-group-head { text-align: center; border-bottom: 1px solid #dcdcde; }
+.css-tc-leave-yearnav { display: flex; gap: 16px; align-items: center; }
+.css-tc-leave-bal { margin: 4px 0 12px; }
+tr.is-pending td { color: #787c82; font-style: italic; }
+@media (max-width: 782px) { .css-tc-out-cal { grid-template-columns: repeat(7, minmax(44px, 1fr)); overflow-x: auto; } }

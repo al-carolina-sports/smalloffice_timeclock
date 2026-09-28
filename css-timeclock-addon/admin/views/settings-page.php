@@ -28,6 +28,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<a href="<?php echo esc_url( $base_url . '&tab=settings' ); ?>" class="nav-tab <?php echo 'settings' === $tab ? 'nav-tab-active' : ''; ?>">
 			<?php echo esc_html__( 'TC-Config', 'css-timeclock-addon' ); ?>
 		</a>
+		<a href="<?php echo esc_url( $base_url . '&tab=leave' ); ?>" class="nav-tab <?php echo 'leave' === $tab ? 'nav-tab-active' : ''; ?>">
+			<?php echo esc_html__( 'PTO & sick', 'css-timeclock-addon' ); ?>
+		</a>
 		<a href="<?php echo esc_url( $base_url . '&tab=pins' ); ?>" class="nav-tab <?php echo 'pins' === $tab ? 'nav-tab-active' : ''; ?>">
 			<?php echo esc_html__( 'Employee PINs', 'css-timeclock-addon' ); ?>
 		</a>
@@ -44,7 +47,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 	<div class="css-tc-notice" hidden></div>
 
-	<?php if ( 'locations' === $tab ) : ?>
+	<?php if ( 'leave' === $tab ) : ?>
+		<?php include CSS_TC_ADDON_DIR . 'admin/views/leave-settings.php'; ?>
+	<?php elseif ( 'locations' === $tab ) : ?>
 		<?php include CSS_TC_ADDON_DIR . 'admin/views/organization-tab.php'; ?>
 	<?php endif; ?>
 
@@ -417,6 +422,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 							<a href="<?php echo esc_url( get_edit_user_link( (int) $user->ID ) . '#css-tc-employment' ); ?>">
 								<?php echo esc_html( '' !== $css_tc_hire ? wp_date( get_option( 'date_format', 'Y-m-d' ), strtotime( $css_tc_hire . ' 12:00:00' ) ) : __( 'Set', 'css-timeclock-addon' ) ); ?>
 							</a>
+							<?php if ( '' !== $css_tc_hire && css_tc_addon()->leave->any_enabled() ) : ?>
+								<?php $css_tc_lb = css_tc_addon()->leave->balances( (int) $user->ID ); ?>
+								<div class="description">
+									<?php
+									$css_tc_lparts = array();
+									foreach ( $css_tc_lb['banks'] as $css_tc_bank => $css_tc_t ) {
+										$css_tc_lparts[] = ( 'pto' === $css_tc_bank ? 'PTO' : __( 'Sick', 'css-timeclock-addon' ) ) . ' ' . Css_Tc_Leave::hours( $css_tc_t['left'] ) . ' ' . __( 'left', 'css-timeclock-addon' );
+									}
+									echo esc_html( implode( ' · ', $css_tc_lparts ) );
+									?>
+								</div>
+							<?php endif; ?>
 							<?php if ( $css_tc_intro > 0 ) : ?>
 								<div class="description">
 									<?php
