@@ -654,6 +654,8 @@ class Css_Tc_Shortcodes {
 						'prev'        => __( 'Previous month', 'css-timeclock-addon' ),
 						'next'        => __( 'Next month', 'css-timeclock-addon' ),
 						'oneBank'     => __( 'Sick time comes out of your PTO.', 'css-timeclock-addon' ),
+						'onLeave'     => __( 'On leave — ask a manager', 'css-timeclock-addon' ),
+						'inactive'    => __( 'After your last day', 'css-timeclock-addon' ),
 					),
 				)
 			);

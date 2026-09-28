@@ -244,7 +244,9 @@
         var q = filter.value.toLowerCase();
         document.querySelectorAll(".css-tc-pin-row").forEach(function (row) {
           var name = row.getAttribute("data-name") || "";
-          row.hidden = q !== "" && name.indexOf(q) === -1;
+          var showInactive = document.querySelector("[data-css-tc-show-inactive]");
+          var hideInactive = row.hasAttribute("data-inactive") && !(showInactive && showInactive.checked);
+          row.hidden = hideInactive || (q !== "" && name.indexOf(q) === -1);
         });
       });
     }

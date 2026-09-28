@@ -14,6 +14,7 @@ require_once CSS_TC_ADDON_DIR . 'includes/class-time.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pay-codes.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-overtime.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-holidays.php';
+require_once CSS_TC_ADDON_DIR . 'includes/class-status.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-leave.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-leave-ui.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pay-periods.php';
@@ -72,6 +73,11 @@ class Css_Tc_Plugin {
 	public $leave;
 
 	/**
+	 * @var Css_Tc_Status
+	 */
+	public $status;
+
+	/**
 	 * @var Css_Tc_Reports
 	 */
 	public $reports;
@@ -118,6 +124,7 @@ class Css_Tc_Plugin {
 		$this->overtime    = new Css_Tc_Overtime();
 		$this->holidays    = new Css_Tc_Holidays();
 		$this->leave       = new Css_Tc_Leave();
+		$this->status      = new Css_Tc_Status();
 		$this->reports     = new Css_Tc_Reports();
 		$this->organization = new Css_Tc_Organization();
 		$this->employees   = new Css_Tc_Employees();
@@ -421,6 +428,7 @@ class Css_Tc_Plugin {
 		$this->reports->register_hooks();
 		$this->organization->register_hooks();
 		$this->holidays->register_hooks();
+		$this->status->register_hooks();
 		$this->leave->register();
 		Css_Tc_Leave_Ui::register();
 		Css_Tc_Shortcodes::register();

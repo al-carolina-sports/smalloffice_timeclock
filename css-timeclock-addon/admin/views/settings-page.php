@@ -335,6 +335,26 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<p>
 			<label for="css-tc-pin-filter" class="screen-reader-text"><?php echo esc_html__( 'Filter employees', 'css-timeclock-addon' ); ?></label>
 			<input type="search" id="css-tc-pin-filter" class="regular-text" placeholder="<?php echo esc_attr__( 'Filter by name…', 'css-timeclock-addon' ); ?>" />
+			<?php
+			$css_tc_inactive_count = 0;
+			foreach ( $employees as $css_tc_u ) {
+				if ( Css_Tc_Status::INACTIVE === css_tc_addon()->status->current( (int) $css_tc_u->ID ) ) {
+					++$css_tc_inactive_count;
+				}
+			}
+			// Active and on-leave first, inactive last.
+			usort(
+				$employees,
+				static function ( $a, $b ) {
+					$ia = Css_Tc_Status::INACTIVE === css_tc_addon()->status->current( (int) $a->ID ) ? 1 : 0;
+					$ib = Css_Tc_Status::INACTIVE === css_tc_addon()->status->current( (int) $b->ID ) ? 1 : 0;
+					return $ia - $ib;
+				}
+			);
+			?>
+			<?php if ( $css_tc_inactive_count > 0 ) : ?>
+				<label class="css-tc-show-inactive"><input type="checkbox" data-css-tc-show-inactive /> <?php echo esc_html( sprintf( /* translators: %d: count */ _n( 'Show %d inactive employee', 'Show %d inactive employees', $css_tc_inactive_count, 'css-timeclock-addon' ), $css_tc_inactive_count ) ); ?></label>
+			<?php endif; ?>
 		</p>
 
 		<table class="widefat striped css-tc-pin-table">
@@ -362,9 +382,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 					$set_at  = (int) get_user_meta( (int) $user->ID, Css_Tc_Pins::META_SET, true );
 					$roles   = implode( ', ', array_map( 'sanitize_text_field', (array) $user->roles ) );
 					?>
-					<tr class="css-tc-pin-row" data-name="<?php echo esc_attr( strtolower( css_tc_addon()->employees->display_name( (int) $user->ID ) ) ); ?>">
+					<?php $css_tc_now = css_tc_addon()->status->current( (int) $user->ID ); ?>
+					<tr class="css-tc-pin-row css-tc-status--<?php echo esc_attr( $css_tc_now ); ?>" data-name="<?php echo esc_attr( strtolower( css_tc_addon()->employees->display_name( (int) $user->ID ) ) ); ?>"<?php echo Css_Tc_Status::INACTIVE === $css_tc_now ? ' hidden data-inactive="1"' : ''; ?>>
 						<td>
 							<strong><?php echo esc_html( css_tc_addon()->employees->display_name( (int) $user->ID ) ); ?></strong>
+							<?php if ( Css_Tc_Status::ACTIVE !== $css_tc_now || 'Active' !== css_tc_addon()->status->describe( (int) $user->ID ) ) : ?>
+								<span class="css-tc-status-badge css-tc-status-badge--<?php echo esc_attr( $css_tc_now ); ?>"><?php echo esc_html( css_tc_addon()->status->describe( (int) $user->ID ) ); ?></span>
+							<?php endif; ?>
 							<div class="row-actions">
 								<?php echo esc_html( $user->user_login ); ?>
 							</div>
@@ -470,6 +494,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<?php endif; ?>
 			</tbody>
 		</table>
+		<script>
+		( function () {
+			var box = document.querySelector( '[data-css-tc-show-inactive]' );
+			if ( ! box ) { return; }
+			box.addEventListener( 'change', function () {
+				document.querySelectorAll( '.css-tc-pin-row[data-inactive]' ).forEach( function ( row ) {
+					row.hidden = ! box.checked;
+				} );
+			} );
+		} )();
+		</script>
 	<?php elseif ( 'corrections' === $tab ) : ?>
 		<p>
 			<?php echo esc_html__( 'Employees suggest clock-in or clock-out corrections for the current pay period from My Time Clock. Approving writes the AIO-compatible shift and keeps the original times plus who suggested and who approved. A suggestion that would change a closed pay period is rejected. A manager edit from the timecard is saved immediately and listed under Recently reviewed as Edited by manager.', 'css-timeclock-addon' ); ?>

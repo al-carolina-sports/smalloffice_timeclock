@@ -178,7 +178,11 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 				<?php endif; ?>
 				<?php foreach ( $summary['rows'] as $row ) : ?>
 					<tr>
-						<td><a href="<?php echo esc_url( $row['timecard_url'] ); ?>"><?php echo esc_html( $row['name'] ); ?></a></td>
+						<td><a href="<?php echo esc_url( $row['timecard_url'] ); ?>"><?php echo esc_html( $row['name'] ); ?></a>
+							<?php if ( '' !== $row['status_note'] ) : ?>
+								<div class="description"><?php echo esc_html( $row['status_note'] ); ?></div>
+							<?php endif; ?>
+						</td>
 						<td><?php echo esc_html( '' !== $row['department'] ? $row['department'] : '—' ); ?></td>
 						<?php foreach ( array_keys( $summary['weeks'] ) as $w ) : ?>
 							<td class="num"><?php echo esc_html( $css_tc_hm( isset( $row['weeks'][ $w ] ) ? $row['weeks'][ $w ] : 0 ) ); ?></td>

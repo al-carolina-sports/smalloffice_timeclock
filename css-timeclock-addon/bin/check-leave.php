@@ -47,6 +47,7 @@ if ( ! class_exists( 'WP_Error' ) ) {
 	}
 }
 require_once dirname( __DIR__ ) . '/includes/class-leave.php';
+require_once dirname( __DIR__ ) . '/includes/class-status.php';
 
 $failed = 0;
 /**
@@ -164,6 +165,18 @@ $late = new Css_Tc_Leave( $practice, '2027-08-01' );
 $span = array_merge( $ctx, array( 'records' => array( array( 'date' => '2027-06-01', 'type' => 'pto', 'seconds' => 16 * $h, 'status' => 'approved' ) ), 'period_start' => '2027-07-26' ) );
 css_tc_check( 'css_tc_leave_balance' === code( $late->check_request( $span, array( '2027-08-30' => 8 * $h, '2027-08-31' => 8 * $h, '2027-09-01' => 8 * $h ), 'pto', false ) ), 'Aug 30–Sep 1: 16 h fall in year one where only 8 h are left: refused' );
 css_tc_check( 'ok' === code( $late->check_request( $span, array( '2027-08-31' => 8 * $h, '2027-09-01' => 8 * $h, '2027-09-02' => 8 * $h ), 'pto', false ) ), 'Aug 31–Sep 2: 8 h from year one, 16 h from year two: ok' );
+
+// Employment status.
+$onleave = array_merge( $ctx, array( 'status' => array( 'status' => 'leave', 'leave_from' => '2026-12-14', 'leave_to' => '2026-12-31', 'last_day' => '' ) ) );
+css_tc_check( 'css_tc_leave_onleave' === code( $lv->check_request( $onleave, array( '2026-12-21' => 8 * $h ), 'pto', false ) ), 'employee on leave cannot request PTO' );
+css_tc_check( 'ok' === code( $lv->check_request( $onleave, array( '2026-12-21' => 8 * $h ), 'pto', true ) ), 'manager can add PTO during leave' );
+$left = array_merge( $ctx, array( 'status' => array( 'status' => 'inactive', 'leave_from' => '', 'leave_to' => '', 'last_day' => '2026-12-18' ) ) );
+css_tc_check( 'css_tc_leave_inactive' === code( $lv->check_request( $left, array( '2026-12-21' => 8 * $h ), 'pto', true ) ), 'no time off after the last day, even by a manager' );
+css_tc_check( 'ok' === code( $lv->check_request( $left, array( '2026-12-18' => 8 * $h ), 'pto', true ) ), 'time off on the last day is fine' );
+$withhol = new Css_Tc_Leave( array_merge( $practice, array( 'holidays_enabled' => 1 ) ), '2026-12-01' );
+css_tc_check( 'ok' === code( $withhol->check_request( $onleave, array( '2026-12-21' => 8 * $h, '2026-12-22' => 8 * $h, '2026-12-23' => 8 * $h, '2026-12-24' => 8 * $h ), 'holiday', true ) ), 'manager-entered holiday uses no balance (32 h > 24 h PTO is fine)' );
+css_tc_check( 'css_tc_leave_type' === code( $withhol->check_request( $ctx, array( '2026-12-21' => 8 * $h ), 'holiday', false ) ), 'employees cannot request the holiday type' );
+css_tc_check( 'css_tc_leave_type' === code( $lv->check_request( $ctx, array( '2026-12-21' => 8 * $h ), 'holiday', true ) ), 'holiday type off when holidays are off' );
 
 if ( $failed ) {
 	fwrite( STDERR, "{$failed} check(s) failed\n" );

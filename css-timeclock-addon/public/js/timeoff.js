@@ -249,6 +249,13 @@
     if (s.holidays && s.holidays[date]) {
       return (S.holiday || "Holiday") + ": " + s.holidays[date];
     }
+    var st = s.status || {};
+    if (st.status === "leave" && (!st.leave_from || date >= st.leave_from) && (!st.leave_to || date <= st.leave_to)) {
+      return S.onLeave || "On leave";
+    }
+    if (st.status === "inactive" && st.last_day && date > st.last_day) {
+      return S.inactive || "After your last day";
+    }
     if (s.days && s.days[date]) {
       var d = s.days[date];
       return d.type.toUpperCase() + " " + d.hours + " " + (d.status === "pending" ? S.pendingDay : S.approvedDay);

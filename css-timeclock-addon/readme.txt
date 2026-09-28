@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.8.3
+Stable tag: 1.9.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,12 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under USOTC.
 
 == Changelog ==
+
+= 1.9.0 =
+* Employment status on the user profile (Time clock employment): Active, On leave (from a date, optionally until a date; active again automatically after it), or Inactive (from the day after the last day worked). The WordPress role is not changed, so history stays linked. Every change is logged with who, when and an optional note.
+* On leave: kiosk PIN refused ("Please see your manager"), hidden from the Who's working board, no PTO requests (days greyed out on the calendar), no automatic holiday pay; can still sign in to see their timecard. Inactive: the same, plus sign-in is blocked and the PTO balance stops at the last day (shown for payout). Someone still clocked in when their status changes can still clock out, and the manager gets a warning to close the shift. Managers are never locked out.
+* Managers can still add PTO for someone on leave, and a new Holiday type under Time off → Add time off pays a holiday by hand (Holiday pay code, no balance, note required).
+* Employees & PINs shows status badges and hides inactive employees behind "Show inactive"; the Timecards picker marks (On leave) / (Inactive); Reports keep anyone with hours or paid time in the period and show their status; the PTO summary marks inactive balances as payout amounts.
 
 = 1.8.3 =
 * Fix: the Corrections list (Pending and Recently reviewed) showed under the Holidays, PTO & sick and Locations & departments tabs. It now shows only on the Corrections tab.

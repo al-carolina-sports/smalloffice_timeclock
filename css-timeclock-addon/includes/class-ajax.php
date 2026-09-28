@@ -102,6 +102,12 @@ class Css_Tc_Ajax {
 
 		$open = css_tc_addon()->punches->open_shift_for( $user_id );
 
+		// On leave or inactive: no kiosk use, except clocking out of a shift
+		// that was still open when the status changed.
+		if ( ! css_tc_addon()->status->can_punch( $user_id ) && empty( $open['is_clocked_in'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'You can\'t clock in right now. Please see your manager.', 'css-timeclock-addon' ) ), 403 );
+		}
+
 		wp_send_json_success(
 			array(
 				'user_id'       => $user_id,
@@ -219,6 +225,13 @@ class Css_Tc_Ajax {
 		}
 
 		css_tc_addon()->pins->record_success();
+
+		if ( ! css_tc_addon()->status->can_punch( $user_id ) ) {
+			$still_open = css_tc_addon()->punches->open_shift_for( $user_id );
+			if ( 'clock_out' !== $clock_act || empty( $still_open['is_clocked_in'] ) ) {
+				wp_send_json_error( array( 'message' => __( 'You can\'t clock in right now. Please see your manager.', 'css-timeclock-addon' ) ), 403 );
+			}
+		}
 
 		$department_id = 0;
 		$org           = css_tc_addon()->organization;

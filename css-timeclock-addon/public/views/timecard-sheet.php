@@ -84,7 +84,10 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 					<?php foreach ( $employees as $employee ) : ?>
 						<?php $eid = (int) $employee->ID; ?>
 						<option value="<?php echo esc_url( Css_Tc_Admin::timecards_url( array( 'employee' => $eid, 'period' => $period['start'] ) ) ); ?>" <?php selected( $eid, $user_id ); ?>>
-							<?php echo esc_html( css_tc_addon()->employees->display_name( $eid ) ); ?>
+							<?php
+							$css_tc_ps = css_tc_addon()->status->current( $eid );
+							echo esc_html( css_tc_addon()->employees->display_name( $eid ) . ( Css_Tc_Status::ACTIVE !== $css_tc_ps ? ' (' . Css_Tc_Status::labels()[ $css_tc_ps ] . ')' : '' ) );
+							?>
 						</option>
 					<?php endforeach; ?>
 				</select>
@@ -201,6 +204,17 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 		?>
 		<section class="css-tc-pto" aria-label="<?php echo esc_attr__( 'PTO summary', 'css-timeclock-addon' ); ?>">
 			<h2 class="css-tc-pto__title"><?php echo esc_html__( 'PTO Summary', 'css-timeclock-addon' ); ?></h2>
+			<?php $css_tc_now = css_tc_addon()->status->current( $user_id ); ?>
+			<?php if ( Css_Tc_Status::ACTIVE !== $css_tc_now ) : ?>
+				<p class="css-tc-pto__status css-tc-pto__status--<?php echo esc_attr( $css_tc_now ); ?>">
+					<?php echo esc_html( css_tc_addon()->status->describe( $user_id ) ); ?>
+					<?php if ( Css_Tc_Status::INACTIVE === $css_tc_now ) : ?>
+						— <?php echo esc_html__( 'balance as of the last day worked', 'css-timeclock-addon' ); ?>
+					<?php elseif ( Css_Tc_Status::LEAVE === $css_tc_now ) : ?>
+						— <?php echo esc_html__( 'PTO requests and automatic holiday pay are paused; a manager can add them under Time off', 'css-timeclock-addon' ); ?>
+					<?php endif; ?>
+				</p>
+			<?php endif; ?>
 			<?php if ( ! $css_tc_lb['cycle'] ) : ?>
 				<p class="css-tc-pto__note">
 					<?php echo esc_html( 'admin' === $mode ? __( 'No hire date yet, so no PTO. Set it on the employee\'s profile.', 'css-timeclock-addon' ) : __( 'Your PTO starts once a manager sets your hire date.', 'css-timeclock-addon' ) ); ?>

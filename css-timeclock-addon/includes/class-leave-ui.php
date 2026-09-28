@@ -525,6 +525,7 @@ class Css_Tc_Leave_Ui {
 			'notice_from'  => $leave->notice_cutoff(),
 			'notice_days'  => $leave->notice_days(),
 			'period_start' => $ctx['period_start'],
+			'status'       => $ctx['status'],
 			'cycle'        => $bal['cycle'],
 			'cycle_label'  => $bal['cycle'] ? css_tc_leave_date_label( $bal['cycle']['start'] ) . ' – ' . css_tc_leave_date_label( $bal['cycle']['end'] ) : '',
 			'banks'        => $banks,
