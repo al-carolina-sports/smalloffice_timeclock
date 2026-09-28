@@ -154,6 +154,37 @@ if ( ! defined( 'ABSPATH' ) ) {
 						<?php endif; ?>
 					</td>
 				</tr>
+				<tr>
+					<th scope="row"><?php echo esc_html__( 'Refused kiosk requests', 'css-timeclock-addon' ); ?></th>
+					<td>
+						<?php $css_tc_refused = array_slice( array_reverse( css_tc_addon()->pins->refused_kiosk_log() ), 0, 50 ); ?>
+						<?php if ( empty( $css_tc_refused ) ) : ?>
+							<p class="description"><?php echo esc_html__( 'No refused kiosk requests.', 'css-timeclock-addon' ); ?></p>
+						<?php else : ?>
+							<p class="description"><?php echo esc_html__( 'Kiosk requests turned away by the office IP allowlist (newest first, at most one per address per minute). PINs are never recorded.', 'css-timeclock-addon' ); ?></p>
+							<table class="widefat striped css-tc-refused-log">
+								<thead>
+									<tr>
+										<th><?php echo esc_html__( 'Time', 'css-timeclock-addon' ); ?></th>
+										<th><?php echo esc_html__( 'IP', 'css-timeclock-addon' ); ?></th>
+										<th><?php echo esc_html__( 'Action', 'css-timeclock-addon' ); ?></th>
+										<th><?php echo esc_html__( 'Employee', 'css-timeclock-addon' ); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ( $css_tc_refused as $css_tc_row ) : ?>
+										<tr>
+											<td><?php echo esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $css_tc_row['time'] ) ); ?></td>
+											<td><code><?php echo esc_html( $css_tc_row['ip'] ); ?></code></td>
+											<td><code><?php echo esc_html( $css_tc_row['action'] ); ?></code></td>
+											<td><?php echo esc_html( '' !== $css_tc_row['name'] ? $css_tc_row['name'] : '—' ); ?></td>
+										</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+						<?php endif; ?>
+					</td>
+				</tr>
 				<?php $css_tc_diag = css_tc_addon()->pins->ip_diagnostics(); ?>
 				<tr>
 					<th scope="row"><label for="trusted_proxies"><?php echo esc_html__( 'Trusted proxies', 'css-timeclock-addon' ); ?></label></th>

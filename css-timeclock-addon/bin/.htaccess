@@ -1,0 +1,7 @@
+# Command-line checks are not part of the web plugin.
+<IfModule mod_authz_core.c>
+	Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+	Deny from all
+</IfModule>

@@ -7,6 +7,11 @@
  * @package CssTimeclockAddon
  */
 
+if ( PHP_SAPI !== 'cli' ) {
+	header( 'HTTP/1.1 403 Forbidden' );
+	exit;
+}
+
 if ( ! defined( 'ABSPATH' ) ) {
 	define( 'ABSPATH', __DIR__ );
 }
@@ -25,7 +30,7 @@ require_once dirname( __DIR__ ) . '/includes/class-pins.php';
 
 $pins    = new Css_Tc_Pins();
 $failed  = 0;
-$office  = "This kiosk only works from the office network.";
+$office  = "This kiosk only works from the office network. Please tell your manager.";
 
 /**
  * @param bool   $cond Condition.
@@ -176,6 +181,28 @@ css_tc_check( array() === $pins->host_ips( 'never.example.test' ), 'unresolvable
 $dns_answer = array( '::ffff:216.210.87.50', '2001:db8::5' );
 $pins->refresh_hosts( array( 'csswilson.ddns.net' ) );
 css_tc_check( array( '216.210.87.50', '2001:db8::5' ) === $pins->host_ips( 'csswilson.ddns.net' ), 'refresh looks up now; mapped IPv4 canonicalized, IPv6 kept' );
+$pins->set_dns_test_hooks( null );
+
+// --- Refused kiosk log (ported from #22) -------------------------------
+$rnow = 1700000000;
+$pins->set_dns_test_hooks( static function () { return false; }, static function () use ( &$rnow ) { return $rnow; } );
+css_tc_check( $pins->record_refused_kiosk( '203.0.113.50', 'css_tc_punch', 4, 'Two Staff' ), 'refused punch is stored' );
+css_tc_check( ! $pins->record_refused_kiosk( '203.0.113.50', 'css_tc_punch', 4, '1234' ), 'same IP inside a minute is not stored again' );
+css_tc_check( $pins->record_refused_kiosk( '198.51.100.8', 'css_tc_roster', 0, '' ), 'a different IP is stored' );
+$rows = $pins->refused_kiosk_log();
+css_tc_check( 2 === count( $rows ) && 'Two Staff' === $rows[0]['name'] && 4 === $rows[0]['user_id'], 'one row per IP, employee kept' );
+css_tc_check( false === strpos( (string) json_encode( $rows ), '1234' ), 'refused log never stores a PIN' );
+$rnow += 61;
+css_tc_check( $pins->record_refused_kiosk( '203.0.113.50', 'css_tc_punch', 0, '' ), 'same IP stored again after a minute' );
+$sum = $pins->refused_kiosk_summary( 3600 );
+css_tc_check( '203.0.113.50' === $sum[0]['ip'] && 2 === $sum[0]['count'], 'summary groups by IP, busiest first' );
+for ( $i = 0; $i < 205; $i++ ) {
+	$rnow += 61;
+	$pins->record_refused_kiosk( '203.0.113.' . ( $i % 200 ), 'css_tc_punch', 0, '' );
+}
+css_tc_check( 200 === count( $pins->refused_kiosk_log() ), 'refused log keeps the last 200' );
+css_tc_check( "203.0.113.0/24" === $pins->append_allowlist_ip( "203.0.113.0/24", '203.0.113.9' ), 'append skips an address already covered' );
+css_tc_check( "203.0.113.0/24\n198.51.100.8" === $pins->append_allowlist_ip( "203.0.113.0/24\n", '198.51.100.8' ), 'append adds a new address on its own line' );
 $pins->set_dns_test_hooks( null );
 
 $ajax = file_get_contents( dirname( __DIR__ ) . '/includes/class-ajax.php' );
