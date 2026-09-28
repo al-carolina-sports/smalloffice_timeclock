@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.6.3
+Stable tag: 1.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,11 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under USOTC.
 
 == Changelog ==
+
+= 1.7.0 =
+* Paid holidays (TC-Config → Holidays, off by default): check the holidays the office observes (New Year's Day, Memorial Day, Independence Day, Labor Day, Thanksgiving and Christmas are pre-checked), add others as MM-DD Name (every year) or YYYY-MM-DD Name (one date), and set the hours paid per holiday (default 8). A weekend holiday is paid on Friday (Saturday) or Monday (Sunday); Christmas Eve and New Year's Eve move back to Friday. Each eligible employee gets the Holiday pay code on that day, shown on the timecard day, in the pay code, weekly and company summaries, and in Reports (Holiday column; Total is worked plus holiday). Holiday hours never count toward overtime and are charged to the employee's home department.
+* Hire date and introductory period (30, 60 or 90 days) on each employee's profile. No holiday pay before the hire date or during the introductory period; the timecard says why and when holiday pay starts. The Employees & PINs tab shows each hire date.
+* The PIN kiosk is the main time clock. Tap your name under Who's working (Not clocked in, or Working now to clock out) and the PIN pad asks for that person's PIN; typing a PIN without tapping still works. The name-list kiosk is retired: its page and shortcode open the PIN kiosk.
 
 = 1.6.3 =
 * Renamed to Ultimate Small Office Timeclock (USOTC in the admin menu; formerly SMOTC). Display names only: the plugin folder, code prefixes, settings and data are unchanged, so it updates in place.

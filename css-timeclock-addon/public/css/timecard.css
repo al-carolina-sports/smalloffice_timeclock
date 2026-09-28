@@ -1020,3 +1020,42 @@ span.css-tc-lock {
 	flex-wrap: wrap;
 	gap: 12px;
 }
+
+/* Paid holidays */
+.css-tc-day.is-holiday {
+	background: #f3f0ff;
+}
+
+.css-tc-day__holiday {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	margin: 4px 0 6px;
+	padding: 4px 6px;
+	border-left: 3px solid #7c3aed;
+	border-radius: 3px;
+	background: #ede9fe;
+	font-size: 12px;
+	line-height: 1.3;
+}
+
+.css-tc-day__holiday-name {
+	color: #4c1d95;
+	font-weight: 600;
+}
+
+.css-tc-day__holiday-hours {
+	color: #5b21b6;
+}
+
+.css-tc-day__holiday-note {
+	color: #6b7280;
+	font-style: italic;
+}
+
+@media print {
+	.css-tc-day.is-holiday,
+	.css-tc-day__holiday {
+		background: none;
+	}
+}

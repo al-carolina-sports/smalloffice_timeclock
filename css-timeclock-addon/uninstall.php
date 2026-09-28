@@ -88,3 +88,7 @@ wp_clear_scheduled_hook( 'css_tc_refresh_dns' );
 // Refused kiosk request log and per-manager dismissals.
 delete_option( 'css_tc_refused_kiosk' );
 delete_metadata( 'user', 0, 'css_tc_refused_dismissed', '', true );
+
+// Hire dates and introductory periods.
+delete_metadata( 'user', 0, 'css_tc_hire_date', '', true );
+delete_metadata( 'user', 0, 'css_tc_intro_days', '', true );

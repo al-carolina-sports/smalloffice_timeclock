@@ -155,7 +155,8 @@
     );
   }
 
-  function fillRosterList(list, people, inClass) {
+  // Each name is a button: tapping it opens the PIN pad for that person.
+  function fillRosterList(list, people, inClass, tappable) {
     if (!list) {
       return;
     }
@@ -163,15 +164,25 @@
     (people || []).forEach(function (person) {
       var li = document.createElement("li");
       li.className = "css-tc-board__person " + (inClass || "css-tc-board__person--out");
+      var holder = li;
+      if (tappable && person.id) {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className = "css-tc-board__tap";
+        button.setAttribute("data-employee", String(person.id));
+        button.setAttribute("data-name", person.greeting || person.name || "");
+        li.appendChild(button);
+        holder = button;
+      }
       var name = document.createElement("span");
       name.className = "css-tc-board__name";
       name.textContent = person.name || "";
-      li.appendChild(name);
+      holder.appendChild(name);
       if (person.clock_in_time) {
         var time = document.createElement("span");
         time.className = "css-tc-board__time";
         time.textContent = person.where ? person.where + " · " + person.clock_in_time : person.clock_in_time;
-        li.appendChild(time);
+        holder.appendChild(time);
       }
       list.appendChild(li);
     });
@@ -187,8 +198,10 @@
     var updated = $(root, '[data-role="board-updated"]');
     var error = $(root, '[data-role="board-error"]');
 
-    fillRosterList($(root, '[data-role="working-list"]'), working, "css-tc-board__person--in");
-    fillRosterList($(root, '[data-role="out-list"]'), out, "css-tc-board__person--out");
+    var tappable = root.getAttribute("data-enabled") === "1";
+    fillRosterList($(root, '[data-role="working-list"]'), working, "css-tc-board__person--in", tappable);
+    fillRosterList($(root, '[data-role="out-list"]'), out, "css-tc-board__person--out", tappable);
+    markSelected(root);
     text(workingCount, String(data.working_count != null ? data.working_count : working.length));
     text(outCount, String(data.out_count != null ? data.out_count : out.length));
     show(workingEmpty, working.length === 0);
@@ -197,6 +210,16 @@
     if (data.generated_at) {
       text(updated, (strings.updatedAt || "Updated") + " " + data.generated_at);
     }
+  }
+
+  // Keep the highlight on the chosen name after the board refreshes.
+  function markSelected(root) {
+    var chosen = root.getAttribute("data-selected") || "";
+    root.querySelectorAll(".css-tc-board__tap").forEach(function (button) {
+      var on = chosen !== "" && button.getAttribute("data-employee") === chosen;
+      button.classList.toggle("is-selected", on);
+      button.setAttribute("aria-pressed", on ? "true" : "false");
+    });
   }
 
   function StatusBoard(root) {
@@ -293,6 +316,9 @@
     this.root.addEventListener("click", function (event) {
       var button = event.target.closest("button");
       if (!button || !self.root.contains(button) || self.busy) {
+        return;
+      }
+      if (button.closest("[data-css-tc-staff-nav]")) {
         return;
       }
 
@@ -687,6 +713,13 @@
     this.userId = 0;
     this.busy = false;
     this.selectedName = "";
+    this.root.removeAttribute("data-selected");
+    markSelected(this.root);
+    if (this.mode !== "name") {
+      text($(this.root, '[data-role="pin-prompt"]'), strings.enterPin || "Enter your PIN");
+      show($(this.root, '[data-role="pin-hint"]'), true);
+      show($(this.root, '[data-role="pin-cancel"]'), false);
+    }
     this.assign = null;
     this.choiceMode = "";
     this.updateDots();
@@ -706,14 +739,33 @@
   };
 
   Kiosk.prototype.chooseEmployee = function (userId, name) {
+    // A new name always starts over, even from someone else's screen.
+    window.clearTimeout(this.resetTimer);
+    this.assign = null;
+    this.choiceMode = "";
+    show($(this.root, '[data-role="choices"]'), false);
+    show($(this.root, '[data-role="action-error"]'), false);
     this.userId = userId;
     this.selectedName = name;
     this.pin = "";
     this.updateDots();
+    this.root.setAttribute("data-selected", String(userId));
+    markSelected(this.root);
     text($(this.root, '[data-role="selected-name"]'), name);
-    text($(this.root, '[data-role="pin-prompt"]'), strings.confirmPin || "Confirm with your PIN");
+    if (this.mode === "name") {
+      text($(this.root, '[data-role="pin-prompt"]'), strings.confirmPin || "Confirm with your PIN");
+    } else {
+      text($(this.root, '[data-role="pin-prompt"]'), (strings.hiEnterPin || "Hi %s — enter your PIN").replace("%s", name));
+      show($(this.root, '[data-role="pin-hint"]'), false);
+      show($(this.root, '[data-role="pin-cancel"]'), true);
+    }
     show($(this.root, '[data-role="error"]'), false);
     this.showScreen("pin");
+    // On a narrow screen the pad sits above the list; bring it into view.
+    var pad = this.screens.pin;
+    if (pad && pad.getBoundingClientRect && pad.getBoundingClientRect().top < 0 && pad.scrollIntoView) {
+      pad.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   Kiosk.prototype.loadEmployees = function () {

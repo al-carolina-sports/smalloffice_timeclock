@@ -155,10 +155,66 @@ class Css_Tc_Timecard {
 			$by_company[ $cid ]['regular']   = $by_company[ $cid ]['total'] - $by_company[ $cid ]['overtime'];
 		}
 
+		// Paid holidays: a fixed number of hours per observed holiday, not
+		// worked time, so they never count toward overtime. Charged to the
+		// employee's home department (its company) when departments are on.
+		$holiday_seconds = 0;
+		$holiday_days    = array();
+		$holiday_dept    = 0;
+		if ( css_tc_addon()->holidays->enabled() ) {
+			$holiday_days = css_tc_addon()->holidays->for_employee( $user_id, (string) $period['start'], (string) $period['end'] );
+			foreach ( $holiday_days as $info ) {
+				$holiday_seconds += (int) $info['seconds'];
+			}
+			$buckets[ Css_Tc_Pay_Codes::HOLIDAY ] = $holiday_seconds;
+			if ( css_tc_addon()->organization->enabled() ) {
+				$holiday_dept = css_tc_addon()->organization->home( $user_id );
+			}
+			$from = css_tc_addon()->holidays->eligible_from( $user_id );
+			foreach ( $week_rows as $w => $week_row ) {
+				$week_holiday = 0;
+				foreach ( $week_row['days'] as $d => $day ) {
+					if ( ! isset( $holiday_days[ $day['date'] ] ) ) {
+						continue;
+					}
+					$info = $holiday_days[ $day['date'] ];
+					$note = '';
+					if ( ! $info['eligible'] ) {
+						$hire = css_tc_addon()->holidays->hire_date( $user_id );
+						$note = ( '' !== $hire && $day['date'] < $hire )
+							? __( 'before hire date, not paid', 'css-timeclock-addon' )
+							/* translators: %s: date holiday pay starts */
+							: sprintf( __( 'introductory period, not paid (holiday pay starts %s)', 'css-timeclock-addon' ), css_tc_addon()->time->format_day_label( $from ) );
+					}
+					$week_rows[ $w ]['days'][ $d ]['holiday']         = implode( ' · ', $info['names'] );
+					$week_rows[ $w ]['days'][ $d ]['holiday_seconds'] = (int) $info['seconds'];
+					$week_rows[ $w ]['days'][ $d ]['holiday_hm']      = $info['seconds'] > 0 ? css_tc_addon()->time->format_duration( (int) $info['seconds'] ) : '';
+					$week_rows[ $w ]['days'][ $d ]['holiday_note']    = $note;
+					$week_holiday += (int) $info['seconds'];
+				}
+				$week_rows[ $w ]['holiday_seconds'] = $week_holiday;
+				$week_rows[ $w ]['holiday_hm']      = $week_holiday > 0 ? css_tc_addon()->time->format_duration( $week_holiday ) : '';
+			}
+			if ( $holiday_seconds > 0 ) {
+				$cid = $holiday_dept > 0 && css_tc_addon()->organization->department( $holiday_dept ) ? (int) css_tc_addon()->organization->department( $holiday_dept )['company_id'] : 0;
+				if ( ! isset( $by_company[ $cid ] ) ) {
+					$by_company[ $cid ] = array(
+						'company_id' => $cid,
+						'name'       => $cid > 0 ? css_tc_addon()->organization->company_name( $cid ) : __( 'No company', 'css-timeclock-addon' ),
+						'total'      => 0,
+						'overtime'   => 0,
+						'regular'    => 0,
+					);
+				}
+				$by_company[ $cid ]['holiday'] = $holiday_seconds;
+			}
+		}
+		$paid_seconds = $total_seconds + $holiday_seconds;
+
 		$pay_rows = array();
 		foreach ( $defs as $slug => $def ) {
 			$seconds = isset( $buckets[ $slug ] ) ? (int) $buckets[ $slug ] : 0;
-			$always  = ( Css_Tc_Pay_Codes::REGULAR === $slug || Css_Tc_Pay_Codes::OVERTIME === $slug );
+			$always  = in_array( $slug, array( Css_Tc_Pay_Codes::REGULAR, Css_Tc_Pay_Codes::OVERTIME, Css_Tc_Pay_Codes::HOLIDAY ), true );
 			if ( ! $always && $seconds < 1 ) {
 				continue;
 			}
@@ -186,6 +242,10 @@ class Css_Tc_Timecard {
 			'period'           => $period,
 			'total_seconds'    => $total_seconds,
 			'total_hm'         => css_tc_addon()->time->format_duration( $total_seconds ),
+			'holiday_seconds'  => $holiday_seconds,
+			'holiday_department_id' => $holiday_dept,
+			'paid_seconds'     => $paid_seconds,
+			'paid_hm'          => css_tc_addon()->time->format_duration( $paid_seconds ),
 			'pay_codes'        => $pay_rows,
 			'weeks'            => $week_rows,
 			'long_shift_count' => $long_count,

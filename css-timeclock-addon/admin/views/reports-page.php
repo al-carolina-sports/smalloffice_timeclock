@@ -204,6 +204,15 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 			<?php endif; ?>
 		</table>
 
+		<?php $css_tc_holidays_on = css_tc_addon()->holidays->enabled(); ?>
+		<?php if ( $css_tc_holidays_on ) : ?>
+			<p class="description">
+				<?php echo esc_html__( 'Holiday is paid holiday hours (TC-Config → Holidays). Total is paid hours: worked plus holiday. The week columns are hours worked.', 'css-timeclock-addon' ); ?>
+				<?php if ( $css_tc_use_org ) : ?>
+					<?php echo esc_html__( 'Holiday hours are charged to each employee\'s home department and its company.', 'css-timeclock-addon' ); ?>
+				<?php endif; ?>
+			</p>
+		<?php endif; ?>
 		<?php if ( $css_tc_use_org && ! empty( $summary['by_employee'] ) ) : ?>
 			<h2 class="css-tc-report-h2">
 				<?php echo esc_html__( 'By employee', 'css-timeclock-addon' ); ?>
@@ -219,6 +228,9 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 						<th class="num"><?php echo esc_html__( 'Shifts', 'css-timeclock-addon' ); ?></th>
 						<th class="num"><?php echo esc_html__( 'Regular', 'css-timeclock-addon' ); ?></th>
 						<th class="num"><?php echo esc_html__( 'Overtime', 'css-timeclock-addon' ); ?></th>
+						<?php if ( $css_tc_holidays_on ) : ?>
+							<th class="num"><?php echo esc_html__( 'Holiday', 'css-timeclock-addon' ); ?></th>
+						<?php endif; ?>
 						<th class="num"><?php echo esc_html__( 'Total', 'css-timeclock-addon' ); ?></th>
 					</tr>
 				</thead>
@@ -236,6 +248,9 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 								<td class="num"><?php echo esc_html( (string) $css_tc_r['shifts'] ); ?></td>
 								<td class="num"><?php echo esc_html( $css_tc_hm( $css_tc_r['regular'] ) ); ?></td>
 								<td class="num<?php echo $css_tc_r['overtime'] > 0 ? ' is-overtime' : ''; ?>"><?php echo esc_html( $css_tc_hm( $css_tc_r['overtime'] ) ); ?></td>
+								<?php if ( $css_tc_holidays_on ) : ?>
+									<td class="num"><?php echo esc_html( $css_tc_hm( $css_tc_r['holiday'] ) ); ?></td>
+								<?php endif; ?>
 								<td class="num"><?php echo esc_html( $css_tc_hm( $css_tc_r['total'] ) ); ?></td>
 							</tr>
 						<?php endforeach; ?>
@@ -244,6 +259,9 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 							<td class="num"><?php echo esc_html( (string) $css_tc_emp['total']['shifts'] ); ?></td>
 							<td class="num"><?php echo esc_html( $css_tc_hm( $css_tc_emp['total']['regular'] ) ); ?></td>
 							<td class="num<?php echo $css_tc_emp['total']['overtime'] > 0 ? ' is-overtime' : ''; ?>"><?php echo esc_html( $css_tc_hm( $css_tc_emp['total']['overtime'] ) ); ?></td>
+							<?php if ( $css_tc_holidays_on ) : ?>
+								<td class="num"><?php echo esc_html( $css_tc_hm( $css_tc_emp['total']['holiday'] ) ); ?></td>
+							<?php endif; ?>
 							<td class="num"><strong><?php echo esc_html( $css_tc_hm( $css_tc_emp['total']['total'] ) ); ?></strong></td>
 						</tr>
 					</tbody>

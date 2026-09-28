@@ -337,3 +337,9 @@
 .css-tc-host-status__warn { color: #996800; }
 .css-tc-host-status__bad { color: #b32d2e; }
 .css-tc-admin .css-tc-refused-log { max-width: 720px; margin-top: 8px; }
+
+/* Holidays */
+.css-tc-holiday-list { margin: 8px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px 16px; max-width: 760px; }
+.css-tc-holiday-list legend { font-weight: 600; margin-bottom: 4px; }
+.css-tc-holiday-preview { margin-top: 8px; }
+.css-tc-holiday-preview ul { margin: 6px 0 0 18px; list-style: disc; }

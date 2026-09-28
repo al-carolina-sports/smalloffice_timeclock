@@ -52,7 +52,7 @@ class Css_Tc_Shortcodes {
 		}
 
 		$post = get_queried_object();
-		if ( ! $post instanceof WP_Post || ! self::is_aio_clock_page( $post ) ) {
+		if ( ! $post instanceof WP_Post || ! ( self::is_aio_clock_page( $post ) || self::is_name_kiosk_page( $post ) ) ) {
 			return;
 		}
 
@@ -70,6 +70,21 @@ class Css_Tc_Shortcodes {
 	}
 
 	/**
+	 * The retired name-list kiosk page (its shortcode alone, or the page
+	 * USOTC created for it).
+	 *
+	 * @param WP_Post $post Page being viewed.
+	 * @return bool
+	 */
+	public static function is_name_kiosk_page( $post ) {
+		$settings = css_tc_addon()->get_settings();
+		if ( ! empty( $settings['name_kiosk_page_id'] ) && (int) $settings['name_kiosk_page_id'] === (int) $post->ID ) {
+			return true;
+		}
+		return 'name-time-clock' === $post->post_name;
+	}
+
+	/**
 	 * @param WP_Post $post Page being viewed.
 	 * @return bool
 	 */
@@ -81,29 +96,14 @@ class Css_Tc_Shortcodes {
 	}
 
 	/**
-	 * Name kiosk when it is enabled, otherwise the PIN kiosk.
+	 * The main time clock page: the PIN kiosk.
 	 *
 	 * @return string
 	 */
 	public static function preferred_kiosk_url() {
 		$settings = css_tc_addon()->get_settings();
-		$name_on  = ! empty( $settings['name_kiosk_enabled'] );
-		$pin_on   = ! empty( $settings['pin_kiosk_enabled'] );
-
-		if ( $name_on ) {
-			$url = self::page_url( isset( $settings['name_kiosk_page_id'] ) ? (int) $settings['name_kiosk_page_id'] : 0, 'name-time-clock' );
-			if ( $url ) {
-				return $url;
-			}
-		}
-		if ( $pin_on || ! $name_on ) {
-			$url = self::page_url( isset( $settings['pin_kiosk_page_id'] ) ? (int) $settings['pin_kiosk_page_id'] : 0, 'pin-time-clock' );
-			if ( $url ) {
-				return $url;
-			}
-		}
-
-		return home_url( '/name-time-clock/' );
+		$url      = self::page_url( isset( $settings['pin_kiosk_page_id'] ) ? (int) $settings['pin_kiosk_page_id'] : 0, 'pin-time-clock' );
+		return $url ? $url : home_url( '/pin-time-clock/' );
 	}
 
 	/**
@@ -334,10 +334,12 @@ class Css_Tc_Shortcodes {
 		$settings = css_tc_addon()->get_settings();
 		self::enqueue_assets();
 
+		// The PIN kiosk now lets people tap their name on the board, so the
+		// separate name-list kiosk is retired. Old pages keep working.
 		ob_start();
-		$enabled = ! empty( $settings['name_kiosk_enabled'] );
-		$mode    = 'name';
-		include CSS_TC_ADDON_DIR . 'public/views/name-kiosk.php';
+		$enabled = ! empty( $settings['pin_kiosk_enabled'] );
+		$mode    = 'pin';
+		include CSS_TC_ADDON_DIR . 'public/views/pin-kiosk.php';
 		return (string) ob_get_clean();
 	}
 
@@ -637,6 +639,8 @@ class Css_Tc_Shortcodes {
 				'strings'        => array(
 					'enterPin'       => __( 'Enter your PIN', 'css-timeclock-addon' ),
 					'confirmPin'     => __( 'Confirm with your PIN', 'css-timeclock-addon' ),
+					'hiEnterPin'     => __( 'Hi %s — enter your PIN', 'css-timeclock-addon' ),
+					'tapName'        => __( 'Tap your name to clock in or out', 'css-timeclock-addon' ),
 					'clockIn'        => __( 'Clock in', 'css-timeclock-addon' ),
 					'clockOut'       => __( 'Clock out', 'css-timeclock-addon' ),
 					'workingSince'   => __( 'Clocked in since', 'css-timeclock-addon' ),
