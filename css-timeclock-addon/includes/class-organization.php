@@ -50,6 +50,36 @@ class Css_Tc_Organization {
 		add_action( 'edit_user_profile', array( $this, 'render_profile' ) );
 		add_action( 'personal_options_update', array( $this, 'save_profile' ) );
 		add_action( 'edit_user_profile_update', array( $this, 'save_profile' ) );
+		add_action( 'admin_init', array( $this, 'maybe_hide_aio_profile_department' ) );
+	}
+
+	/**
+	 * With SMOTC departments on, AIO's own single-choice "Department" list on
+	 * the user profile is redundant (and its save path is what crashed on
+	 * AIO's missing count function). Remove AIO's profile department hooks so
+	 * only "Time clock departments" shows. AIO department terms already set
+	 * on users are left as they are.
+	 *
+	 * @return void
+	 */
+	public function maybe_hide_aio_profile_department() {
+		global $pagenow, $wp_filter;
+		if ( ! in_array( $pagenow, array( 'profile.php', 'user-edit.php' ), true ) || ! $this->enabled() ) {
+			return;
+		}
+		foreach ( array( 'show_user_profile', 'edit_user_profile', 'personal_options_update', 'edit_user_profile_update' ) as $hook ) {
+			if ( empty( $wp_filter[ $hook ] ) || ! ( $wp_filter[ $hook ] instanceof WP_Hook ) ) {
+				continue;
+			}
+			foreach ( $wp_filter[ $hook ]->callbacks as $priority => $callbacks ) {
+				foreach ( $callbacks as $callback ) {
+					$fn = $callback['function'];
+					if ( is_array( $fn ) && is_object( $fn[0] ) && 0 === stripos( get_class( $fn[0] ), 'AIO_' ) && false !== stripos( (string) $fn[1], 'department' ) ) {
+						remove_action( $hook, $fn, $priority );
+					}
+				}
+			}
+		}
 	}
 
 	/**
