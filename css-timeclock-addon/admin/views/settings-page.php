@@ -122,8 +122,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 						<label for="ip_allowlist" class="screen-reader-text"><?php echo esc_html__( 'Allowed IPs and CIDR ranges', 'css-timeclock-addon' ); ?></label>
 						<textarea name="ip_allowlist" id="ip_allowlist" rows="6" class="large-text code css-tc-allowlist" placeholder="<?php echo esc_attr__( '203.0.113.10', 'css-timeclock-addon' ); ?>"><?php echo esc_textarea( $office_raw ); ?></textarea>
 						<p class="description">
-							<?php echo esc_html__( 'One IPv4 or IPv6 address or CIDR per line (for example 203.0.113.10 or 203.0.113.0/24). Lines starting with # are comments.', 'css-timeclock-addon' ); ?>
+							<?php echo esc_html__( 'One per line: an IPv4 or IPv6 address, a CIDR range (203.0.113.0/24), or a hostname for an office on a changing address (for example csswilson.ddns.net). Hostnames are looked up every few minutes; if a lookup fails the last address that worked is kept. Lines starting with # are comments.', 'css-timeclock-addon' ); ?>
 						</p>
+						<?php Css_Tc_Admin::render_host_status( $office_raw ); ?>
 						<p class="description">
 							<?php echo esc_html__( 'Uses the same client address as the failed-PIN limit and office detection. Forwarded headers (X-Forwarded-For and similar) are only believed when they come from the hosting network or a trusted proxy listed below, so a visitor cannot pretend to be at the office.', 'css-timeclock-addon' ); ?>
 						</p>
@@ -150,6 +151,37 @@ if ( ! defined( 'ABSPATH' ) ) {
 							<p class="description">
 								<?php echo esc_html__( 'The checkbox is on, but there are no addresses yet, so kiosks still allow every network.', 'css-timeclock-addon' ); ?>
 							</p>
+						<?php endif; ?>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php echo esc_html__( 'Refused kiosk requests', 'css-timeclock-addon' ); ?></th>
+					<td>
+						<?php $css_tc_refused = array_slice( array_reverse( css_tc_addon()->pins->refused_kiosk_log() ), 0, 50 ); ?>
+						<?php if ( empty( $css_tc_refused ) ) : ?>
+							<p class="description"><?php echo esc_html__( 'No refused kiosk requests.', 'css-timeclock-addon' ); ?></p>
+						<?php else : ?>
+							<p class="description"><?php echo esc_html__( 'Kiosk requests turned away by the office IP allowlist (newest first, at most one per address per minute). PINs are never recorded.', 'css-timeclock-addon' ); ?></p>
+							<table class="widefat striped css-tc-refused-log">
+								<thead>
+									<tr>
+										<th><?php echo esc_html__( 'Time', 'css-timeclock-addon' ); ?></th>
+										<th><?php echo esc_html__( 'IP', 'css-timeclock-addon' ); ?></th>
+										<th><?php echo esc_html__( 'Action', 'css-timeclock-addon' ); ?></th>
+										<th><?php echo esc_html__( 'Employee', 'css-timeclock-addon' ); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ( $css_tc_refused as $css_tc_row ) : ?>
+										<tr>
+											<td><?php echo esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $css_tc_row['time'] ) ); ?></td>
+											<td><code><?php echo esc_html( $css_tc_row['ip'] ); ?></code></td>
+											<td><code><?php echo esc_html( $css_tc_row['action'] ); ?></code></td>
+											<td><?php echo esc_html( '' !== $css_tc_row['name'] ? $css_tc_row['name'] : '—' ); ?></td>
+										</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
 						<?php endif; ?>
 					</td>
 				</tr>

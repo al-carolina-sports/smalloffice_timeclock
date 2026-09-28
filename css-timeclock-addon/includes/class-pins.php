@@ -381,7 +381,7 @@ class Css_Tc_Pins {
 		}
 		if ( null === $this->extra_trusted ) {
 			$raw                 = function_exists( 'css_tc_addon' ) ? (string) ( css_tc_addon()->get_settings()['trusted_proxies'] ?? '' ) : '';
-			$this->extra_trusted = $this->parse_allowlist( $raw )['entries'];
+			$this->extra_trusted = $this->parse_allowlist( $raw, false )['entries'];
 		}
 		return $this->extra_trusted;
 	}
@@ -468,21 +468,409 @@ class Css_Tc_Pins {
 		}
 
 		$parsed = $this->parse_allowlist( $raw );
-		if ( empty( $parsed['entries'] ) ) {
+		if ( empty( $parsed['entries'] ) && empty( $parsed['hosts'] ) ) {
 			return true;
 		}
 
+		// A hostname that has never resolved still counts as a rule, so the
+		// list stays closed instead of letting every network in.
+		return false !== $this->list_match( $ip, $parsed );
+	}
+
+	/**
+	 * Whether an address is covered by a parsed list.
+	 *
+	 * @param string                                   $ip     Client address.
+	 * @param array{entries:string[],hosts?:string[]} $parsed From parse_allowlist().
+	 * @return string|false The matching entry or hostname, or false.
+	 */
+	public function list_match( $ip, $parsed ) {
 		if ( '' === $this->canonical_ip( $ip ) ) {
 			return false;
 		}
-
-		foreach ( $parsed['entries'] as $entry ) {
+		foreach ( (array) ( $parsed['entries'] ?? array() ) as $entry ) {
 			if ( $this->ip_in_entry( $ip, $entry ) ) {
-				return true;
+				return $entry;
 			}
 		}
-
+		foreach ( (array) ( $parsed['hosts'] ?? array() ) as $host ) {
+			foreach ( $this->host_ips( $host ) as $host_ip ) {
+				if ( $this->ip_in_entry( $ip, $host_ip ) ) {
+					return $host;
+				}
+			}
+		}
 		return false;
+	}
+
+	/*
+	 * ---------------------------------------------------------------------
+	 * Hostnames (dynamic DNS such as csswilson.ddns.net)
+	 * ---------------------------------------------------------------------
+	 */
+
+	/** Option holding the lookup cache. */
+	const DNS_OPTION = 'css_tc_dns_cache';
+
+	/** Re-check a name at request time when the saved answer is older than this. */
+	const DNS_MAX_AGE = 600;
+
+	/** After a failed lookup, wait this long before trying again at request time. */
+	const DNS_RETRY = 60;
+
+	/** Background refresh interval. */
+	const DNS_REFRESH = 300;
+
+	/**
+	 * @var array<string,array{ips:string[],checked:int,ok:int,failed:bool}>|null
+	 */
+	private $dns_cache = null;
+
+	/**
+	 * @var callable|null Test resolver: fn( string $host ): string[]|false.
+	 */
+	private $resolver = null;
+
+	/**
+	 * @var callable|null Test clock: fn(): int.
+	 */
+	private $clock = null;
+
+	/**
+	 * Replace DNS and the clock (tests only).
+	 *
+	 * @param callable|null $resolver fn( $host ) returning addresses, or false on failure.
+	 * @param callable|null $clock    fn() returning a Unix time.
+	 * @return void
+	 */
+	public function set_dns_test_hooks( $resolver, $clock = null ) {
+		$this->resolver     = $resolver;
+		$this->clock        = $clock;
+		$this->dns_cache    = array();
+		$this->test_options = null === $resolver && null === $clock ? null : array();
+	}
+
+	/**
+	 * @return int
+	 */
+	private function now() {
+		return $this->clock ? (int) call_user_func( $this->clock ) : time();
+	}
+
+	/**
+	 * Valid DNS hostname with at least one dot and a non-numeric last label.
+	 *
+	 * @param string $name Candidate.
+	 * @return string Lower-case hostname, or '' when not a hostname.
+	 */
+	public function normalize_hostname( $name ) {
+		$name = strtolower( rtrim( trim( (string) $name ), '.' ) );
+		if ( '' === $name || strlen( $name ) > 253 || false === strpos( $name, '.' ) ) {
+			return '';
+		}
+		$labels = explode( '.', $name );
+		foreach ( $labels as $label ) {
+			if ( ! preg_match( '/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/', $label ) ) {
+				return '';
+			}
+		}
+		if ( preg_match( '/^\d+$/', (string) end( $labels ) ) ) {
+			return ''; // 10.0.0.300 is a bad address, not a hostname.
+		}
+		return $name;
+	}
+
+	/**
+	 * @return array<string,array{ips:string[],checked:int,ok:int,failed:bool}>
+	 */
+	private function dns_cache() {
+		if ( null === $this->dns_cache ) {
+			$stored          = function_exists( 'get_option' ) ? get_option( self::DNS_OPTION, array() ) : array();
+			$this->dns_cache = is_array( $stored ) ? $stored : array();
+		}
+		return $this->dns_cache;
+	}
+
+	/**
+	 * @param string                                          $host  Hostname.
+	 * @param array{ips:string[],checked:int,ok:int,failed:bool} $entry Cache row.
+	 * @return void
+	 */
+	private function save_dns_entry( $host, $entry ) {
+		$cache          = $this->dns_cache();
+		$cache[ $host ] = $entry;
+		// Forget names nobody has looked up for a week (removed from every list).
+		foreach ( $cache as $name => $row ) {
+			if ( (int) ( $row['checked'] ?? 0 ) < $this->now() - 7 * 86400 ) {
+				unset( $cache[ $name ] );
+			}
+		}
+		$this->dns_cache = $cache;
+		if ( null === $this->resolver && function_exists( 'update_option' ) ) {
+			update_option( self::DNS_OPTION, $cache, false );
+		}
+	}
+
+	/**
+	 * Addresses a hostname points to right now (A and AAAA records).
+	 *
+	 * @param string $host Hostname.
+	 * @return string[]|false Canonical addresses, or false when the lookup failed.
+	 */
+	private function lookup( $host ) {
+		if ( null !== $this->resolver ) {
+			$found = call_user_func( $this->resolver, $host );
+		} else {
+			$found = array();
+			$v4    = function_exists( 'gethostbynamel' ) ? gethostbynamel( $host ) : false;
+			if ( is_array( $v4 ) ) {
+				$found = $v4;
+			}
+			if ( function_exists( 'dns_get_record' ) && defined( 'DNS_AAAA' ) ) {
+				$v6 = @dns_get_record( $host, DNS_AAAA ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+				foreach ( is_array( $v6 ) ? $v6 : array() as $record ) {
+					if ( ! empty( $record['ipv6'] ) ) {
+						$found[] = $record['ipv6'];
+					}
+				}
+			}
+		}
+		if ( ! is_array( $found ) ) {
+			return false;
+		}
+		$ips = array();
+		foreach ( $found as $ip ) {
+			$ip = $this->canonical_ip( (string) $ip );
+			if ( '' !== $ip ) {
+				$ips[] = $ip;
+			}
+		}
+		$ips = array_values( array_unique( $ips ) );
+		return empty( $ips ) ? false : $ips;
+	}
+
+	/**
+	 * Addresses for a hostname, from the cache when fresh enough.
+	 *
+	 * A failed lookup keeps the last addresses that worked. A name that has
+	 * never resolved returns no addresses, so it matches nobody.
+	 *
+	 * @param string   $host    Hostname from parse_allowlist().
+	 * @param int|null $max_age Seconds a saved answer stays good (0 = look up now).
+	 * @return string[]
+	 */
+	public function host_ips( $host, $max_age = null ) {
+		$host = $this->normalize_hostname( $host );
+		if ( '' === $host ) {
+			return array();
+		}
+		$max_age = null === $max_age ? self::DNS_MAX_AGE : (int) $max_age;
+		$cache   = $this->dns_cache();
+		$entry   = isset( $cache[ $host ] ) && is_array( $cache[ $host ] ) ? $cache[ $host ] : null;
+		$now     = $this->now();
+
+		$stale = null === $entry
+			|| ( $now - (int) $entry['checked'] ) >= $max_age;
+		if ( $stale && null !== $entry && ! empty( $entry['failed'] ) && $max_age > 0 && ( $now - (int) $entry['checked'] ) < self::DNS_RETRY ) {
+			$stale = false; // Just failed; do not slow every punch retrying.
+		}
+
+		if ( $stale ) {
+			$ips = $this->lookup( $host );
+			if ( false === $ips ) {
+				$entry = array(
+					'ips'     => null !== $entry ? (array) $entry['ips'] : array(),
+					'checked' => $now,
+					'ok'      => null !== $entry ? (int) $entry['ok'] : 0,
+					'failed'  => true,
+				);
+			} else {
+				$entry = array(
+					'ips'     => $ips,
+					'checked' => $now,
+					'ok'      => $now,
+					'failed'  => false,
+				);
+			}
+			$this->save_dns_entry( $host, $entry );
+		}
+
+		return (array) $entry['ips'];
+	}
+
+	/**
+	 * What the screen should say about a hostname.
+	 *
+	 * @param string $host Hostname.
+	 * @return array{ips:string[],checked:int,ok:int,failed:bool}
+	 */
+	public function host_status( $host ) {
+		$host = $this->normalize_hostname( $host );
+		$this->host_ips( $host );
+		$cache = $this->dns_cache();
+		return isset( $cache[ $host ] ) ? $cache[ $host ] : array( 'ips' => array(), 'checked' => 0, 'ok' => 0, 'failed' => true );
+	}
+
+	/*
+	 * ---------------------------------------------------------------------
+	 * Refused kiosk requests (from #22)
+	 * ---------------------------------------------------------------------
+	 */
+
+	const REFUSED_OPTION   = 'css_tc_refused_kiosk';
+	const REFUSED_CAP      = 200;
+	const REFUSED_INTERVAL = 60;
+
+	/**
+	 * @var array<string,mixed>|null In-memory options while testing.
+	 */
+	private $test_options = null;
+
+	/**
+	 * @param string $key     Option.
+	 * @param mixed  $default Default.
+	 * @return mixed
+	 */
+	private function opt_get( $key, $default ) {
+		if ( is_array( $this->test_options ) ) {
+			return array_key_exists( $key, $this->test_options ) ? $this->test_options[ $key ] : $default;
+		}
+		return function_exists( 'get_option' ) ? get_option( $key, $default ) : $default;
+	}
+
+	/**
+	 * @param string $key   Option.
+	 * @param mixed  $value Value.
+	 * @return void
+	 */
+	private function opt_set( $key, $value ) {
+		if ( is_array( $this->test_options ) ) {
+			$this->test_options[ $key ] = $value;
+			return;
+		}
+		if ( function_exists( 'update_option' ) ) {
+			update_option( $key, $value, false );
+		}
+	}
+
+	/**
+	 * Record a refused kiosk request: at most one row per address per
+	 * minute, the last 200 kept. A PIN is never stored.
+	 *
+	 * @param string $ip      Client address.
+	 * @param string $action  AJAX action.
+	 * @param int    $user_id Employee, when the request already named one.
+	 * @param string $name    Employee display name.
+	 * @return bool True when a row was stored.
+	 */
+	public function record_refused_kiosk( $ip, $action, $user_id = 0, $name = '' ) {
+		$ip = $this->canonical_ip( $ip );
+		if ( '' === $ip ) {
+			return false;
+		}
+		$now = $this->now();
+		$log = $this->refused_kiosk_log();
+		for ( $i = count( $log ) - 1; $i >= 0; $i-- ) {
+			if ( $log[ $i ]['ip'] === $ip ) {
+				if ( $now - (int) $log[ $i ]['time'] < self::REFUSED_INTERVAL ) {
+					return false;
+				}
+				break;
+			}
+		}
+		$action = substr( (string) preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $action ) ), 0, 64 );
+		$name   = trim( (string) preg_replace( '/\s+/', ' ', strip_tags( (string) $name ) ) );
+		$log[]  = array(
+			'ip'      => $ip,
+			'time'    => $now,
+			'action'  => $action,
+			'user_id' => max( 0, (int) $user_id ),
+			'name'    => substr( $name, 0, 80 ),
+		);
+		if ( count( $log ) > self::REFUSED_CAP ) {
+			$log = array_slice( $log, -1 * self::REFUSED_CAP );
+		}
+		$this->opt_set( self::REFUSED_OPTION, $log );
+		return true;
+	}
+
+	/**
+	 * @return array<int,array{ip:string,time:int,action:string,user_id:int,name:string}>
+	 */
+	public function refused_kiosk_log() {
+		$log   = $this->opt_get( self::REFUSED_OPTION, array() );
+		$clean = array();
+		foreach ( is_array( $log ) ? $log : array() as $row ) {
+			if ( ! is_array( $row ) || empty( $row['ip'] ) ) {
+				continue;
+			}
+			$clean[] = array(
+				'ip'      => (string) $row['ip'],
+				'time'    => (int) ( $row['time'] ?? 0 ),
+				'action'  => (string) ( $row['action'] ?? '' ),
+				'user_id' => (int) ( $row['user_id'] ?? 0 ),
+				'name'    => (string) ( $row['name'] ?? '' ),
+			);
+		}
+		return $clean;
+	}
+
+	/**
+	 * Refusals in the window, one row per address, busiest first.
+	 *
+	 * @param int $seconds Window.
+	 * @return array<int,array{ip:string,count:int,latest:int}>
+	 */
+	public function refused_kiosk_summary( $seconds = 3600 ) {
+		$cutoff = $this->now() - (int) $seconds;
+		$rows   = array();
+		foreach ( $this->refused_kiosk_log() as $row ) {
+			if ( $row['time'] < $cutoff ) {
+				continue;
+			}
+			$ip = $row['ip'];
+			if ( ! isset( $rows[ $ip ] ) ) {
+				$rows[ $ip ] = array( 'ip' => $ip, 'count' => 0, 'latest' => 0 );
+			}
+			++$rows[ $ip ]['count'];
+			$rows[ $ip ]['latest'] = max( $rows[ $ip ]['latest'], $row['time'] );
+		}
+		$rows = array_values( $rows );
+		usort(
+			$rows,
+			static function ( $a, $b ) {
+				return $b['count'] - $a['count'];
+			}
+		);
+		return $rows;
+	}
+
+	/**
+	 * Add an address to allowlist text unless a line already covers it.
+	 *
+	 * @param string $raw Allowlist text.
+	 * @param string $ip  Address.
+	 * @return string
+	 */
+	public function append_allowlist_ip( $raw, $ip ) {
+		$ip = $this->canonical_ip( $ip );
+		if ( '' === $ip || false !== $this->list_match( $ip, $this->parse_allowlist( (string) $raw ) ) ) {
+			return (string) $raw;
+		}
+		$raw = rtrim( (string) $raw );
+		return '' === $raw ? $ip : $raw . "\n" . $ip;
+	}
+
+	/**
+	 * Look up every hostname used anywhere (cron and after saving).
+	 *
+	 * @param string[] $hosts Hostnames.
+	 * @return void
+	 */
+	public function refresh_hosts( $hosts ) {
+		foreach ( array_unique( (array) $hosts ) as $host ) {
+			$this->host_ips( (string) $host, 0 );
+		}
 	}
 
 	/**
@@ -492,11 +880,17 @@ class Css_Tc_Pins {
 	 * A # later on a line starts an inline comment. Entries are one IPv4 or
 	 * IPv6 address, or CIDR, per line.
 	 *
-	 * @param string $raw Textarea contents.
-	 * @return array{entries: array<int,string>, invalid: array<int,string>}
+	 * A line may also be a hostname (for example an office's dynamic DNS name)
+	 * when $allow_hosts is true; those go in 'hosts' and are looked up when
+	 * checked.
+	 *
+	 * @param string $raw         Textarea contents.
+	 * @param bool   $allow_hosts Accept hostnames.
+	 * @return array{entries: array<int,string>, hosts: array<int,string>, invalid: array<int,string>}
 	 */
-	public function parse_allowlist( $raw ) {
+	public function parse_allowlist( $raw, $allow_hosts = true ) {
 		$entries = array();
+		$hosts   = array();
 		$invalid = array();
 		$lines   = preg_split( '/\r\n|\r|\n/', (string) $raw );
 		if ( ! is_array( $lines ) ) {
@@ -519,6 +913,11 @@ class Css_Tc_Pins {
 
 			$normalized = $this->normalize_allowlist_entry( $line );
 			if ( '' === $normalized ) {
+				$host = $allow_hosts ? $this->normalize_hostname( $line ) : '';
+				if ( '' !== $host ) {
+					$hosts[] = $host;
+					continue;
+				}
 				$invalid[] = $line;
 				continue;
 			}
@@ -527,6 +926,7 @@ class Css_Tc_Pins {
 
 		return array(
 			'entries' => array_values( array_unique( $entries ) ),
+			'hosts'   => array_values( array_unique( $hosts ) ),
 			'invalid' => $invalid,
 		);
 	}

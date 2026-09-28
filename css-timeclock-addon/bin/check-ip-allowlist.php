@@ -7,6 +7,11 @@
  * @package CssTimeclockAddon
  */
 
+if ( PHP_SAPI !== 'cli' ) {
+	header( 'HTTP/1.1 403 Forbidden' );
+	exit;
+}
+
 if ( ! defined( 'ABSPATH' ) ) {
 	define( 'ABSPATH', __DIR__ );
 }
@@ -25,7 +30,7 @@ require_once dirname( __DIR__ ) . '/includes/class-pins.php';
 
 $pins    = new Css_Tc_Pins();
 $failed  = 0;
-$office  = "This kiosk only works from the office network.";
+$office  = "This kiosk only works from the office network. Please tell your manager.";
 
 /**
  * @param bool   $cond Condition.
@@ -127,6 +132,78 @@ $pins->extra_trusted_proxies( array() );
 css_tc_check( '198.51.100.5' === $pins->client_ip(), 'unlisted public proxy is the client' );
 css_tc_check( $pins->is_trusted_proxy( '100.64.3.4' ), 'CGNAT range counts as internal' );
 $reset();
+
+// --- Hostnames (dynamic DNS) -------------------------------------------
+$h = $pins->parse_allowlist( "66.76.190.146\nCSSWilson.DDNS.net.  # Wilson\n10.0.0.300\nbad_host.example\nlocalhost\n" );
+css_tc_check( array( '66.76.190.146' ) === $h['entries'], 'hostname list keeps addresses' );
+css_tc_check( array( 'csswilson.ddns.net' ) === $h['hosts'], 'hostname lower-cased, trailing dot and comment removed' );
+css_tc_check( array( '10.0.0.300', 'bad_host.example', 'localhost' ) === $h['invalid'], 'bad address, underscore and dotless names rejected' );
+css_tc_check( array( 'csswilson.ddns.net' ) === $pins->parse_allowlist( 'csswilson.ddns.net', false )['invalid'], 'hostnames refused where not allowed (trusted proxies)' );
+
+$dns_now    = 1000000;
+$dns_answer = array( '216.210.87.91' );
+$dns_calls  = 0;
+$pins->set_dns_test_hooks(
+	static function ( $host ) use ( &$dns_answer, &$dns_calls ) {
+		++$dns_calls;
+		return 'csswilson.ddns.net' === $host ? $dns_answer : false;
+	},
+	static function () use ( &$dns_now ) {
+		return $dns_now;
+	}
+);
+$wilson = "76.195.93.124\ncsswilson.ddns.net\n";
+css_tc_check( $pins->ip_allowed_by_list( '216.210.87.91', true, $wilson ), 'address behind the hostname is allowed' );
+css_tc_check( ! $pins->ip_allowed_by_list( '198.51.100.4', true, $wilson ), 'other address still refused' );
+css_tc_check( 'csswilson.ddns.net' === $pins->list_match( '216.210.87.91', $pins->parse_allowlist( $wilson ) ), 'match reports the hostname' );
+$calls_before = $dns_calls;
+$pins->ip_allowed_by_list( '216.210.87.91', true, $wilson );
+css_tc_check( $calls_before === $dns_calls, 'fresh answer comes from the cache' );
+
+$dns_now   += 700;
+$dns_answer = array( '216.210.87.99' );
+css_tc_check( $pins->ip_allowed_by_list( '216.210.87.99', true, $wilson ), 'new address picked up after the cache ages out' );
+css_tc_check( ! $pins->ip_allowed_by_list( '216.210.87.91', true, $wilson ), 'old address no longer allowed' );
+
+$dns_now   += 700;
+$dns_answer = false;
+css_tc_check( $pins->ip_allowed_by_list( '216.210.87.99', true, $wilson ), 'failed lookup keeps the last address that worked' );
+$st = $pins->host_status( 'csswilson.ddns.net' );
+css_tc_check( ! empty( $st['failed'] ) && array( '216.210.87.99' ) === $st['ips'], 'status shows the failure and kept address' );
+$calls_before = $dns_calls;
+$dns_now     += 10;
+$pins->ip_allowed_by_list( '216.210.87.99', true, $wilson );
+css_tc_check( $calls_before === $dns_calls, 'no retry within a minute of a failure' );
+
+css_tc_check( ! $pins->ip_allowed_by_list( '198.51.100.4', true, "never.example.test\n" ), 'unresolvable-only list stays closed, not open to all' );
+css_tc_check( array() === $pins->host_ips( 'never.example.test' ), 'unresolvable name has no addresses' );
+
+$dns_answer = array( '::ffff:216.210.87.50', '2001:db8::5' );
+$pins->refresh_hosts( array( 'csswilson.ddns.net' ) );
+css_tc_check( array( '216.210.87.50', '2001:db8::5' ) === $pins->host_ips( 'csswilson.ddns.net' ), 'refresh looks up now; mapped IPv4 canonicalized, IPv6 kept' );
+$pins->set_dns_test_hooks( null );
+
+// --- Refused kiosk log (ported from #22) -------------------------------
+$rnow = 1700000000;
+$pins->set_dns_test_hooks( static function () { return false; }, static function () use ( &$rnow ) { return $rnow; } );
+css_tc_check( $pins->record_refused_kiosk( '203.0.113.50', 'css_tc_punch', 4, 'Two Staff' ), 'refused punch is stored' );
+css_tc_check( ! $pins->record_refused_kiosk( '203.0.113.50', 'css_tc_punch', 4, '1234' ), 'same IP inside a minute is not stored again' );
+css_tc_check( $pins->record_refused_kiosk( '198.51.100.8', 'css_tc_roster', 0, '' ), 'a different IP is stored' );
+$rows = $pins->refused_kiosk_log();
+css_tc_check( 2 === count( $rows ) && 'Two Staff' === $rows[0]['name'] && 4 === $rows[0]['user_id'], 'one row per IP, employee kept' );
+css_tc_check( false === strpos( (string) json_encode( $rows ), '1234' ), 'refused log never stores a PIN' );
+$rnow += 61;
+css_tc_check( $pins->record_refused_kiosk( '203.0.113.50', 'css_tc_punch', 0, '' ), 'same IP stored again after a minute' );
+$sum = $pins->refused_kiosk_summary( 3600 );
+css_tc_check( '203.0.113.50' === $sum[0]['ip'] && 2 === $sum[0]['count'], 'summary groups by IP, busiest first' );
+for ( $i = 0; $i < 205; $i++ ) {
+	$rnow += 61;
+	$pins->record_refused_kiosk( '203.0.113.' . ( $i % 200 ), 'css_tc_punch', 0, '' );
+}
+css_tc_check( 200 === count( $pins->refused_kiosk_log() ), 'refused log keeps the last 200' );
+css_tc_check( "203.0.113.0/24" === $pins->append_allowlist_ip( "203.0.113.0/24", '203.0.113.9' ), 'append skips an address already covered' );
+css_tc_check( "203.0.113.0/24\n198.51.100.8" === $pins->append_allowlist_ip( "203.0.113.0/24\n", '198.51.100.8' ), 'append adds a new address on its own line' );
+$pins->set_dns_test_hooks( null );
 
 $ajax = file_get_contents( dirname( __DIR__ ) . '/includes/class-ajax.php' );
 css_tc_check( false !== strpos( $ajax, $office ), 'kiosk error string is present' );

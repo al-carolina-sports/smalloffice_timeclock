@@ -115,10 +115,14 @@ class Css_Tc_Plugin {
 		add_action( 'init', array( $this, 'register_runtime' ) );
 		Css_Tc_Branding::register();
 		add_action( 'admin_init', array( $this, 'maybe_create_times_page' ) );
+		add_filter( 'cron_schedules', array( __CLASS__, 'cron_schedules' ) ); // phpcs:ignore WordPress.WP.CronInterval
+		add_action( 'css_tc_refresh_dns', array( $this, 'refresh_dns' ) );
+		add_action( 'init', array( $this, 'schedule_dns_refresh' ) );
 		add_action( 'init', array( __CLASS__, 'maybe_grant_caps' ), 0 );
 		add_action( 'init', array( __CLASS__, 'maybe_grant_caps' ), 20 ); // After AIO registers its roles.
 		add_action( 'admin_init', array( $this, 'guard_admin_pages' ), 1 );
 		add_action( 'admin_notices', array( $this, 'maybe_missing_aio_notice' ) );
+		add_action( 'admin_notices', array( $this, 'maybe_refused_kiosk_notice' ) );
 		add_filter( 'plugin_action_links_' . CSS_TC_ADDON_BASENAME, array( $this, 'plugin_action_links' ) );
 	}
 
@@ -246,6 +250,93 @@ class Css_Tc_Plugin {
 				$user->get_role_caps();
 			}
 		}
+	}
+
+	/**
+	 * Tell a manager when kiosk punches were refused in the last hour.
+	 *
+	 * @return void
+	 */
+	public function maybe_refused_kiosk_notice() {
+		if ( ! is_admin() || ! self::user_can_manage() ) {
+			return;
+		}
+		$summary = $this->pins->refused_kiosk_summary( 3600 );
+		if ( empty( $summary ) ) {
+			return;
+		}
+		$dismissed = get_user_meta( get_current_user_id(), 'css_tc_refused_dismissed', true );
+		$dismissed = is_array( $dismissed ) ? $dismissed : array();
+		$shown     = 0;
+		foreach ( $summary as $row ) {
+			if ( $shown >= 5 ) {
+				break;
+			}
+			$ip = $row['ip'];
+			if ( isset( $dismissed[ $ip ] ) && (int) $dismissed[ $ip ] >= (int) $row['latest'] ) {
+				continue;
+			}
+			$add_url     = wp_nonce_url( admin_url( 'admin-post.php?action=css_tc_allow_refused_ip&ip=' . rawurlencode( $ip ) ), 'css_tc_allow_ip_' . $ip );
+			$dismiss_url = wp_nonce_url( admin_url( 'admin-post.php?action=css_tc_dismiss_refused&ip=' . rawurlencode( $ip ) ), 'css_tc_dismiss_refused_' . $ip );
+			echo '<div class="notice notice-warning css-tc-refused-notice"><p>';
+			echo esc_html(
+				sprintf(
+					/* translators: 1: number of refused requests, 2: IP address */
+					_n( '%1$d kiosk request was refused from %2$s in the last hour. Did an office IP change?', '%1$d kiosk requests were refused from %2$s in the last hour. Did an office IP change?', (int) $row['count'], 'css-timeclock-addon' ),
+					(int) $row['count'],
+					$ip
+				)
+			);
+			echo ' ' . esc_html__( 'Only add it if you know it is one of your offices; for an office on dynamic DNS, list its hostname instead.', 'css-timeclock-addon' );
+			echo '</p><p><a class="button button-primary" href="' . esc_url( $add_url ) . '">' . esc_html__( 'Add this IP to the allowlist', 'css-timeclock-addon' ) . '</a> ';
+			echo '<a class="button" href="' . esc_url( $dismiss_url ) . '">' . esc_html__( 'Dismiss', 'css-timeclock-addon' ) . '</a></p></div>';
+			++$shown;
+		}
+	}
+
+	/**
+	 * @param array<string,array<string,mixed>> $schedules Cron schedules.
+	 * @return array<string,array<string,mixed>>
+	 */
+	public static function cron_schedules( $schedules ) {
+		$schedules['css_tc_five_minutes'] = array(
+			'interval' => Css_Tc_Pins::DNS_REFRESH,
+			'display'  => 'Every five minutes (SMOTC office hostnames)',
+		);
+		return $schedules;
+	}
+
+	/**
+	 * Every hostname in the office allowlist or a location's office network.
+	 *
+	 * @return string[]
+	 */
+	public function office_hosts() {
+		$settings = $this->get_settings();
+		$hosts    = $this->pins->parse_allowlist( (string) ( $settings['ip_allowlist'] ?? '' ) )['hosts'];
+		return array_values( array_unique( array_merge( $hosts, $this->organization->location_hosts() ) ) );
+	}
+
+	/**
+	 * Keep office hostnames looked up in the background, only while any exist.
+	 *
+	 * @return void
+	 */
+	public function schedule_dns_refresh() {
+		$next = wp_next_scheduled( 'css_tc_refresh_dns' );
+		$want = ! empty( $this->office_hosts() );
+		if ( $want && ! $next ) {
+			wp_schedule_event( time() + 60, 'css_tc_five_minutes', 'css_tc_refresh_dns' );
+		} elseif ( ! $want && $next ) {
+			wp_clear_scheduled_hook( 'css_tc_refresh_dns' );
+		}
+	}
+
+	/**
+	 * @return void
+	 */
+	public function refresh_dns() {
+		$this->pins->refresh_hosts( $this->office_hosts() );
 	}
 
 	/**
@@ -389,6 +480,7 @@ class Css_Tc_Plugin {
 	 * @return void
 	 */
 	public static function deactivate() {
+		wp_clear_scheduled_hook( 'css_tc_refresh_dns' );
 		// Pages and hashed PINs are left in place so reactivation is non-destructive.
 	}
 }
