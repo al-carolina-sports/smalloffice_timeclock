@@ -54,7 +54,7 @@ class Css_Tc_Reports {
 				'aio-tc-lite',
 				__( 'Reports', 'css-timeclock-addon' ),
 				__( 'Reports', 'css-timeclock-addon' ),
-				'edit_posts',
+				Css_Tc_Plugin::admin_capability(),
 				self::PAGE_SLUG,
 				array( $this, 'render' )
 			);

@@ -265,37 +265,143 @@ class Css_Tc_Pins {
 	}
 
 	/**
-	 * Client address used for failed-PIN rate limits and the office allowlist.
+	 * Client address used for failed-PIN limits, the office allowlist and
+	 * office (location) detection.
 	 *
-	 * WP Engine (and a reverse proxy in front of it) puts the visitor in
-	 * X-Forwarded-For; REMOTE_ADDR is often the load balancer. This helper
-	 * trusts that forwarded address so both features see the same IP the
-	 * tablet actually uses. Order: first address in X-Forwarded-For, then
-	 * True-Client-IP, then X-Real-IP, then REMOTE_ADDR.
-	 *
-	 * A proxy must overwrite or append the real client. If it does not, every
-	 * request looks like the proxy and an office list will not match the
-	 * tablets. Direct clients that can set X-Forwarded-For themselves could
-	 * spoof an allowed address — on WP Engine they reach PHP only through the
-	 * platform proxy, which is what this trusts.
+	 * Only proxies we trust may say who the client is:
+	 *  - REMOTE_ADDR is the machine that actually connected. If it is a
+	 *    public address that is not a listed trusted proxy, it IS the client
+	 *    and forwarded headers are ignored (a visitor can put anything in
+	 *    them).
+	 *  - If REMOTE_ADDR is a trusted proxy (private, loopback or CGNAT
+	 *    addresses, as used by WP Engine's internal proxies, plus any
+	 *    "trusted proxies" in settings), read X-Forwarded-For from the right
+	 *    and take the first address that is not a trusted proxy. Proxies
+	 *    append the address they saw, so the right-most untrusted entry is
+	 *    the real visitor; anything a visitor typed sits further left and is
+	 *    never reached.
+	 *  - Without X-Forwarded-For, X-Real-IP / True-Client-IP from the trusted
+	 *    proxy are used, else REMOTE_ADDR.
 	 *
 	 * @return string Canonical IPv4 or IPv6, or empty when none is valid.
 	 */
 	public function client_ip() {
-		$forwarded_keys = array(
-			'HTTP_X_FORWARDED_FOR',
-			'HTTP_TRUE_CLIENT_IP',
-			'HTTP_X_REAL_IP',
-		);
-
-		foreach ( $forwarded_keys as $key ) {
-			$ip = $this->ip_from_server_value( $key );
-			if ( '' !== $ip ) {
-				return $ip;
-			}
+		$remote = $this->ip_from_server_value( 'REMOTE_ADDR' );
+		if ( '' === $remote ) {
+			return '';
+		}
+		if ( ! $this->is_trusted_proxy( $remote ) ) {
+			return $remote;
 		}
 
-		return $this->ip_from_server_value( 'REMOTE_ADDR' );
+		$chain = $this->forwarded_chain();
+		for ( $i = count( $chain ) - 1; $i >= 0; $i-- ) {
+			if ( '' === $chain[ $i ] ) {
+				// Unreadable entry: do not trust anything to its left.
+				break;
+			}
+			if ( ! $this->is_trusted_proxy( $chain[ $i ] ) ) {
+				return $chain[ $i ];
+			}
+		}
+		if ( empty( $chain ) ) {
+			foreach ( array( 'HTTP_X_REAL_IP', 'HTTP_TRUE_CLIENT_IP' ) as $key ) {
+				$ip = $this->ip_from_server_value( $key );
+				if ( '' !== $ip && ! $this->is_trusted_proxy( $ip ) ) {
+					return $ip;
+				}
+			}
+		}
+		return $remote;
+	}
+
+	/**
+	 * X-Forwarded-For entries, left to right, canonicalized ('' when unreadable).
+	 *
+	 * @return string[]
+	 */
+	private function forwarded_chain() {
+		if ( empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) || ! is_string( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
+			return array();
+		}
+		$raw = function_exists( 'wp_unslash' ) ? wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) : $_SERVER['HTTP_X_FORWARDED_FOR']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+		$out = array();
+		foreach ( explode( ',', (string) $raw ) as $part ) {
+			$part = trim( $part );
+			if ( '' === $part ) {
+				continue;
+			}
+			$out[] = $this->canonical_ip( $part );
+		}
+		return $out;
+	}
+
+	/**
+	 * Private, loopback, link-local, unique-local and carrier-grade NAT
+	 * addresses (a proxy inside the hosting network), or an address listed
+	 * under "Trusted proxies" in settings.
+	 *
+	 * @param string $ip Canonical address.
+	 * @return bool
+	 */
+	public function is_trusted_proxy( $ip ) {
+		$ip = $this->canonical_ip( $ip );
+		if ( '' === $ip ) {
+			return false;
+		}
+		if ( false === filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
+			return true;
+		}
+		if ( $this->ip_in_entry( $ip, '100.64.0.0/10' ) ) {
+			return true;
+		}
+		foreach ( $this->extra_trusted_proxies() as $entry ) {
+			if ( $this->ip_in_entry( $ip, $entry ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * @var string[]|null
+	 */
+	private $extra_trusted = null;
+
+	/**
+	 * "Trusted proxies" from settings (for a CDN or load balancer with public
+	 * addresses in front of the site).
+	 *
+	 * @param string[]|null $override Set the list directly (tests).
+	 * @return string[]
+	 */
+	public function extra_trusted_proxies( $override = null ) {
+		if ( null !== $override ) {
+			$this->extra_trusted = $override;
+		}
+		if ( null === $this->extra_trusted ) {
+			$raw                 = function_exists( 'css_tc_addon' ) ? (string) ( css_tc_addon()->get_settings()['trusted_proxies'] ?? '' ) : '';
+			$this->extra_trusted = $this->parse_allowlist( $raw )['entries'];
+		}
+		return $this->extra_trusted;
+	}
+
+	/**
+	 * What the request headers say, for the settings screen.
+	 *
+	 * @return array<string,string>
+	 */
+	public function ip_diagnostics() {
+		$read = static function ( $key ) {
+			return ( isset( $_SERVER[ $key ] ) && is_string( $_SERVER[ $key ] ) ) ? sanitize_text_field( wp_unslash( $_SERVER[ $key ] ) ) : '';
+		};
+		return array(
+			'REMOTE_ADDR'     => $read( 'REMOTE_ADDR' ),
+			'X-Forwarded-For' => $read( 'HTTP_X_FORWARDED_FOR' ),
+			'X-Real-IP'       => $read( 'HTTP_X_REAL_IP' ),
+			'True-Client-IP'  => $read( 'HTTP_TRUE_CLIENT_IP' ),
+			'Detected'        => $this->client_ip(),
+		);
 	}
 
 	/**

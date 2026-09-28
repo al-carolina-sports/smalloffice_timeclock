@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.6.0
+Stable tag: 1.6.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,10 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under SMOTC.
 
 == Changelog ==
+
+= 1.6.1 =
+* Security: the client address (office IP allowlist, office detection for locations, failed-PIN limits) can no longer be faked with an X-Forwarded-For header. Forwarded headers are only believed when the request comes through the hosting network (private or internal addresses) or a proxy listed under the new "Trusted proxies" setting, and then the right-most outside address is used. Settings shows what each request looks like, and the Locations tab shows this computer's address and which location it matches.
+* Security: only administrators and AIO's Time Clock Admin role manage the time clock (new css_tc_manage capability). Before, anyone who could write posts (Contributor, Author, Editor) could open timecards, reports and PINs. The Time Clock menu and AIO's own time clock pages are hidden and closed for everyone else.
 
 = 1.6.0 =
 * Companies, locations and departments. SMOTC → Locations & departments sets up companies (employers, one payroll each), locations (offices, with their office network IP addresses) and departments (inside a location, owned by one company). "Import AIO departments" builds this from AIO department names written as Location-Department (for example Raleigh-CSS) and assigns employees.

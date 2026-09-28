@@ -92,6 +92,21 @@ $css_tc_hidden = static function ( $op, $kind = '', $id = 0 ) {
 
 	<h2><?php echo esc_html__( 'Locations', 'css-timeclock-addon' ); ?></h2>
 	<p class="description"><?php echo esc_html__( 'Office network: the public IP addresses or CIDR ranges of that office, one per line. Any tablet or desk computer on that network clocks in at this location. Leave blank and employees pick the location themselves.', 'css-timeclock-addon' ); ?></p>
+	<?php
+	$css_tc_here     = css_tc_addon()->pins->client_ip();
+	$css_tc_here_loc = '' !== $css_tc_here ? css_tc_addon()->organization->location_for_ip( $css_tc_here ) : 0;
+	?>
+	<p class="description css-tc-here-ip">
+		<?php
+		if ( '' === $css_tc_here ) {
+			echo esc_html__( 'This computer’s address could not be read.', 'css-timeclock-addon' );
+		} elseif ( $css_tc_here_loc ) {
+			echo esc_html( sprintf( /* translators: 1: IP address, 2: location name */ __( 'This computer’s address is %1$s, which matches %2$s.', 'css-timeclock-addon' ), $css_tc_here, css_tc_addon()->organization->location_name( (int) $css_tc_here_loc ) ) );
+		} else {
+			echo esc_html( sprintf( /* translators: %s: IP address */ __( 'This computer’s address is %s. It does not match any location yet — from an office computer, paste this into that location’s office network.', 'css-timeclock-addon' ), $css_tc_here ) );
+		}
+		?>
+	</p>
 	<table class="widefat striped css-tc-org__table">
 		<tbody>
 			<?php foreach ( $css_tc_locations as $location ) : ?>

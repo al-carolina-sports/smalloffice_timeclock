@@ -125,7 +125,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 							<?php echo esc_html__( 'One IPv4 or IPv6 address or CIDR per line (for example 203.0.113.10 or 203.0.113.0/24). Lines starting with # are comments.', 'css-timeclock-addon' ); ?>
 						</p>
 						<p class="description">
-							<?php echo esc_html__( 'Uses the same client IP as the failed-PIN limit. On WP Engine that is the visitor in X-Forwarded-For (the platform proxy), not the load balancer in REMOTE_ADDR. Another proxy in front of WP Engine must forward the real client address or the tablets will not match this list.', 'css-timeclock-addon' ); ?>
+							<?php echo esc_html__( 'Uses the same client address as the failed-PIN limit and office detection. Forwarded headers (X-Forwarded-For and similar) are only believed when they come from the hosting network or a trusted proxy listed below, so a visitor cannot pretend to be at the office.', 'css-timeclock-addon' ); ?>
 						</p>
 						<?php if ( '' !== $office_ip ) : ?>
 							<p class="description">
@@ -151,6 +151,29 @@ if ( ! defined( 'ABSPATH' ) ) {
 								<?php echo esc_html__( 'The checkbox is on, but there are no addresses yet, so kiosks still allow every network.', 'css-timeclock-addon' ); ?>
 							</p>
 						<?php endif; ?>
+					</td>
+				</tr>
+				<?php $css_tc_diag = css_tc_addon()->pins->ip_diagnostics(); ?>
+				<tr>
+					<th scope="row"><label for="trusted_proxies"><?php echo esc_html__( 'Trusted proxies', 'css-timeclock-addon' ); ?></label></th>
+					<td>
+						<textarea name="trusted_proxies" id="trusted_proxies" rows="3" class="large-text code" placeholder="<?php echo esc_attr__( '# usually leave empty', 'css-timeclock-addon' ); ?>"><?php echo esc_textarea( (string) ( $settings['trusted_proxies'] ?? '' ) ); ?></textarea>
+						<p class="description">
+							<?php echo esc_html__( 'Usually leave empty. Private and hosting-internal addresses are already trusted. Only list the public addresses of a CDN or load balancer you put in front of the site, if the detected address below shows that service instead of your office.', 'css-timeclock-addon' ); ?>
+						</p>
+						<details class="css-tc-ip-diag">
+							<summary><?php echo esc_html__( 'What this request looks like', 'css-timeclock-addon' ); ?></summary>
+							<table class="widefat striped" style="max-width:640px">
+								<tbody>
+									<?php foreach ( $css_tc_diag as $css_tc_k => $css_tc_v ) : ?>
+										<tr>
+											<th scope="row" style="width:160px"><?php echo esc_html( $css_tc_k ); ?></th>
+											<td><code><?php echo esc_html( '' !== $css_tc_v ? $css_tc_v : '—' ); ?></code></td>
+										</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+						</details>
 					</td>
 				</tr>
 				<tr>
