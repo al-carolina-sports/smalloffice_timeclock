@@ -21,6 +21,8 @@ class Css_Tc_Admin {
 		$self = new self();
 		add_action( 'admin_menu', array( $self, 'add_menu' ), 25 );
 		add_action( 'admin_menu', array( $self, 'replace_monitoring_screen' ), 30 );
+		add_action( 'admin_menu', array( $self, 'organize_menu' ), 1001 );
+		add_filter( 'submenu_file', array( $self, 'highlight_tab_menu' ), 10, 2 );
 		add_action( 'admin_enqueue_scripts', array( $self, 'enqueue' ) );
 	}
 
@@ -30,13 +32,15 @@ class Css_Tc_Admin {
 	public function add_menu() {
 		$page = 'css-tc-addon';
 
-		add_options_page(
-			Css_Tc_Branding::BRAND,
-			Css_Tc_Branding::BRAND,
-			'manage_options',
-			$page,
-			array( $this, 'render_page' )
-		);
+		if ( ! Css_Tc_Plugin::aio_is_active() ) {
+			add_options_page(
+				Css_Tc_Branding::BRAND,
+				Css_Tc_Branding::BRAND,
+				'manage_options',
+				$page,
+				array( $this, 'render_page' )
+			);
+		}
 
 		if ( Css_Tc_Plugin::aio_is_active() ) {
 			add_submenu_page(
@@ -221,9 +225,7 @@ class Css_Tc_Admin {
 		$name_page  = ! empty( $settings['name_kiosk_page_id'] ) ? get_permalink( (int) $settings['name_kiosk_page_id'] ) : '';
 		$times_page = ! empty( $settings['employee_times_page_id'] ) ? get_permalink( (int) $settings['employee_times_page_id'] ) : '';
 		$queue      = css_tc_addon()->corrections->admin_queue();
-		$base_url = current_user_can( 'manage_options' )
-			? admin_url( 'options-general.php?page=css-tc-addon' )
-			: admin_url( 'admin.php?page=css-tc-addon' );
+		$base_url = self::settings_url();
 
 		include CSS_TC_ADDON_DIR . 'admin/views/settings-page.php';
 	}
@@ -330,6 +332,112 @@ class Css_Tc_Admin {
 		}
 
 		include CSS_TC_ADDON_DIR . 'admin/views/timecard-page.php';
+	}
+
+	/**
+	 * SMOTC settings page (optionally a tab).
+	 *
+	 * @param string $tab Tab slug or ''.
+	 * @return string
+	 */
+	public static function settings_url( $tab = '' ) {
+		$url = Css_Tc_Plugin::aio_is_active()
+			? admin_url( 'admin.php?page=css-tc-addon' )
+			: admin_url( 'options-general.php?page=css-tc-addon' );
+		return '' !== $tab ? $url . '&tab=' . rawurlencode( $tab ) : $url;
+	}
+
+	/**
+	 * One clear menu under the time clock:
+	 * Timecards, Reports, Who's working, Corrections, Employees & PINs,
+	 * Locations & departments, Settings, and (administrators) the base
+	 * AIO settings last. AIO's Employees and Shifts pages, and its
+	 * Departments page while SMOTC departments are on, leave the menu; the
+	 * pages still open from a direct link.
+	 *
+	 * @return void
+	 */
+	public function organize_menu() {
+		global $submenu;
+		if ( ! Css_Tc_Plugin::aio_is_active() ) {
+			return;
+		}
+		$parent = 'aio-tc-lite';
+		if ( empty( $submenu[ $parent ] ) || ! is_array( $submenu[ $parent ] ) ) {
+			return;
+		}
+
+		$by_slug = array();
+		foreach ( $submenu[ $parent ] as $item ) {
+			if ( is_array( $item ) && isset( $item[2] ) ) {
+				$by_slug[ (string) $item[2] ] = $item;
+			}
+		}
+
+		$cap     = 'edit_posts';
+		$pending = css_tc_addon()->corrections->pending_count();
+		$badge   = $pending > 0
+			? ' <span class="awaiting-mod count-' . (int) $pending . '"><span class="pending-count">' . (int) $pending . '</span></span>'
+			: '';
+		$tab_url = static function ( $tab ) {
+			return 'admin.php?page=css-tc-addon&tab=' . $tab;
+		};
+
+		$ordered = array();
+		$ordered[] = array( __( 'Timecards', 'css-timeclock-addon' ), $cap, 'css-tc-timecards', __( 'Timecards', 'css-timeclock-addon' ) );
+		if ( isset( $by_slug['aio-reports-sub'] ) ) {
+			$item      = $by_slug['aio-reports-sub'];
+			$item[0]   = __( 'Reports', 'css-timeclock-addon' );
+			$ordered[] = $item;
+		}
+		if ( isset( $by_slug['aio-monitoring-sub'] ) ) {
+			$item      = $by_slug['aio-monitoring-sub'];
+			$item[0]   = __( 'Who\'s working', 'css-timeclock-addon' );
+			$ordered[] = $item;
+		}
+		$ordered[] = array( __( 'Corrections', 'css-timeclock-addon' ) . $badge, $cap, $tab_url( 'corrections' ), __( 'Corrections', 'css-timeclock-addon' ) );
+		$ordered[] = array( __( 'Employees & PINs', 'css-timeclock-addon' ), $cap, $tab_url( 'pins' ), __( 'Employees & PINs', 'css-timeclock-addon' ) );
+		$ordered[] = array( __( 'Locations & departments', 'css-timeclock-addon' ), $cap, $tab_url( 'locations' ), __( 'Locations & departments', 'css-timeclock-addon' ) );
+		$ordered[] = array( __( 'Settings', 'css-timeclock-addon' ), $cap, 'css-tc-addon', __( 'Settings', 'css-timeclock-addon' ) );
+
+		$hide = array( 'aio-tc-lite', 'aio-reports-sub', 'aio-monitoring-sub', 'css-tc-timecards', 'css-tc-addon', 'aio-employees-sub', 'aio-shifts-sub' );
+		if ( css_tc_addon()->organization->enabled() ) {
+			$hide[] = 'aio-department-sub';
+		}
+		foreach ( $by_slug as $slug => $item ) {
+			if ( ! in_array( $slug, $hide, true ) ) {
+				$ordered[] = $item; // Anything else AIO adds keeps a place, above base settings.
+			}
+		}
+		if ( isset( $by_slug['aio-tc-lite'] ) && current_user_can( 'manage_options' ) ) {
+			$item      = $by_slug['aio-tc-lite'];
+			$item[0]   = __( 'Base clock settings', 'css-timeclock-addon' );
+			$ordered[] = $item;
+		}
+
+		$submenu[ $parent ] = array_values( $ordered ); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+
+		// AIO's "Department" screen under Users duplicates SMOTC's departments.
+		if ( css_tc_addon()->organization->enabled() ) {
+			remove_submenu_page( 'users.php', 'edit-tags.php?taxonomy=department' );
+		}
+	}
+
+	/**
+	 * Highlight the right menu item on the tabbed SMOTC settings page.
+	 *
+	 * @param string|null $submenu_file Current submenu file.
+	 * @param string      $parent_file  Current parent.
+	 * @return string|null
+	 */
+	public function highlight_tab_menu( $submenu_file, $parent_file ) {
+		unset( $parent_file );
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$tab  = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( 'css-tc-addon' === $page && in_array( $tab, array( 'corrections', 'pins', 'locations' ), true ) && Css_Tc_Plugin::aio_is_active() ) {
+			return 'admin.php?page=css-tc-addon&tab=' . $tab;
+		}
+		return $submenu_file;
 	}
 
 	/**

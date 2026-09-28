@@ -276,9 +276,7 @@ class Css_Tc_Plugin {
 	 * @return array<string,string>
 	 */
 	public function plugin_action_links( $links ) {
-		$url = current_user_can( 'manage_options' )
-			? admin_url( 'options-general.php?page=css-tc-addon' )
-			: admin_url( 'admin.php?page=css-tc-addon' );
+		$url = Css_Tc_Admin::settings_url();
 		$links['settings'] = '<a href="' . esc_url( $url ) . '">' . esc_html__( 'Kiosk settings', 'css-timeclock-addon' ) . '</a>';
 		return $links;
 	}
