@@ -111,12 +111,12 @@ The kiosk who’s-working board still reads the same open-shift rule after an ap
 
 ## Office IP allowlist
 
-1. Open **USOTC** (or **Settings → USOTC**). The allowlist is on the Kiosk settings tab.
+1. Open **USOTC** (or **Settings → USOTC**). The allowlist is on the TC-Config tab.
 2. Leave the checkbox off, or on with an empty box (comments and blank lines do not count). Kiosks keep working from every network, including the sandbox.
 3. The page shows the address this browser is seen as. That is the same value the kiosk will check. Forwarded headers are only used when the request arrives through the hosting network or a listed trusted proxy (see below).
 4. To enforce: check **Only allow kiosk punches from these networks**, add that address or a CIDR such as `203.0.113.0/24`, one per line, and save. `#` starts a comment.
 5. From an address on the list, PIN resolve, punch, the name list, and Who’s working still work. From any other address those requests return **This kiosk only works from the office network.** The message does not include an IP.
-6. Open wp-admin from an address that is not on the list. Kiosk settings, PIN changes, and corrections still save. My Time Clock for a logged-in employee is not gated.
+6. Open wp-admin from an address that is not on the list. TC-Config, PIN changes, and corrections still save. My Time Clock for a logged-in employee is not gated.
 
 If every tablet is refused after you turn the list on, the proxy is not forwarding the office’s public address. Compare the address shown on this settings screen (load it from the office network) with what you entered. This screen itself stays reachable either way.
 
@@ -151,7 +151,7 @@ Do not commit real PINs. Treat them like passwords.
 - Failed PINs are counted per client IP (transient). After the configured limit the IP is locked for the window (default 5 failures / 15 minutes). The same client-IP helper is used for the office allowlist.
 - Office allowlist (USOTC screen): one IPv4, IPv6, or CIDR per line; `#` comments. Disabled or empty allows all, so a sandbox is not locked out. When it is enforcing, `css_tc_resolve_pin`, `css_tc_punch`, `css_tc_employees`, and `css_tc_roster` return “This kiosk only works from the office network.” with no IP in the error. Logged-in My Time Clock and every wp-admin screen stay open from any IP.
 - Allowlist and office network lines may be hostnames (dynamic DNS such as `csswilson.ddns.net`). They are resolved (A and AAAA) by a five-minute WP-Cron job and at request time when the cached answer is over ten minutes old, cached in the `css_tc_dns_cache` option. A failed lookup keeps the last good addresses and is not retried for a minute; a name that never resolved matches nothing. Whoever controls the DNS name controls who passes the allowlist, so protect that account.
-- That helper uses `REMOTE_ADDR` unless it is a trusted proxy (private, loopback or carrier-grade NAT addresses, as used inside WP Engine, or an address under Settings → Trusted proxies). Only then does it read `X-Forwarded-For` from the right and take the first address that is not a trusted proxy, so anything a visitor types into the header is ignored. `X-Real-IP` / `True-Client-IP` are used only from a trusted proxy with no `X-Forwarded-For`. If a CDN with public addresses sits in front of the site, list its ranges under Trusted proxies; Settings → "What this request looks like" shows the raw headers and the detected address. The settings screen shows the address this browser is seen as, so you can copy it onto the list. Shift meta `ip_address_in` / `ip_address_out` stores that same address.
+- That helper uses `REMOTE_ADDR` unless it is a trusted proxy (private, loopback or carrier-grade NAT addresses, as used inside WP Engine, or an address under TC-Config → Trusted proxies). Only then does it read `X-Forwarded-For` from the right and take the first address that is not a trusted proxy, so anything a visitor types into the header is ignored. `X-Real-IP` / `True-Client-IP` are used only from a trusted proxy with no `X-Forwarded-For`. If a CDN with public addresses sits in front of the site, list its ranges under Trusted proxies; TC-Config → "What this request looks like" shows the raw headers and the detected address. The settings screen shows the address this browser is seen as, so you can copy it onto the list. Shift meta `ip_address_in` / `ip_address_out` stores that same address.
 - PIN lookup errors are generic (“That PIN was not recognized”).
 - All kiosk output is escaped; all input is sanitized. PINs are digits-only before hashing.
 - The kiosk never calls `wp_set_auth_cookie` / `wp_signon`.

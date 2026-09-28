@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 	<nav class="nav-tab-wrapper">
 		<a href="<?php echo esc_url( $base_url . '&tab=settings' ); ?>" class="nav-tab <?php echo 'settings' === $tab ? 'nav-tab-active' : ''; ?>">
-			<?php echo esc_html__( 'Kiosk settings', 'css-timeclock-addon' ); ?>
+			<?php echo esc_html__( 'TC-Config', 'css-timeclock-addon' ); ?>
 		</a>
 		<a href="<?php echo esc_url( $base_url . '&tab=pins' ); ?>" class="nav-tab <?php echo 'pins' === $tab ? 'nav-tab-active' : ''; ?>">
 			<?php echo esc_html__( 'Employee PINs', 'css-timeclock-addon' ); ?>

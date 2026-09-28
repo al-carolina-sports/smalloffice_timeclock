@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Css_Tc_Branding {
 
-	/** Short name: admin menu and "USOTC → Settings" style references. */
+	/** Short name: admin menu and "USOTC → TC-Config" style references. */
 	const BRAND     = 'USOTC';
 	/** Full product name: plugin list, page headings, kiosk. */
 	const FULL_NAME = 'Ultimate Small Office Timeclock';

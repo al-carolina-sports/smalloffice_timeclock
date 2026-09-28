@@ -55,7 +55,7 @@ $css_tc_hidden = static function ( $op, $kind = '', $id = 0 ) {
 		<?php echo $css_tc_enabled ? esc_html__( 'On', 'css-timeclock-addon' ) : esc_html__( 'Off', 'css-timeclock-addon' ); ?>
 		· <strong><?php echo esc_html__( 'Switch:', 'css-timeclock-addon' ); ?></strong>
 		<?php echo $css_tc_switch ? esc_html__( 'On', 'css-timeclock-addon' ) : esc_html__( 'Off', 'css-timeclock-addon' ); ?>
-		— <a href="<?php echo esc_url( $base_url . '&tab=settings#assignments_enabled' ); ?>"><?php echo esc_html__( 'change in Kiosk settings', 'css-timeclock-addon' ); ?></a>
+		— <a href="<?php echo esc_url( $base_url . '&tab=settings#assignments_enabled' ); ?>"><?php echo esc_html__( 'change in TC-Config', 'css-timeclock-addon' ); ?></a>
 	</p>
 
 	<h2><?php echo esc_html__( 'Companies', 'css-timeclock-addon' ); ?></h2>

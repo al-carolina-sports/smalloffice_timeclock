@@ -404,7 +404,7 @@ class Css_Tc_Admin {
 		$ordered[] = array( __( 'Corrections', 'css-timeclock-addon' ) . $badge, $cap, $tab_url( 'corrections' ), __( 'Corrections', 'css-timeclock-addon' ) );
 		$ordered[] = array( __( 'Employees & PINs', 'css-timeclock-addon' ), $cap, $tab_url( 'pins' ), __( 'Employees & PINs', 'css-timeclock-addon' ) );
 		$ordered[] = array( __( 'Locations & departments', 'css-timeclock-addon' ), $cap, $tab_url( 'locations' ), __( 'Locations & departments', 'css-timeclock-addon' ) );
-		$ordered[] = array( __( 'Settings', 'css-timeclock-addon' ), $cap, 'css-tc-addon', __( 'Settings', 'css-timeclock-addon' ) );
+		$ordered[] = array( __( 'TC-Config', 'css-timeclock-addon' ), $cap, 'css-tc-addon', __( 'TC-Config', 'css-timeclock-addon' ) );
 
 		$hide = array( 'aio-tc-lite', 'aio-reports-sub', 'aio-monitoring-sub', 'css-tc-timecards', 'css-tc-addon', 'aio-employees-sub', 'aio-shifts-sub' );
 		if ( css_tc_addon()->organization->enabled() ) {

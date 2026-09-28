@@ -27,6 +27,7 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 
 = 1.6.3 =
 * Renamed to Ultimate Small Office Timeclock (USOTC in the admin menu; formerly SMOTC). Display names only: the plugin folder, code prefixes, settings and data are unchanged, so it updates in place.
+* The time clock's own settings are now called TC-Config (menu item and tab; formerly Settings / Kiosk settings). AIO's page stays "Base clock settings".
 
 = 1.6.2 =
 * Office hostnames: the office IP allowlist and each location's office network accept a hostname (for example an office on dynamic DNS, csswilson.ddns.net) as well as addresses and CIDR ranges. Names are looked up every five minutes in the background and again at punch time if the saved answer is over ten minutes old. If a lookup fails, the last address that worked is kept; a name that has never resolved matches no one (the allowlist stays closed rather than opening to everyone). Settings and the Locations tab show where each name points and when it was checked, and "This computer's address" says which name it matched. Trusted proxies still take addresses only.
