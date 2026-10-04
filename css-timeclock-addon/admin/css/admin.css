@@ -26,6 +26,13 @@
 
 .css-tc-admin .css-tc-allowlist-warn {
 	color: #9a3412;
+	margin-left: 8px;
+}
+
+.css-tc-admin .css-tc-host-status,
+.css-tc-admin .css-tc-refused-log {
+	max-width: 720px;
+	margin-top: 8px;
 }
 
 .css-tc-admin .css-tc-help {

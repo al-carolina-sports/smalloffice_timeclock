@@ -405,6 +405,7 @@ class Css_Tc_Reports {
 			'by_employee' => $by_employee,
 			'unassigned'  => $unassigned,
 			'filtered'    => $filtered,
+			'rule'        => css_tc_addon()->overtime->rule(),
 			'rule_note'   => css_tc_addon()->overtime->describe(),
 			'timezone'    => function_exists( 'wp_timezone_string' ) ? wp_timezone_string() : $time->timezone()->getName(),
 		);
@@ -478,6 +479,9 @@ class Css_Tc_Reports {
 				if ( $shift['is_long'] ) {
 					$flags[] = __( 'Long shift', 'css-timeclock-addon' );
 				}
+				if ( ! empty( $shift['exclude_from_overtime'] ) ) {
+					$flags[] = __( 'Not in overtime until a manager corrects it', 'css-timeclock-addon' );
+				}
 				if ( $shift['is_out_before_in'] ) {
 					$flags[] = __( 'Out before in', 'css-timeclock-addon' );
 				}
@@ -487,12 +491,14 @@ class Css_Tc_Reports {
 				$source = (string) get_post_meta( (int) $shift['id'], 'css_tc_kiosk_source', true );
 				$rows[] = array(
 					'user_id'    => (int) $user->ID,
+					'id'         => (int) $shift['id'],
+					'sort_ts'    => isset( $shift['sort_ts'] ) ? (int) $shift['sort_ts'] : 0,
 					'name'       => $name,
 					'department' => $use_org ? (string) $shift['assignment'] : $dept,
 					'date'       => (string) $shift['work_date'],
 					'weekday'    => $time->format_weekday_short( (string) $shift['work_date'] ),
 					'in'         => (string) $shift['clock_in_clock'],
-					'out'        => (string) $shift['clock_out_clock'],
+					'out'        => Css_Tc_Time::clock_out_label( (string) $shift['clock_out_clock'], ! empty( $shift['out_next_day'] ) ),
 					'next_day'   => ! empty( $shift['out_next_day'] ),
 					'seconds'    => (int) $shift['seconds'],
 					'ip_in'      => (string) get_post_meta( (int) $shift['id'], 'ip_address_in', true ),
@@ -510,7 +516,11 @@ class Css_Tc_Reports {
 				if ( 0 !== $cmp ) {
 					return $cmp;
 				}
-				return strcmp( $a['date'] . $a['in'], $b['date'] . $b['in'] );
+				$cmp = strcmp( (string) $a['date'], (string) $b['date'] );
+				if ( 0 !== $cmp ) {
+					return $cmp;
+				}
+				return Css_Tc_Time::compare_shift_rows( $a, $b );
 			}
 		);
 		return $rows;
@@ -523,7 +533,22 @@ class Css_Tc_Reports {
 	 * @return string
 	 */
 	public static function decimal_hours( $seconds ) {
-		return number_format( max( 0, (int) $seconds ) / HOUR_IN_SECONDS, 2, '.', '' );
+		return Css_Tc_Time::decimal_from_seconds( $seconds );
+	}
+
+	/**
+	 * Summary CSV columns stay in this order whether or not overtime is on.
+	 * Overtime cells are blank when the rule is off.
+	 *
+	 * @return string[]
+	 */
+	public static function summary_csv_header( $use_org, $weeks ) {
+		$head = array( 'Employee', $use_org ? 'Worked in' : 'Department', 'Shifts', 'Regular (hours)', 'Overtime (hours)', 'Total (hours)' );
+		foreach ( $weeks as $week ) {
+			$head[] = $week['label'] . ' ' . $week['range'] . ' (hours)';
+		}
+		$head[] = 'Needs attention';
+		return $head;
 	}
 
 	/**
@@ -622,12 +647,16 @@ class Css_Tc_Reports {
 	 * @return array<int,array<int,string>>
 	 */
 	private function by_employee_csv_lines( $summary ) {
+		$ot_on = ! empty( $summary['rule']['enabled'] );
 		$lines = array( array( 'Employee', 'Company', 'Department', 'Location', 'Shifts', 'Regular (hours)', 'Overtime (hours)', 'Total (hours)' ) );
+		$ot_cell = static function ( $seconds ) use ( $ot_on ) {
+			return $ot_on ? Css_Tc_Reports::decimal_hours( $seconds ) : '';
+		};
 		foreach ( $summary['by_employee'] as $emp ) {
 			foreach ( $emp['rows'] as $row ) {
-				$lines[] = array( $emp['name'], $row['company'], $row['department'], $row['location'], (string) $row['shifts'], self::decimal_hours( $row['regular'] ), self::decimal_hours( $row['overtime'] ), self::decimal_hours( $row['total'] ) );
+				$lines[] = array( $emp['name'], $row['company'], $row['department'], $row['location'], (string) $row['shifts'], self::decimal_hours( $row['regular'] ), $ot_cell( $row['overtime'] ), self::decimal_hours( $row['total'] ) );
 			}
-			$lines[] = array( $emp['name'], 'Total', '', '', (string) $emp['total']['shifts'], self::decimal_hours( $emp['total']['regular'] ), self::decimal_hours( $emp['total']['overtime'] ), self::decimal_hours( $emp['total']['total'] ) );
+			$lines[] = array( $emp['name'], 'Total', '', '', (string) $emp['total']['shifts'], self::decimal_hours( $emp['total']['regular'] ), $ot_cell( $emp['total']['overtime'] ), self::decimal_hours( $emp['total']['total'] ) );
 		}
 		return $lines;
 	}
@@ -687,23 +716,19 @@ class Css_Tc_Reports {
 	 * @return array<int,array<int,string>>
 	 */
 	private function summary_csv_lines( $summary ) {
-		$head = array( 'Employee', ! empty( $summary['use_org'] ) ? 'Worked in' : 'Department', 'Shifts' );
-		foreach ( $summary['codes'] as $def ) {
-			$head[] = $def['label'] . ' (hours)';
-		}
-		$head[] = 'Total (hours)';
-		foreach ( $summary['weeks'] as $week ) {
-			$head[] = $week['label'] . ' ' . $week['range'] . ' (hours)';
-		}
-		$head[] = 'Needs attention';
-
-		$lines = array( $head );
+		$ot_on = ! empty( $summary['rule']['enabled'] );
+		$lines = array( self::summary_csv_header( ! empty( $summary['use_org'] ), $summary['weeks'] ) );
 		foreach ( $summary['rows'] as $row ) {
-			$line = array( $row['name'], $row['department'], (string) $row['shifts'] );
-			foreach ( array_keys( $summary['codes'] ) as $slug ) {
-				$line[] = self::decimal_hours( $row['codes'][ $slug ] );
-			}
-			$line[] = self::decimal_hours( $row['total'] );
+			$regular = isset( $row['codes'][ Css_Tc_Pay_Codes::REGULAR ] ) ? $row['codes'][ Css_Tc_Pay_Codes::REGULAR ] : 0;
+			$overtime = isset( $row['codes'][ Css_Tc_Pay_Codes::OVERTIME ] ) ? $row['codes'][ Css_Tc_Pay_Codes::OVERTIME ] : 0;
+			$line = array(
+				$row['name'],
+				$row['department'],
+				(string) $row['shifts'],
+				self::decimal_hours( $regular ),
+				$ot_on ? self::decimal_hours( $overtime ) : '',
+				self::decimal_hours( $row['total'] ),
+			);
 			foreach ( array_keys( $summary['weeks'] ) as $w ) {
 				$line[] = self::decimal_hours( isset( $row['weeks'][ $w ] ) ? $row['weeks'][ $w ] : 0 );
 			}
@@ -727,7 +752,7 @@ class Css_Tc_Reports {
 				$row['weekday'],
 				$row['in'],
 				$row['out'],
-				$row['next_day'] ? 'yes' : '',
+				$row['next_day'] ? 'next day' : '',
 				self::decimal_hours( $row['seconds'] ),
 				$row['ip_in'],
 				$row['ip_out'],

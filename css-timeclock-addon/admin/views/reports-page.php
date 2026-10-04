@@ -316,7 +316,7 @@ $css_tc_tab_url = static function ( $report ) use ( $filters, $page_slug ) {
 						<td><?php echo esc_html( '' !== $row['department'] ? $row['department'] : '—' ); ?></td>
 						<td><?php echo esc_html( $row['weekday'] . ' ' . $css_tc_time->format_mdy( $row['date'] ) ); ?></td>
 						<td><?php echo esc_html( '' !== $row['in'] ? $row['in'] : '—' ); ?></td>
-						<td><?php echo esc_html( ( '' !== $row['out'] ? $row['out'] : '—' ) . ( $row['next_day'] ? ' (+1)' : '' ) ); ?></td>
+						<td><?php echo esc_html( '' !== $row['out'] ? $row['out'] : '—' ); ?></td>
 						<td class="num"><?php echo esc_html( $row['seconds'] > 0 ? $css_tc_time->format_duration( $row['seconds'] ) : '—' ); ?></td>
 						<td><?php echo esc_html( '' !== $row['ip_in'] ? $row['ip_in'] : '—' ); ?></td>
 						<td><?php echo esc_html( '' !== $row['ip_out'] ? $row['ip_out'] : '—' ); ?></td>

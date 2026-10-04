@@ -60,7 +60,7 @@ An employee is **Working** in AIO monitoring when a shift has a clock-in time an
    ./bin/make-zip.sh
    ```
 
-   That writes `dist/css-timeclock-addon.zip`. The zip in this repository is SMOTC 1.6.0. Install it on carolinaspodev only.
+   That writes `dist/css-timeclock-addon.zip`. The zip in this repository is SMOTC 1.6.3. Install it on carolinaspodev only. See `docs/PRODUCTION-INSTALL.md` for a new empty site.
 
 2. WP Engine → the `carolinaspodev` environment → **WordPress Admin** → **Plugins → Add New → Upload Plugin**.
 3. Upload the zip, then **Activate**.
@@ -113,7 +113,7 @@ The kiosk who’s-working board still reads the same open-shift rule after an ap
 2. Leave the checkbox off, or on with an empty box (comments and blank lines do not count). Kiosks keep working from every network, including the sandbox.
 3. The page shows the address this browser is seen as. That is the same value the kiosk will check. Forwarded headers are only used when the request arrives through the hosting network or a listed trusted proxy (see below).
 4. To enforce: check **Only allow kiosk punches from these networks**, add that address or a CIDR such as `203.0.113.0/24`, one per line, and save. `#` starts a comment.
-5. From an address on the list, PIN resolve, punch, the name list, and Who’s working still work. From any other address those requests return **This kiosk only works from the office network.** The message does not include an IP.
+5. From an address on the list, PIN resolve, punch, the name list, and Who’s working still work. From any other address those requests return **This kiosk only works from the office network. Please tell your manager.** The message does not include an IP.
 6. Open wp-admin from an address that is not on the list. Kiosk settings, PIN changes, and corrections still save. My Time Clock for a logged-in employee is not gated.
 
 If every tablet is refused after you turn the list on, the proxy is not forwarding the office’s public address. Compare the address shown on this settings screen (load it from the office network) with what you entered. This screen itself stays reachable either way.
@@ -147,7 +147,7 @@ Do not commit real PINs. Treat them like passwords.
 - Public AJAX uses a nonce (`css_tc_kiosk`). The employee times page uses a logged-in nonce (`css_tc_employee`); staff can only load or suggest edits for themselves. Admin screens (timecards, reports, PINs, corrections, locations) require `manage_options` or the `css_tc_manage` capability, which activation grants to Administrator and AIO's Time Clock Admin role, plus an admin nonce. AIO's own time clock pages are closed to everyone else, even though AIO registers them for `edit_posts`.
 - The public roster action (`css_tc_roster`) returns display names, in/out status, and clock-in times only — no PINs, emails, user IDs, or admin data. It is rate-limited separately from the PIN lock (40 requests / minute / IP). The board is not transient-cached; a successful punch returns a fresh board payload.
 - Failed PINs are counted per client IP (transient). After the configured limit the IP is locked for the window (default 5 failures / 15 minutes). The same client-IP helper is used for the office allowlist.
-- Office allowlist (SMOTC screen): one IPv4, IPv6, or CIDR per line; `#` comments. Disabled or empty allows all, so a sandbox is not locked out. When it is enforcing, `css_tc_resolve_pin`, `css_tc_punch`, `css_tc_employees`, and `css_tc_roster` return “This kiosk only works from the office network.” with no IP in the error. Logged-in My Time Clock and every wp-admin screen stay open from any IP.
+- Office allowlist (SMOTC screen): one IPv4, IPv6, CIDR, or hostname per line; `#` comments. Disabled or empty allows all, so a sandbox is not locked out. When it is enforcing, `css_tc_resolve_pin`, `css_tc_punch`, `css_tc_employees`, and `css_tc_roster` return “This kiosk only works from the office network. Please tell your manager.” with no IP in the error. Logged-in My Time Clock and every wp-admin screen stay open from any IP.
 - That helper uses `REMOTE_ADDR` unless it is a trusted proxy (private, loopback or carrier-grade NAT addresses, as used inside WP Engine, or an address under Settings → Trusted proxies). Only then does it read `X-Forwarded-For` from the right and take the first address that is not a trusted proxy, so anything a visitor types into the header is ignored. `X-Real-IP` / `True-Client-IP` are used only from a trusted proxy with no `X-Forwarded-For`. If a CDN with public addresses sits in front of the site, list its ranges under Trusted proxies; Settings → "What this request looks like" shows the raw headers and the detected address. The settings screen shows the address this browser is seen as, so you can copy it onto the list. Shift meta `ip_address_in` / `ip_address_out` stores that same address.
 - PIN lookup errors are generic (“That PIN was not recognized”).
 - All kiosk output is escaped; all input is sanitized. PINs are digits-only before hashing.

@@ -2,6 +2,10 @@
 /**
  * Overtime split checks. Run: php bin/check-overtime.php
  */
+if ( PHP_SAPI !== 'cli' ) {
+	header( 'HTTP/1.1 403 Forbidden' );
+	exit;
+}
 define('ABSPATH', '/'); define('HOUR_IN_SECONDS', 3600);
 require __DIR__ . '/../includes/class-overtime.php';
 $H=3600; $f=0;

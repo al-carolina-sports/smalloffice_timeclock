@@ -119,6 +119,7 @@ class Css_Tc_Plugin {
 		add_action( 'init', array( __CLASS__, 'maybe_grant_caps' ), 20 ); // After AIO registers its roles.
 		add_action( 'admin_init', array( $this, 'guard_admin_pages' ), 1 );
 		add_action( 'admin_notices', array( $this, 'maybe_missing_aio_notice' ) );
+		add_action( 'admin_notices', array( $this, 'maybe_refused_kiosk_notice' ) );
 		add_filter( 'plugin_action_links_' . CSS_TC_ADDON_BASENAME, array( $this, 'plugin_action_links' ) );
 	}
 
@@ -358,6 +359,62 @@ class Css_Tc_Plugin {
 	}
 
 	/**
+	 * Tell a manager when kiosk punches were refused in the last hour.
+	 *
+	 * @return void
+	 */
+	public function maybe_refused_kiosk_notice() {
+		if ( ! is_admin() || ! self::user_can_manage() ) {
+			return;
+		}
+
+		$summary = $this->pins->refused_kiosk_summary( 3600 );
+		if ( empty( $summary ) ) {
+			return;
+		}
+
+		$user_id   = get_current_user_id();
+		$dismissed = get_user_meta( $user_id, 'css_tc_refused_dismissed', true );
+		if ( ! is_array( $dismissed ) ) {
+			$dismissed = array();
+		}
+
+		$shown = 0;
+		foreach ( $summary as $row ) {
+			if ( $shown >= 5 ) {
+				break;
+			}
+			$ip = $row['ip'];
+			if ( isset( $dismissed[ $ip ] ) && (int) $dismissed[ $ip ] >= (int) $row['latest'] ) {
+				continue;
+			}
+			$add_url = wp_nonce_url(
+				admin_url( 'admin-post.php?action=css_tc_allow_refused_ip&ip=' . rawurlencode( $ip ) ),
+				'css_tc_allow_ip_' . $ip
+			);
+			$dismiss_url = wp_nonce_url(
+				admin_url( 'admin-post.php?action=css_tc_dismiss_refused&ip=' . rawurlencode( $ip ) ),
+				'css_tc_dismiss_refused_' . $ip
+			);
+			echo '<div class="notice notice-warning css-tc-refused-notice">';
+			echo '<p>';
+			echo esc_html(
+				sprintf(
+					/* translators: 1: number of refused punches, 2: IP address */
+					__( '%1$d kiosk punches were refused from %2$s in the last hour. Did an office IP change?', 'css-timeclock-addon' ),
+					(int) $row['count'],
+					$ip
+				)
+			);
+			echo '</p><p>';
+			echo '<a class="button button-primary" href="' . esc_url( $add_url ) . '">' . esc_html__( 'Add this IP to the allowlist', 'css-timeclock-addon' ) . '</a> ';
+			echo '<a class="button" href="' . esc_url( $dismiss_url ) . '">' . esc_html__( 'Dismiss', 'css-timeclock-addon' ) . '</a>';
+			echo '</p></div>';
+			++$shown;
+		}
+	}
+
+	/**
 	 * @param array<string,string> $links Plugin row links.
 	 * @return array<string,string>
 	 */
@@ -381,6 +438,7 @@ class Css_Tc_Plugin {
 		}
 
 		Css_Tc_Shortcodes::create_public_pages();
+		css_tc_addon()->organization->seed_default_locations();
 		css_tc_addon()->corrections->maybe_upgrade_schema();
 		self::maybe_grant_caps( true );
 	}

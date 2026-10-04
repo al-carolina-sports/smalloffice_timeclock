@@ -20,6 +20,26 @@ class Css_Tc_Pins {
 	const META_ENC     = 'css_tc_pin_enc';
 	const META_REVEALS = 'css_tc_pin_reveals';
 
+	const HOST_CACHE_TTL    = 120;
+	const HOST_KNOWN_OPTION = 'css_tc_host_resolve';
+	const REFUSED_OPTION    = 'css_tc_refused_kiosk';
+	const REFUSED_CAP       = 200;
+	const REFUSED_INTERVAL  = 60;
+
+	/**
+	 * Injected DNS lookup for tests. Null uses dns_get_record.
+	 *
+	 * @var callable|null
+	 */
+	private $hostname_resolver = null;
+
+	/**
+	 * In-memory transients and options for CLI tests.
+	 *
+	 * @var array<string,mixed>|null
+	 */
+	private $memory = null;
+
 	/**
 	 * @param int $user_id User ID.
 	 * @return bool
@@ -381,7 +401,7 @@ class Css_Tc_Pins {
 		}
 		if ( null === $this->extra_trusted ) {
 			$raw                 = function_exists( 'css_tc_addon' ) ? (string) ( css_tc_addon()->get_settings()['trusted_proxies'] ?? '' ) : '';
-			$this->extra_trusted = $this->parse_allowlist( $raw )['entries'];
+			$this->extra_trusted = $this->parse_allowlist( $raw, false )['entries'];
 		}
 		return $this->extra_trusted;
 	}
@@ -490,12 +510,15 @@ class Css_Tc_Pins {
 	 *
 	 * Blank lines and lines whose first non-space character is # are comments.
 	 * A # later on a line starts an inline comment. Entries are one IPv4 or
-	 * IPv6 address, or CIDR, per line.
+	 * IPv6 address, CIDR, or hostname (for example csswilson.ddns.net) per line.
+	 * Trusted-proxy lists pass $allow_hostnames false so only addresses and
+	 * CIDRs are accepted there.
 	 *
-	 * @param string $raw Textarea contents.
+	 * @param string $raw              Textarea contents.
+	 * @param bool   $allow_hostnames  Accept FQDN lines.
 	 * @return array{entries: array<int,string>, invalid: array<int,string>}
 	 */
-	public function parse_allowlist( $raw ) {
+	public function parse_allowlist( $raw, $allow_hostnames = true ) {
 		$entries = array();
 		$invalid = array();
 		$lines   = preg_split( '/\r\n|\r|\n/', (string) $raw );
@@ -517,7 +540,7 @@ class Css_Tc_Pins {
 				continue;
 			}
 
-			$normalized = $this->normalize_allowlist_entry( $line );
+			$normalized = $this->normalize_allowlist_entry( $line, $allow_hostnames );
 			if ( '' === $normalized ) {
 				$invalid[] = $line;
 				continue;
@@ -533,12 +556,23 @@ class Css_Tc_Pins {
 
 	/**
 	 * @param string $ip    Client address.
-	 * @param string $entry Canonical address or CIDR from parse_allowlist().
+	 * @param string $entry Canonical address, CIDR, or hostname from parse_allowlist().
 	 * @return bool
 	 */
 	public function ip_in_entry( $ip, $entry ) {
 		$ip = $this->canonical_ip( $ip );
 		if ( '' === $ip || ! is_string( $entry ) || '' === $entry ) {
+			return false;
+		}
+
+		if ( $this->is_hostname_entry( $entry ) ) {
+			$resolved = $this->resolve_hostname( $entry );
+			$addrs    = ( isset( $resolved['ips'] ) && is_array( $resolved['ips'] ) ) ? $resolved['ips'] : array();
+			foreach ( $addrs as $addr ) {
+				if ( $ip === $this->canonical_ip( $addr ) ) {
+					return true;
+				}
+			}
 			return false;
 		}
 
@@ -563,13 +597,14 @@ class Css_Tc_Pins {
 	}
 
 	/**
-	 * @param string $line One non-comment line.
+	 * @param string $line             One non-comment line.
+	 * @param bool   $allow_hostnames  Accept an FQDN when this is not an IP.
 	 * @return string Canonical entry, or empty when invalid.
 	 */
-	private function normalize_allowlist_entry( $line ) {
-		$line = trim( $line );
-		$bits = null;
-		$ip   = $line;
+	private function normalize_allowlist_entry( $line, $allow_hostnames = true ) {
+		$line  = trim( $line );
+		$bits  = null;
+		$ip    = $line;
 		$slash = strpos( $line, '/' );
 		if ( false !== $slash ) {
 			$ip      = trim( substr( $line, 0, $slash ) );
@@ -582,7 +617,10 @@ class Css_Tc_Pins {
 
 		$ip = $this->canonical_ip( $ip );
 		if ( '' === $ip ) {
-			return '';
+			if ( null !== $bits || ! $allow_hostnames ) {
+				return '';
+			}
+			return $this->normalize_hostname( $line );
 		}
 
 		if ( null === $bits ) {
@@ -719,5 +757,562 @@ class Css_Tc_Pins {
 	public function record_success() {
 		delete_transient( $this->client_key() . '_fails' );
 		delete_transient( $this->client_key() . '_lock' );
+	}
+
+	/**
+	 * Use an in-memory transient and option store so CLI tests can exercise
+	 * hostname caching without WordPress.
+	 *
+	 * @return void
+	 */
+	public function use_memory_store() {
+		$this->memory = array(
+			'transients' => array(),
+			'options'    => array(),
+			'now'        => null,
+		);
+	}
+
+	/**
+	 * @param callable|null $resolver function (string $host): string[]
+	 * @return void
+	 */
+	public function set_hostname_resolver( $resolver ) {
+		$this->hostname_resolver = is_callable( $resolver ) ? $resolver : null;
+	}
+
+	/**
+	 * @param int $unix Unix time the memory store should report.
+	 * @return void
+	 */
+	public function set_test_now( $unix ) {
+		if ( is_array( $this->memory ) ) {
+			$this->memory['now'] = (int) $unix;
+		}
+	}
+
+	/**
+	 * FQDN with at least one dot. Labels are 1–63 characters, the whole name
+	 * is at most 253, and a trailing dot is stripped. Stored lowercase.
+	 *
+	 * @param string $line Raw line.
+	 * @return string
+	 */
+	public function normalize_hostname( $line ) {
+		$host = strtolower( trim( (string) $line ) );
+		if ( '' === $host ) {
+			return '';
+		}
+		if ( '.' === substr( $host, -1 ) ) {
+			$host = substr( $host, 0, -1 );
+		}
+		$len = strlen( $host );
+		if ( $len < 1 || $len > 253 || false === strpos( $host, '.' ) ) {
+			return '';
+		}
+		if ( false !== strpos( $host, '/' ) || false !== strpos( $host, ' ' ) || false !== strpos( $host, ':' ) ) {
+			return '';
+		}
+
+		$labels = explode( '.', $host );
+		if ( count( $labels ) < 2 ) {
+			return '';
+		}
+		foreach ( $labels as $label ) {
+			$label_len = strlen( $label );
+			if ( $label_len < 1 || $label_len > 63 ) {
+				return '';
+			}
+			if ( ! preg_match( '/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/', $label ) ) {
+				return '';
+			}
+		}
+
+		return $host;
+	}
+
+	/**
+	 * True when the entry is a hostname rather than an address or CIDR.
+	 *
+	 * @param string $entry Parsed allowlist entry.
+	 * @return bool
+	 */
+	public function is_hostname_entry( $entry ) {
+		$entry = (string) $entry;
+		if ( '' === $entry || false !== strpos( $entry, '/' ) ) {
+			return false;
+		}
+		if ( '' !== $this->canonical_ip( $entry ) ) {
+			return false;
+		}
+		return $entry === $this->normalize_hostname( $entry );
+	}
+
+	/**
+	 * Resolve a hostname, using a 120-second cache. A failed lookup keeps the
+	 * last known-good addresses when there are any. With none, the address
+	 * list is empty and the client is denied. Never fail open.
+	 *
+	 * @param string $host Hostname.
+	 * @return array{ips: array<int,string>, checked: int, failed: bool, cached: bool}
+	 */
+	public function resolve_hostname( $host ) {
+		$host  = $this->normalize_hostname( $host );
+		$blank = array(
+			'ips'     => array(),
+			'checked' => 0,
+			'failed'  => true,
+			'cached'  => false,
+		);
+		if ( '' === $host ) {
+			return $blank;
+		}
+
+		$cached = $this->store_get_transient( $this->host_cache_key( $host ) );
+		if ( is_array( $cached ) ) {
+			$cached['cached'] = true;
+			if ( ! isset( $cached['ips'] ) || ! is_array( $cached['ips'] ) ) {
+				$cached['ips'] = array();
+			}
+			return $cached;
+		}
+
+		$found = $this->dns_lookup( $host );
+		$now   = $this->store_now();
+		if ( ! empty( $found ) ) {
+			$record = array(
+				'ips'     => $found,
+				'checked' => $now,
+				'failed'  => false,
+				'cached'  => false,
+			);
+			$this->store_set_transient( $this->host_cache_key( $host ), $record, self::HOST_CACHE_TTL );
+			$this->host_known_set( $host, $found, $now );
+			return $record;
+		}
+
+		$known = $this->host_known_get( $host );
+		$ips   = ( is_array( $known ) && isset( $known['ips'] ) && is_array( $known['ips'] ) ) ? $known['ips'] : array();
+		$record = array(
+			'ips'     => $ips,
+			'checked' => $now,
+			'failed'  => true,
+			'cached'  => false,
+		);
+		$this->store_set_transient( $this->host_cache_key( $host ), $record, self::HOST_CACHE_TTL );
+		return $record;
+	}
+
+	/**
+	 * Cached resolution for the settings screen. Does not query DNS.
+	 *
+	 * @param string $host Hostname.
+	 * @return array{host: string, ips: array<int,string>, checked: int, failed: bool, pending: bool}
+	 */
+	public function hostname_status( $host ) {
+		$host  = $this->normalize_hostname( $host );
+		$empty = array(
+			'host'    => $host,
+			'ips'     => array(),
+			'checked' => 0,
+			'failed'  => false,
+			'pending' => true,
+		);
+		if ( '' === $host ) {
+			return $empty;
+		}
+
+		$cached = $this->store_get_transient( $this->host_cache_key( $host ) );
+		if ( is_array( $cached ) ) {
+			return array(
+				'host'    => $host,
+				'ips'     => ( isset( $cached['ips'] ) && is_array( $cached['ips'] ) ) ? $cached['ips'] : array(),
+				'checked' => isset( $cached['checked'] ) ? (int) $cached['checked'] : 0,
+				'failed'  => ! empty( $cached['failed'] ),
+				'pending' => false,
+			);
+		}
+
+		$known = $this->host_known_get( $host );
+		if ( is_array( $known ) && ! empty( $known['ips'] ) && is_array( $known['ips'] ) ) {
+			return array(
+				'host'    => $host,
+				'ips'     => $known['ips'],
+				'checked' => isset( $known['checked'] ) ? (int) $known['checked'] : 0,
+				'failed'  => false,
+				'pending' => false,
+			);
+		}
+
+		return $empty;
+	}
+
+	/**
+	 * Resolve every hostname in an allowlist. Used when an admin saves the
+	 * list, not when the settings screen is rendered.
+	 *
+	 * @param string $raw Allowlist text.
+	 * @return void
+	 */
+	public function warm_hostnames( $raw ) {
+		$parsed = $this->parse_allowlist( $raw );
+		foreach ( $parsed['entries'] as $entry ) {
+			if ( $this->is_hostname_entry( $entry ) ) {
+				$this->resolve_hostname( $entry );
+			}
+		}
+	}
+
+	/**
+	 * Append a canonical IP when no current entry already covers it.
+	 *
+	 * @param string $raw Allowlist text.
+	 * @param string $ip  Address to add.
+	 * @return string
+	 */
+	public function append_allowlist_ip( $raw, $ip ) {
+		$ip = $this->canonical_ip( $ip );
+		if ( '' === $ip ) {
+			return (string) $raw;
+		}
+		$parsed = $this->parse_allowlist( (string) $raw );
+		foreach ( $parsed['entries'] as $entry ) {
+			if ( $this->ip_in_entry( $ip, $entry ) ) {
+				return (string) $raw;
+			}
+		}
+		$raw = rtrim( (string) $raw );
+		if ( '' === $raw ) {
+			return $ip;
+		}
+		return $raw . "\n" . $ip;
+	}
+
+	/**
+	 * @param int $unix Unix timestamp.
+	 * @return string
+	 */
+	public function format_eastern( $unix ) {
+		$unix = (int) $unix;
+		if ( $unix < 1 ) {
+			return '';
+		}
+		try {
+			$dt = ( new DateTimeImmutable( '@' . $unix ) )->setTimezone( new DateTimeZone( 'America/New_York' ) );
+		} catch ( Exception $e ) {
+			return '';
+		}
+		return $dt->format( 'M j, Y g:i a' ) . ' ET';
+	}
+
+	/**
+	 * Record a refused kiosk request. One row per IP per minute, capped at
+	 * the last 200. The PIN is never stored.
+	 *
+	 * @param string $ip      Client address.
+	 * @param string $action  AJAX action.
+	 * @param int    $user_id Employee, when already identified.
+	 * @param string $name    Employee display name.
+	 * @return bool True when a row was stored.
+	 */
+	public function record_refused_kiosk( $ip, $action, $user_id = 0, $name = '' ) {
+		$ip = $this->canonical_ip( $ip );
+		if ( '' === $ip ) {
+			return false;
+		}
+		$bucket = 'css_tc_rf_' . md5( $ip );
+		if ( $this->store_get_transient( $bucket ) ) {
+			return false;
+		}
+		$this->store_set_transient( $bucket, 1, self::REFUSED_INTERVAL );
+
+		$log   = $this->refused_kiosk_log();
+		$log[] = array(
+			'ip'      => $ip,
+			'time'    => $this->store_now(),
+			'action'  => $this->refused_action_label( $action ),
+			'user_id' => max( 0, (int) $user_id ),
+			'name'    => $this->refused_employee_label( $name ),
+		);
+		if ( count( $log ) > self::REFUSED_CAP ) {
+			$log = array_slice( $log, -1 * self::REFUSED_CAP );
+		}
+		$this->store_update_option( self::REFUSED_OPTION, $log );
+		return true;
+	}
+
+	/**
+	 * @return array<int,array{ip:string,time:int,action:string,user_id:int,name:string}>
+	 */
+	public function refused_kiosk_log() {
+		$log = $this->store_get_option( self::REFUSED_OPTION, array() );
+		if ( ! is_array( $log ) ) {
+			return array();
+		}
+		$clean = array();
+		foreach ( $log as $row ) {
+			if ( ! is_array( $row ) || empty( $row['ip'] ) ) {
+				continue;
+			}
+			$clean[] = array(
+				'ip'      => (string) $row['ip'],
+				'time'    => isset( $row['time'] ) ? (int) $row['time'] : 0,
+				'action'  => isset( $row['action'] ) ? (string) $row['action'] : '',
+				'user_id' => isset( $row['user_id'] ) ? (int) $row['user_id'] : 0,
+				'name'    => isset( $row['name'] ) ? (string) $row['name'] : '',
+			);
+		}
+		return $clean;
+	}
+
+	/**
+	 * @param int $seconds Window length.
+	 * @return array<int,array{ip:string,time:int,action:string,user_id:int,name:string}>
+	 */
+	public function refused_kiosk_recent( $seconds ) {
+		$cutoff = $this->store_now() - (int) $seconds;
+		$out    = array();
+		foreach ( $this->refused_kiosk_log() as $row ) {
+			if ( (int) $row['time'] >= $cutoff ) {
+				$out[] = $row;
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Refusals in the window, one row per IP, busiest first.
+	 *
+	 * @param int $seconds Window length.
+	 * @return array<int,array{ip:string,count:int,latest:int}>
+	 */
+	public function refused_kiosk_summary( $seconds = 3600 ) {
+		$counts = array();
+		$latest = array();
+		foreach ( $this->refused_kiosk_recent( $seconds ) as $row ) {
+			$ip = $row['ip'];
+			if ( ! isset( $counts[ $ip ] ) ) {
+				$counts[ $ip ] = 0;
+				$latest[ $ip ] = 0;
+			}
+			++$counts[ $ip ];
+			if ( (int) $row['time'] > $latest[ $ip ] ) {
+				$latest[ $ip ] = (int) $row['time'];
+			}
+		}
+		arsort( $counts );
+		$out = array();
+		foreach ( $counts as $ip => $count ) {
+			$out[] = array(
+				'ip'     => (string) $ip,
+				'count'  => (int) $count,
+				'latest' => (int) $latest[ $ip ],
+			);
+		}
+		return $out;
+	}
+
+	/**
+	 * @param string $host Normalized hostname.
+	 * @return string
+	 */
+	private function host_cache_key( $host ) {
+		return 'css_tc_h_' . md5( $host );
+	}
+
+	/**
+	 * @param string $host Hostname.
+	 * @return string[]
+	 */
+	private function dns_lookup( $host ) {
+		if ( is_callable( $this->hostname_resolver ) ) {
+			$result = call_user_func( $this->hostname_resolver, $host );
+			return $this->canonicalize_resolved( $result );
+		}
+
+		$ips = array();
+		if ( function_exists( 'dns_get_record' ) ) {
+			$a = @dns_get_record( $host, DNS_A ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			if ( is_array( $a ) ) {
+				foreach ( $a as $row ) {
+					if ( is_array( $row ) && ! empty( $row['ip'] ) ) {
+						$ips[] = (string) $row['ip'];
+					}
+				}
+			}
+			if ( defined( 'DNS_AAAA' ) ) {
+				$aaaa = @dns_get_record( $host, DNS_AAAA ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+				if ( is_array( $aaaa ) ) {
+					foreach ( $aaaa as $row ) {
+						if ( is_array( $row ) && ! empty( $row['ipv6'] ) ) {
+							$ips[] = (string) $row['ipv6'];
+						}
+					}
+				}
+			}
+		}
+		if ( empty( $ips ) && function_exists( 'gethostbynamel' ) ) {
+			$v4 = @gethostbynamel( $host ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			if ( is_array( $v4 ) ) {
+				foreach ( $v4 as $addr ) {
+					$ips[] = (string) $addr;
+				}
+			}
+		}
+		return $this->canonicalize_resolved( $ips );
+	}
+
+	/**
+	 * @param mixed $ips Addresses from DNS or a test resolver.
+	 * @return string[]
+	 */
+	private function canonicalize_resolved( $ips ) {
+		if ( ! is_array( $ips ) ) {
+			return array();
+		}
+		$out = array();
+		foreach ( $ips as $ip ) {
+			$canon = $this->canonical_ip( (string) $ip );
+			if ( '' !== $canon ) {
+				$out[] = $canon;
+			}
+		}
+		return array_values( array_unique( $out ) );
+	}
+
+	/**
+	 * @param string $host Hostname.
+	 * @return array<string,mixed>|null
+	 */
+	private function host_known_get( $host ) {
+		$all = $this->store_get_option( self::HOST_KNOWN_OPTION, array() );
+		if ( ! is_array( $all ) || ! isset( $all[ $host ] ) || ! is_array( $all[ $host ] ) ) {
+			return null;
+		}
+		return $all[ $host ];
+	}
+
+	/**
+	 * @param string $host    Hostname.
+	 * @param string[] $ips   Canonical addresses.
+	 * @param int    $checked Unix time.
+	 * @return void
+	 */
+	private function host_known_set( $host, $ips, $checked ) {
+		$all = $this->store_get_option( self::HOST_KNOWN_OPTION, array() );
+		if ( ! is_array( $all ) ) {
+			$all = array();
+		}
+		$all[ $host ] = array(
+			'ips'     => array_values( $ips ),
+			'checked' => (int) $checked,
+		);
+		$this->store_update_option( self::HOST_KNOWN_OPTION, $all );
+	}
+
+	/**
+	 * @param string $action Raw action.
+	 * @return string
+	 */
+	private function refused_action_label( $action ) {
+		$action = strtolower( (string) $action );
+		$action = preg_replace( '/[^a-z0-9_\-]/', '', $action );
+		if ( ! is_string( $action ) ) {
+			return '';
+		}
+		return substr( $action, 0, 64 );
+	}
+
+	/**
+	 * @param string $name Display name.
+	 * @return string
+	 */
+	private function refused_employee_label( $name ) {
+		$name = trim( (string) preg_replace( '/\s+/', ' ', strip_tags( (string) $name ) ) );
+		if ( strlen( $name ) > 80 ) {
+			$name = substr( $name, 0, 80 );
+		}
+		return $name;
+	}
+
+	/**
+	 * @return int
+	 */
+	private function store_now() {
+		if ( is_array( $this->memory ) && isset( $this->memory['now'] ) && null !== $this->memory['now'] ) {
+			return (int) $this->memory['now'];
+		}
+		return time();
+	}
+
+	/**
+	 * @param string $key Transient key.
+	 * @return mixed
+	 */
+	private function store_get_transient( $key ) {
+		if ( is_array( $this->memory ) ) {
+			if ( ! isset( $this->memory['transients'][ $key ] ) ) {
+				return false;
+			}
+			$row = $this->memory['transients'][ $key ];
+			if ( (int) $row['expires'] < $this->store_now() ) {
+				unset( $this->memory['transients'][ $key ] );
+				return false;
+			}
+			return $row['value'];
+		}
+		if ( ! function_exists( 'get_transient' ) ) {
+			return false;
+		}
+		return get_transient( $key );
+	}
+
+	/**
+	 * @param string $key   Transient key.
+	 * @param mixed  $value Value.
+	 * @param int    $ttl   Seconds.
+	 * @return void
+	 */
+	private function store_set_transient( $key, $value, $ttl ) {
+		if ( is_array( $this->memory ) ) {
+			$this->memory['transients'][ $key ] = array(
+				'value'   => $value,
+				'expires' => $this->store_now() + (int) $ttl,
+			);
+			return;
+		}
+		if ( function_exists( 'set_transient' ) ) {
+			set_transient( $key, $value, (int) $ttl );
+		}
+	}
+
+	/**
+	 * @param string $key     Option name.
+	 * @param mixed  $default Default.
+	 * @return mixed
+	 */
+	private function store_get_option( $key, $default ) {
+		if ( is_array( $this->memory ) ) {
+			return array_key_exists( $key, $this->memory['options'] ) ? $this->memory['options'][ $key ] : $default;
+		}
+		if ( ! function_exists( 'get_option' ) ) {
+			return $default;
+		}
+		return get_option( $key, $default );
+	}
+
+	/**
+	 * @param string $key   Option name.
+	 * @param mixed  $value Value.
+	 * @return void
+	 */
+	private function store_update_option( $key, $value ) {
+		if ( is_array( $this->memory ) ) {
+			$this->memory['options'][ $key ] = $value;
+			return;
+		}
+		if ( function_exists( 'update_option' ) ) {
+			update_option( $key, $value, false );
+		}
 	}
 }

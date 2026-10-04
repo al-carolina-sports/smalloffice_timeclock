@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.6.1
+Stable tag: 1.6.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,22 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under SMOTC.
 
 == Changelog ==
+
+= 1.6.3 =
+* Shifts on both timecards, Real Time Monitoring, Reports, and CSV are ordered by the clock-in instant. A 12-hour label such as 12:00 PM no longer sorts ahead of 8:00 AM.
+* A shift that ends the next calendar day says "next day" after the clock-out (6:00 AM next day) on the timecard and in Reports. The "(+1)" mark is gone.
+* H:MM and decimal hours both come from the same whole-minute total, on screen and in CSV. 29 minutes 30 seconds is 0:30 and 0.50. A span under 30 seconds is 0:00.
+* A shift over the long-shift limit, and a missed clock-out, stay out of overtime until a manager corrects them. The timecard and the shift report say "Not in overtime until a manager corrects it". After that correction they count again.
+* The overtime hours setting cannot be longer than the selected window: 168 hours for 1 week, 336 for 2 weeks.
+* "Overtime is not calculated. All hours are Regular." is shown to managers only. Employees still see the rule when overtime is on.
+* Pay-period and by-employee CSV keep the Overtime column in the same place. The cell is blank when overtime is off.
+* A fresh activation creates the PIN, name, and My Time Clock pages, a /time-clock/ page that redirects to the kiosk, and the Raleigh, Rocky Mount, and Wilson locations when none exist. The office IP allowlist and overtime stay off. No database work is required.
+
+= 1.6.2 =
+* The office IP allowlist and each location's office network accept a hostname as well as an IP or CIDR. Wilson's dynamic address can be listed as csswilson.ddns.net. The name is resolved when someone punches or the office network is checked, remembered for about two minutes, and the last successful addresses are kept if DNS fails. If it has never resolved, that client is refused. Settings shows the resolved addresses and the last check in Eastern time, and flags a lookup failure. The settings screen itself does not query DNS.
+* Refused kiosk requests are stored (IP, time, action, and the employee when a PIN was already identified — never the PIN), one row per IP per minute, last 200. Settings lists them under Refused kiosk requests. A manager sees "N kiosk punches were refused from x.x.x.x in the last hour. Did an office IP change?" with Add this IP to the allowlist and Dismiss. No email is sent.
+* A kiosk outside the office list now says: This kiosk only works from the office network. Please tell your manager.
+* The upload zip no longer contains the bin/ command-line checks.
 
 = 1.6.1 =
 * Security: the client address (office IP allowlist, office detection for locations, failed-PIN limits) can no longer be faked with an X-Forwarded-For header. Forwarded headers are only believed when the request comes through the hosting network (private or internal addresses) or a proxy listed under the new "Trusted proxies" setting, and then the right-most outside address is used. Settings shows what each request looks like, and the Locations tab shows this computer's address and which location it matches.
@@ -123,7 +139,7 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 
 = 1.2.3 =
 * Kiosk & PINs: optional office IP allowlist. When the checkbox is off, or the list has no addresses, every network can use the kiosks (an empty list does not lock the sandbox out). Lines starting with # are comments.
-* When the list is on and has addresses, PIN resolve, punch, the name-list, and the who's-working roster only succeed from those IPv4/IPv6 addresses or CIDR ranges. The kiosk says "This kiosk only works from the office network." and does not reveal the client IP.
+* When the list is on and has addresses, PIN resolve, punch, the name-list, and the who's-working roster only succeed from those IPv4/IPv6 addresses, CIDR ranges, or hostnames. The kiosk says "This kiosk only works from the office network. Please tell your manager." and does not reveal the client IP.
 * The allowlist uses the same client IP as the failed-PIN rate limit, including the first address in X-Forwarded-For (WP Engine / reverse proxies). Stored punch IPs use that address too, so tablets are no longer counted as the load balancer. WordPress admin is not restricted.
 * Hide AIO Lite Pro upsell UI in wp-admin via addon CSS.
 

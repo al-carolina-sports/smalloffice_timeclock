@@ -26,6 +26,11 @@ class Css_Tc_Overtime {
 	const MAX_WEEKS = 2;
 
 	/**
+	 * Hours in one week. The overtime limit cannot exceed the selected window.
+	 */
+	const HOURS_PER_WEEK = 168;
+
+	/**
 	 * Current rule from settings.
 	 *
 	 * @return array{enabled:bool,hours:float,weeks:int,threshold_seconds:int}
@@ -38,6 +43,7 @@ class Css_Tc_Overtime {
 
 		$period_weeks = (int) ( css_tc_addon()->pay_periods->length_days() / 7 );
 		$weeks        = self::clamp_weeks( $weeks, $period_weeks );
+		$hours        = self::clamp_hours( $hours, $weeks );
 
 		if ( $hours <= 0 ) {
 			$enabled = false;
@@ -52,6 +58,50 @@ class Css_Tc_Overtime {
 			'weeks'             => $weeks,
 			'threshold_seconds' => (int) round( $hours * HOUR_IN_SECONDS ),
 		);
+	}
+
+	/**
+	 * Longest threshold that fits in the selected window (168 hours per week).
+	 *
+	 * @param int $weeks Weeks in the overtime window.
+	 * @return int
+	 */
+	public static function max_hours( $weeks ) {
+		$weeks = max( 1, min( self::MAX_WEEKS, (int) $weeks ) );
+		return self::HOURS_PER_WEEK * $weeks;
+	}
+
+	/**
+	 * @param float $hours Requested threshold.
+	 * @param int   $weeks Window length.
+	 * @return float
+	 */
+	public static function clamp_hours( $hours, $weeks ) {
+		$hours = (float) $hours;
+		$max   = (float) self::max_hours( $weeks );
+		if ( $hours < 0 ) {
+			return 0.0;
+		}
+		if ( $hours > $max ) {
+			return $max;
+		}
+		return $hours;
+	}
+
+	/**
+	 * A long shift or a missed clock-out stays out of overtime until a
+	 * manager has corrected it. Reviewed shifts count again, even if the
+	 * manager kept a shift over the long-shift limit.
+	 *
+	 * @param array<string,mixed> $shift Shift row.
+	 * @return bool
+	 */
+	public static function exclude_from_overtime( $shift ) {
+		$problem = ! empty( $shift['is_long'] ) || ! empty( $shift['is_stale_open'] );
+		if ( ! $problem ) {
+			return false;
+		}
+		return empty( $shift['manager_reviewed'] );
 	}
 
 	/**
@@ -149,6 +199,26 @@ class Css_Tc_Overtime {
 	 * @param array<string,mixed>|null $rule Rule from rule().
 	 * @return string
 	 */
+	/**
+	 * The disabled-rule sentence is for managers. Employees still see the
+	 * sentence that names the active threshold.
+	 *
+	 * @param string $note        describe() text.
+	 * @param bool   $enabled     Whether overtime is on.
+	 * @param bool   $for_manager Viewer can manage the time clock.
+	 * @return string
+	 */
+	public static function visible_note( $note, $enabled, $for_manager ) {
+		$note = (string) $note;
+		if ( '' === $note ) {
+			return '';
+		}
+		if ( ! $enabled && ! $for_manager ) {
+			return '';
+		}
+		return $note;
+	}
+
 	public function describe( $rule = null ) {
 		$rule = $rule ? $rule : $this->rule();
 		if ( empty( $rule['enabled'] ) ) {

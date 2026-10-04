@@ -217,8 +217,28 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 					<?php endforeach; ?>
 				</ul>
 			<?php endif; ?>
-			<?php if ( ! empty( $sheet['overtime_note'] ) ) : ?>
-				<p class="css-tc-card__range"><?php echo esc_html( $sheet['overtime_note'] ); ?></p>
+			<?php
+			$css_tc_ot_note = Css_Tc_Overtime::visible_note(
+				isset( $sheet['overtime_note'] ) ? (string) $sheet['overtime_note'] : '',
+				! empty( $sheet['overtime_rule']['enabled'] ),
+				'admin' === $mode
+			);
+			?>
+			<?php if ( '' !== $css_tc_ot_note ) : ?>
+				<p class="css-tc-card__range"><?php echo esc_html( $css_tc_ot_note ); ?></p>
+			<?php endif; ?>
+			<?php if ( ! empty( $sheet['overtime_rule']['enabled'] ) && ! empty( $sheet['overtime_excluded_seconds'] ) ) : ?>
+				<p class="css-tc-card__range">
+					<?php
+					echo esc_html(
+						sprintf(
+							/* translators: %s: hours H:MM left out of overtime */
+							__( '%s left out of overtime until a manager corrects it.', 'css-timeclock-addon' ),
+							(string) $sheet['overtime_excluded_hm']
+						)
+					);
+					?>
+				</p>
 			<?php endif; ?>
 		</section>
 		<section class="css-tc-card">
@@ -381,7 +401,7 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 										<span>
 											<?php
 											if ( '' !== $pair['out_display'] ) {
-												echo esc_html( $pair['out_display'] );
+												echo esc_html( Css_Tc_Time::clock_out_label( $pair['out_display'], ! empty( $pair['out_next_day'] ) ) );
 											} elseif ( ! empty( $pair['is_stale'] ) ) {
 												echo esc_html__( 'Missed clock-out', 'css-timeclock-addon' );
 											} elseif ( ! empty( $pair['is_open'] ) ) {
@@ -399,6 +419,9 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 										<span class="css-tc-pair__flag css-tc-pair__flag--order"><?php echo esc_html__( 'Clock-out before clock-in', 'css-timeclock-addon' ); ?></span>
 									<?php elseif ( ! empty( $pair['is_long'] ) ) : ?>
 										<span class="css-tc-pair__flag"><?php echo esc_html__( 'Long shift', 'css-timeclock-addon' ); ?></span>
+									<?php endif; ?>
+									<?php if ( ! empty( $pair['exclude_from_overtime'] ) ) : ?>
+										<span class="css-tc-pair__flag"><?php echo esc_html__( 'Not in overtime until a manager corrects it', 'css-timeclock-addon' ); ?></span>
 									<?php endif; ?>
 								</div>
 							<?php endforeach; ?>
