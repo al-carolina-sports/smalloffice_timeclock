@@ -43,8 +43,32 @@ class Css_Tc_Organization {
 	private $cache = null;
 
 	/**
+	 * Locations for a brand-new site. Existing locations are left alone.
+	 *
 	 * @return void
 	 */
+	public function seed_default_locations() {
+		$data = $this->data();
+		if ( ! empty( $data['locations'] ) ) {
+			return;
+		}
+		$defaults = array(
+			'Raleigh'     => '76.195.93.124',
+			'Rocky Mount' => '66.76.190.146',
+			'Wilson'      => 'csswilson.ddns.net',
+		);
+		foreach ( $defaults as $name => $ips ) {
+			$id                 = (int) $data['next_id'];
+			$data['next_id']   = $id + 1;
+			$data['locations'][ $id ] = array(
+				'id'   => $id,
+				'name' => $name,
+				'ips'  => $ips,
+			);
+		}
+		$this->save( $data );
+	}
+
 	public function register_hooks() {
 		add_action( 'admin_post_' . self::ADMIN_ACTION, array( $this, 'handle_admin_post' ) );
 		add_action( 'show_user_profile', array( $this, 'render_profile' ) );

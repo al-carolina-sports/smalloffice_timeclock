@@ -60,7 +60,7 @@ An employee is **Working** in AIO monitoring when a shift has a clock-in time an
    ./bin/make-zip.sh
    ```
 
-   That writes `dist/css-timeclock-addon.zip`. The zip in this repository is SMOTC 1.6.2. Install it on carolinaspodev only.
+   That writes `dist/css-timeclock-addon.zip`. The zip in this repository is SMOTC 1.6.3. Install it on carolinaspodev only. See `docs/PRODUCTION-INSTALL.md` for a new empty site.
 
 2. WP Engine → the `carolinaspodev` environment → **WordPress Admin** → **Plugins → Add New → Upload Plugin**.
 3. Upload the zip, then **Activate**.

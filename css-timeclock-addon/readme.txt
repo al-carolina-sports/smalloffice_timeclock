@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.6.2
+Stable tag: 1.6.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,16 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under SMOTC.
 
 == Changelog ==
+
+= 1.6.3 =
+* Shifts on both timecards, Real Time Monitoring, Reports, and CSV are ordered by the clock-in instant. A 12-hour label such as 12:00 PM no longer sorts ahead of 8:00 AM.
+* A shift that ends the next calendar day says "next day" after the clock-out (6:00 AM next day) on the timecard and in Reports. The "(+1)" mark is gone.
+* H:MM and decimal hours both come from the same whole-minute total, on screen and in CSV. 29 minutes 30 seconds is 0:30 and 0.50. A span under 30 seconds is 0:00.
+* A shift over the long-shift limit, and a missed clock-out, stay out of overtime until a manager corrects them. The timecard and the shift report say "Not in overtime until a manager corrects it". After that correction they count again.
+* The overtime hours setting cannot be longer than the selected window: 168 hours for 1 week, 336 for 2 weeks.
+* "Overtime is not calculated. All hours are Regular." is shown to managers only. Employees still see the rule when overtime is on.
+* Pay-period and by-employee CSV keep the Overtime column in the same place. The cell is blank when overtime is off.
+* A fresh activation creates the PIN, name, and My Time Clock pages, a /time-clock/ page that redirects to the kiosk, and the Raleigh, Rocky Mount, and Wilson locations when none exist. The office IP allowlist and overtime stay off. No database work is required.
 
 = 1.6.2 =
 * The office IP allowlist and each location's office network accept a hostname as well as an IP or CIDR. Wilson's dynamic address can be listed as csswilson.ddns.net. The name is resolved when someone punches or the office network is checked, remembered for about two minutes, and the last successful addresses are kept if DNS fails. If it has never resolved, that client is refused. Settings shows the resolved addresses and the last check in Eastern time, and flags a lookup failure. The settings screen itself does not query DNS.

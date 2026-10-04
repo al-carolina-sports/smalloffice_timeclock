@@ -294,7 +294,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 						</label>
 						<p>
 							<?php echo esc_html__( 'Hours worked after', 'css-timeclock-addon' ); ?>
-							<input name="overtime_hours" id="overtime_hours" type="number" min="1" max="336" step="0.25" value="<?php echo esc_attr( (string) ( isset( $settings['overtime_hours'] ) ? $settings['overtime_hours'] : 40 ) ); ?>" class="small-text" />
+							<?php $css_tc_ot_weeks = isset( $settings['overtime_weeks'] ) ? (int) $settings['overtime_weeks'] : 1; ?>
+							<input name="overtime_hours" id="overtime_hours" type="number" min="1" max="<?php echo esc_attr( (string) Css_Tc_Overtime::max_hours( $css_tc_ot_weeks ) ); ?>" step="0.25" value="<?php echo esc_attr( (string) ( isset( $settings['overtime_hours'] ) ? $settings['overtime_hours'] : 40 ) ); ?>" class="small-text" data-hours-per-week="<?php echo esc_attr( (string) Css_Tc_Overtime::HOURS_PER_WEEK ); ?>" />
 							<?php echo esc_html__( 'hours per', 'css-timeclock-addon' ); ?>
 							<select name="overtime_weeks" id="overtime_weeks">
 								<option value="1" <?php selected( isset( $settings['overtime_weeks'] ) ? (int) $settings['overtime_weeks'] : 1, 1 ); ?>><?php echo esc_html__( '1 week', 'css-timeclock-addon' ); ?></option>

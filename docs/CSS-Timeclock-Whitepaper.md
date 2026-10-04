@@ -301,6 +301,7 @@ Optional commercial shortcut: AIO **Pro** (~$40/year) documents PIN/QR/locations
 | 1.4.10 | 2026-09-27 | Manager Save changes stays enabled and explains an invalid punch. A confirmed shift over 16 hours is stored as entered and flagged long, not missed. Clock-out before clock-in counts as 0 and is flagged. Day pencils are red, green, or gray. |
 | 1.4.11 | 2026-09-27 | Day icons use a standard scheme: blue pencil to edit, green check when a change is completed, amber for a pending request, red only for a real problem, and a gray lock when the pay period is closed. |
 | 1.6.2 | 2026-09-28 | Office allowlist and location networks accept a hostname such as csswilson.ddns.net. Refused kiosk requests are logged, and a manager notice can add that IP. |
+| 1.6.3 | 2026-10-04 | Shifts sort by clock-in time. Overnight clock-out says "next day". H:MM and decimal hours share one minute total. Uncorrected long shifts and missed clock-outs stay out of overtime. A new site gets the kiosk pages, the /time-clock/ redirect, and Raleigh, Rocky Mount, and Wilson with the allowlist and overtime off. |
 
 ---
 
@@ -353,7 +354,7 @@ My Time Clock, the corrections view on that page, and the kiosk pages use `templ
 
 The day grid still uses container queries on `.css-tc-sheet`. At 680px and under, each day is one row, the weekday is Mon/Tue, and both clock times stay on the row. Between that and 1040px the week grid stays, with short weekday names and the clock-out stacked under the clock-in. Wider sheets keep the full names and a single in–out line. The long-shift badge is allowed to wrap.
 
-A finished shift under 30 seconds displays as `<1 min` on that day. The raw seconds still add into the pay-period total, which is rounded to the nearest minute. An open shift does not display as `0:00`: inside the missed clock-out window it says **Still clocked in**, and after that **Missed clock-out**. The employee pencil is on that day while the period is open.
+A finished shift is shown in whole minutes. The day total, the pay-period total, and decimal hours in Reports and CSV all start from that same rounded minute count, so 29 minutes 30 seconds is `0:30` and `0.50`, and 8 hours 30 seconds is `8:01` and `8.02`. A span under 30 seconds rounds to `0:00`. An open shift does not display as `0:00`: inside the missed clock-out window it says **Still clocked in**, and after that **Missed clock-out**. The employee pencil is on that day while the period is open. A clock-out on the next calendar day is labeled with the clock time and the words **next day** (for example `6:00 AM next day`). An uncorrected long shift or missed clock-out is flagged **Not in overtime until a manager corrects it** and is left out of the overtime total until a manager saves a correction.
 
 ### How AIO Lite 2.1.0 stores times
 
