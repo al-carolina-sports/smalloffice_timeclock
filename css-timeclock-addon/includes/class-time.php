@@ -440,20 +440,72 @@ class Css_Tc_Time {
 	 * @return string
 	 */
 	public function format_duration( $seconds ) {
+		$rounded = self::whole_minutes( $seconds );
+		$hours   = (int) floor( $rounded / 60 );
+		$minutes = $rounded % 60;
+		return $hours . ':' . str_pad( (string) $minutes, 2, '0', STR_PAD_LEFT );
+	}
+
+	/**
+	 * Nearest whole minute. H:MM and decimal hours both start here so a
+	 * total cannot read 8:30 on screen and 8.49 in a spreadsheet.
+	 *
+	 * @param int $seconds Duration.
+	 * @return int
+	 */
+	public static function whole_minutes( $seconds ) {
 		$seconds = (int) $seconds;
 		if ( $seconds < 0 ) {
 			$seconds = 0;
 		}
-		// A finished shift of a few seconds is real time. Rounding it to 0:00
-		// hides it. Anything under 30 seconds is shown as under a minute.
-		// Those seconds still add into the longer totals.
-		if ( $seconds > 0 && $seconds < 30 ) {
-			return '<1 min';
+		return (int) round( $seconds / 60 );
+	}
+
+	/**
+	 * Decimal hours from the same whole-minute total as format_duration().
+	 *
+	 * @param int $seconds Duration.
+	 * @return string
+	 */
+	public static function decimal_from_seconds( $seconds ) {
+		$minutes = self::whole_minutes( $seconds );
+		return number_format( $minutes / 60, 2, '.', '' );
+	}
+
+	/**
+	 * Order shift rows by clock-in instant, not by a 12-hour clock string.
+	 *
+	 * @param array<string,mixed> $a Shift row with sort_ts.
+	 * @param array<string,mixed> $b Shift row with sort_ts.
+	 * @return int
+	 */
+	public static function compare_shift_rows( $a, $b ) {
+		$ta = isset( $a['sort_ts'] ) ? (int) $a['sort_ts'] : 0;
+		$tb = isset( $b['sort_ts'] ) ? (int) $b['sort_ts'] : 0;
+		if ( $ta === $tb ) {
+			$ia = isset( $a['id'] ) ? (int) $a['id'] : 0;
+			$ib = isset( $b['id'] ) ? (int) $b['id'] : 0;
+			return $ia <=> $ib;
 		}
-		$rounded = (int) round( $seconds / 60 );
-		$hours   = (int) floor( $rounded / 60 );
-		$minutes = $rounded % 60;
-		return $hours . ':' . str_pad( (string) $minutes, 2, '0', STR_PAD_LEFT );
+		return $ta <=> $tb;
+	}
+
+	/**
+	 * Clock-out text. An overnight shift says "next day" instead of "(+1)".
+	 *
+	 * @param string $clock    Site clock, possibly empty.
+	 * @param bool   $next_day Clock-out falls on the following calendar day.
+	 * @return string
+	 */
+	public static function clock_out_label( $clock, $next_day ) {
+		$clock = trim( (string) $clock );
+		if ( '' === $clock ) {
+			return '';
+		}
+		if ( $next_day ) {
+			return $clock . ' ' . __( 'next day', 'css-timeclock-addon' );
+		}
+		return $clock;
 	}
 
 	/**
@@ -588,7 +640,7 @@ class Css_Tc_Time {
 		if ( $seconds < 0 ) {
 			return '--:--';
 		}
-		$rounded = (int) round( $seconds / 60 );
+		$rounded = self::whole_minutes( $seconds );
 		$hours   = (int) floor( $rounded / 60 );
 		$minutes = $rounded % 60;
 		return str_pad( (string) $hours, 2, '0', STR_PAD_LEFT ) . ':' . str_pad( (string) $minutes, 2, '0', STR_PAD_LEFT );

@@ -506,6 +506,7 @@ class Css_Tc_Plugin {
 		}
 
 		Css_Tc_Shortcodes::create_public_pages();
+		css_tc_addon()->organization->seed_default_locations();
 		css_tc_addon()->corrections->maybe_upgrade_schema();
 		self::maybe_grant_caps( true );
 	}

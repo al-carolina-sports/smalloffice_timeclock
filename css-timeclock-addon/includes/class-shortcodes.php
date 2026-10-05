@@ -187,12 +187,39 @@ class Css_Tc_Shortcodes {
 		}
 
 		$plugin->update_settings( $settings );
+		self::ensure_time_clock_redirect_page();
 
 		return array(
 			'pin_kiosk_page_id'      => (int) $settings['pin_kiosk_page_id'],
 			'name_kiosk_page_id'     => (int) $settings['name_kiosk_page_id'],
 			'employee_times_page_id' => (int) $settings['employee_times_page_id'],
 		);
+	}
+
+	/**
+	 * Publish /time-clock/ so a fresh site redirects to the kiosk. An existing
+	 * page with that slug (including one AIO already created) is left as it is.
+	 *
+	 * @return int Page ID, or 0 when the page could not be created.
+	 */
+	public static function ensure_time_clock_redirect_page() {
+		$found = get_page_by_path( 'time-clock' );
+		if ( $found && 'trash' !== $found->post_status ) {
+			return (int) $found->ID;
+		}
+
+		$page_id = wp_insert_post(
+			array(
+				'post_title'   => __( 'Time Clock', 'css-timeclock-addon' ),
+				'post_name'    => 'time-clock',
+				'post_status'  => 'publish',
+				'post_type'    => 'page',
+				'post_content' => '<!-- USOTC redirects this page to the kiosk. -->',
+			),
+			true
+		);
+
+		return is_wp_error( $page_id ) ? 0 : (int) $page_id;
 	}
 
 	/**
