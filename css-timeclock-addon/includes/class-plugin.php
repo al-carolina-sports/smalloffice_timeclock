@@ -21,6 +21,7 @@ require_once CSS_TC_ADDON_DIR . 'includes/class-pay-periods.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-employees.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-organization.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pins.php';
+require_once CSS_TC_ADDON_DIR . 'includes/class-import.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-punches.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-corrections.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-timecard.php';
@@ -78,6 +79,11 @@ class Css_Tc_Plugin {
 	public $status;
 
 	/**
+	 * @var Css_Tc_Import
+	 */
+	public $import;
+
+	/**
 	 * @var Css_Tc_Reports
 	 */
 	public $reports;
@@ -129,6 +135,7 @@ class Css_Tc_Plugin {
 		$this->organization = new Css_Tc_Organization();
 		$this->employees   = new Css_Tc_Employees();
 		$this->pins        = new Css_Tc_Pins();
+		$this->import      = new Css_Tc_Import();
 		$this->punches     = new Css_Tc_Punches();
 		$this->punches->register_hooks();
 		$this->corrections = new Css_Tc_Corrections();
@@ -429,6 +436,7 @@ class Css_Tc_Plugin {
 		$this->organization->register_hooks();
 		$this->holidays->register_hooks();
 		$this->status->register_hooks();
+		$this->import->register_hooks();
 		$this->leave->register();
 		Css_Tc_Leave_Ui::register();
 		Css_Tc_Shortcodes::register();

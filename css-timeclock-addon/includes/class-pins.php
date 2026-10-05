@@ -66,11 +66,13 @@ class Css_Tc_Pins {
 	/**
 	 * Store a hashed PIN for an employee. Enforces uniqueness across users.
 	 *
-	 * @param int    $user_id User ID.
-	 * @param string $pin     Plain PIN (will not be stored).
+	 * @param int    $user_id         User ID.
+	 * @param string $pin             Plain PIN (will not be stored).
+	 * @param bool   $verified_unique The caller has already checked no other employee uses
+	 *                                this PIN (the bulk import does, to avoid one hash scan per row).
 	 * @return true|WP_Error
 	 */
-	public function set_pin( $user_id, $pin ) {
+	public function set_pin( $user_id, $pin, $verified_unique = false ) {
 		$user_id = (int) $user_id;
 		$pin     = $this->normalize( $pin );
 
@@ -83,9 +85,11 @@ class Css_Tc_Pins {
 			return $valid;
 		}
 
-		$owner = $this->find_user_id_by_pin( $pin );
-		if ( $owner && (int) $owner !== $user_id ) {
-			return new WP_Error( 'css_tc_pin_taken', __( 'That PIN is already assigned to another employee. Choose a different PIN.', 'css-timeclock-addon' ) );
+		if ( ! $verified_unique ) {
+			$owner = $this->find_user_id_by_pin( $pin );
+			if ( $owner && (int) $owner !== $user_id ) {
+				return new WP_Error( 'css_tc_pin_taken', __( 'That PIN is already assigned to another employee. Choose a different PIN.', 'css-timeclock-addon' ) );
+			}
 		}
 
 		$hash = wp_hash_password( $pin );
@@ -211,6 +215,42 @@ class Css_Tc_Pins {
 		delete_user_meta( (int) $user_id, self::META_HASH );
 		delete_user_meta( (int) $user_id, self::META_SET );
 		delete_user_meta( (int) $user_id, self::META_ENC );
+	}
+
+	/**
+	 * PINs in use, without logging a reveal.
+	 *
+	 * "known" maps each readable PIN to its employee. "legacy" lists employees
+	 * whose PIN was set before PINs could be read back; those can only be
+	 * compared by hash.
+	 *
+	 * @return array{known:array<string,int>,legacy:int[]}
+	 */
+	public function taken_pin_map() {
+		$out   = array(
+			'known'  => array(),
+			'legacy' => array(),
+		);
+		$users = get_users(
+			array(
+				'meta_key'     => self::META_HASH,
+				'meta_compare' => 'EXISTS',
+				'fields'       => 'ID',
+				'number'       => 1000,
+			)
+		);
+		foreach ( $users as $user ) {
+			$user_id = (int) $user;
+			// The sealed copy is authenticated, so a successful read is trustworthy
+			// and saves one slow hash check per employee.
+			$pin = $this->decrypt( (string) get_user_meta( $user_id, self::META_ENC, true ) );
+			if ( '' !== $pin ) {
+				$out['known'][ $pin ] = $user_id;
+			} else {
+				$out['legacy'][] = $user_id;
+			}
+		}
+		return $out;
 	}
 
 	/**
