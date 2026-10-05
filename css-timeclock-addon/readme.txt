@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.10.1
+Stable tag: 1.10.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,9 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under USOTC.
 
 == Changelog ==
+
+= 1.10.2 =
+* The Employee PINs tab and menu entry are now just "Employee". The tab has a "Hire date and PIN" heading above the table, and a "Departments, locations, company settings" section below it that links to Users (where each employee's departments are assigned) and to the Locations & departments tab.
 
 = 1.10.1 =
 * USOTC menu: a "PIN time clock" link to the PIN kiosk page (the page chosen in TC-Config, or /pin-time-clock/). It opens in a new tab.
@@ -69,7 +72,7 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 
 = 1.7.0 =
 * Paid holidays (TC-Config → Holidays, off by default): check the holidays the office observes (New Year's Day, Memorial Day, Independence Day, Labor Day, Thanksgiving and Christmas are pre-checked), add others as MM-DD Name (every year) or YYYY-MM-DD Name (one date), and set the hours paid per holiday (default 8). A weekend holiday is paid on Friday (Saturday) or Monday (Sunday); Christmas Eve and New Year's Eve move back to Friday. Each eligible employee gets the Holiday pay code on that day, shown on the timecard day, in the pay code, weekly and company summaries, and in Reports (Holiday column; Total is worked plus holiday). Holiday hours never count toward overtime and are charged to the employee's home department.
-* Hire date and introductory period (30, 60 or 90 days) on each employee's profile. No holiday pay before the hire date or during the introductory period; the timecard says why and when holiday pay starts. The Employees & PINs tab shows each hire date.
+* Hire date and introductory period (30, 60 or 90 days) on each employee's profile. No holiday pay before the hire date or during the introductory period; the timecard says why and when holiday pay starts. The Employee tab shows each hire date.
 * The PIN kiosk is the main time clock. Tap your name under Who's working (Not clocked in, or Working now to clock out) and the PIN pad asks for that person's PIN; typing a PIN without tapping still works. The name-list kiosk is retired: its page and shortcode open the PIN kiosk.
 
 = 1.6.3 =
@@ -96,7 +99,7 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 * A manager can choose "No home department" on an employee's profile; the kiosk then lists their choices alphabetically with no Home badge.
 * With departments at clock-in on, AIO's single-choice "Department" list is removed from the user profile so only "Time clock departments" shows (saved with Update User).
 * Fix: saving a user profile with an AIO department selected no longer crashes the site. AIO Lite's department taxonomy names a count function it never defines (aio_lite_update_department_count); USOTC now provides it when AIO does not.
-* Employee PINs tab has a PIN column: managers press the eye to reveal an employee's PIN (hidden again after 20 seconds), and employees can reveal their own PIN on My Time Clock. New PINs are also stored encrypted with a key derived from the site's wp-config.php secret keys; the kiosk still checks the password hash. Each reveal is logged and the last viewer is shown. PINs set before this version show "Set a new PIN to view it".
+* Employee tab (formerly Employee PINs) has a PIN column: managers press the eye to reveal an employee's PIN (hidden again after 20 seconds), and employees can reveal their own PIN on My Time Clock. New PINs are also stored encrypted with a key derived from the site's wp-config.php secret keys; the kiosk still checks the password hash. Each reveal is logged and the last viewer is shown. PINs set before this version show "Set a new PIN to view it".
 * Switch has its own setting, "Allow Switch" (on by default when departments at clock-in is on). Turned off, the Switch button and the "Switch to <office>" prompt are hidden and switch requests are refused, so employees clock out and back in to change departments.
 * Switch: a clocked-in employee can move to another company, location or department in one tap. The open shift ends and the new one starts at the same second. Entering a PIN at a different office while still clocked in offers "Switch to <location>". Missed clock-out and long-shift checks count from the start of the chain. Travel between offices stays in the first segment.
 * A per-employee punch lock stops two taps or two kiosks from opening two shifts.

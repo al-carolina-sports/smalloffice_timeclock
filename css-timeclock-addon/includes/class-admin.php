@@ -412,7 +412,7 @@ class Css_Tc_Admin {
 				: '';
 			$ordered[] = array( __( 'Time off', 'css-timeclock-addon' ) . $leave_badge, $cap, Css_Tc_Leave_Ui::PAGE, __( 'Time off', 'css-timeclock-addon' ) );
 		}
-		$ordered[] = array( __( 'Employees & PINs', 'css-timeclock-addon' ), $cap, $tab_url( 'pins' ), __( 'Employees & PINs', 'css-timeclock-addon' ) );
+		$ordered[] = array( __( 'Employee', 'css-timeclock-addon' ), $cap, $tab_url( 'pins' ), __( 'Employee', 'css-timeclock-addon' ) );
 		$ordered[] = array( __( 'Locations & departments', 'css-timeclock-addon' ), $cap, $tab_url( 'locations' ), __( 'Locations & departments', 'css-timeclock-addon' ) );
 		$ordered[] = array( __( 'TC-Config', 'css-timeclock-addon' ), $cap, 'css-tc-addon', __( 'TC-Config', 'css-timeclock-addon' ) );
 

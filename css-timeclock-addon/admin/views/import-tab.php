@@ -80,7 +80,7 @@ $css_tc_status_lb = array(
 	</p>
 	<?php if ( $css_tc_has_pins ) : ?>
 		<div class="notice notice-warning inline"><p>
-			<?php echo esc_html__( 'The PINs below were generated for you. They are shown here and in the results file only for the next 15 minutes. After that a manager can still reveal a PIN on the Employee PINs tab.', 'css-timeclock-addon' ); ?>
+			<?php echo esc_html__( 'The PINs below were generated for you. They are shown here and in the results file only for the next 15 minutes. After that a manager can still reveal a PIN on the Employee tab.', 'css-timeclock-addon' ); ?>
 		</p></div>
 	<?php endif; ?>
 	<p><a class="button button-primary" href="<?php echo esc_url( $css_tc_dl ); ?>"><?php echo esc_html__( 'Download results (CSV)', 'css-timeclock-addon' ); ?></a></p>

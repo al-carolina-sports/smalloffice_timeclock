@@ -794,7 +794,7 @@ class Css_Tc_Import {
 			if ( '' === $pin && ! empty( $row['pin_generate'] ) ) {
 				$pin = self::random_pin( $pin_len, $taken );
 				if ( '' === $pin ) {
-					$res['warnings'][] = __( 'Could not generate a free PIN. Set one on Employee PINs.', 'css-timeclock-addon' );
+					$res['warnings'][] = __( 'Could not generate a free PIN. Set one on the Employee tab.', 'css-timeclock-addon' );
 				} else {
 					$res['pin_new'] = $pin;
 				}
