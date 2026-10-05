@@ -35,7 +35,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<?php echo esc_html__( 'PTO & sick', 'css-timeclock-addon' ); ?>
 		</a>
 		<a href="<?php echo esc_url( $base_url . '&tab=pins' ); ?>" class="nav-tab <?php echo 'pins' === $tab ? 'nav-tab-active' : ''; ?>">
-			<?php echo esc_html__( 'Employee PINs', 'css-timeclock-addon' ); ?>
+			<?php echo esc_html__( 'Employee', 'css-timeclock-addon' ); ?>
 		</a>
 		<a href="<?php echo esc_url( $base_url . '&tab=import' ); ?>" class="nav-tab <?php echo 'import' === $tab ? 'nav-tab-active' : ''; ?>">
 			<?php echo esc_html__( 'Import employees', 'css-timeclock-addon' ); ?>
@@ -333,6 +333,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</p>
 		</div>
 	<?php elseif ( 'pins' === $tab ) : ?>
+		<h2><?php echo esc_html__( 'Hire date and PIN', 'css-timeclock-addon' ); ?></h2>
 		<p>
 			<?php echo esc_html__( 'The kiosk checks PINs against a WordPress password hash. An encrypted copy (key from this site\'s wp-config.php secret keys) lets managers reveal a PIN with the eye in the PIN column; employees can reveal their own on My Time Clock. Each reveal is logged. PINs set before this version cannot be shown until a new PIN is set. Each PIN must be unique. Employees without a PIN do not appear on the name-list kiosk.', 'css-timeclock-addon' ); ?>
 		</p>
@@ -499,6 +500,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<?php endif; ?>
 			</tbody>
 		</table>
+
+		<h2 class="css-tc-section-heading"><?php echo esc_html__( 'Departments, locations, company settings', 'css-timeclock-addon' ); ?></h2>
+		<p>
+			<?php
+			printf(
+				/* translators: 1: link to the Users screen, 2: link to the Locations & departments tab */
+				esc_html__( 'Which departments, locations and companies an employee can clock into is set on each employee\'s own profile, under %1$s: open the employee and use the Time clock departments section. The companies, locations and departments themselves are created on the %2$s tab.', 'css-timeclock-addon' ),
+				'<a href="' . esc_url( admin_url( 'users.php' ) ) . '">' . esc_html__( 'Users in the WordPress dashboard', 'css-timeclock-addon' ) . '</a>',
+				'<a href="' . esc_url( $base_url . '&tab=locations' ) . '">' . esc_html__( 'Locations & departments', 'css-timeclock-addon' ) . '</a>'
+			);
+			?>
+		</p>
 		<script>
 		( function () {
 			var box = document.querySelector( '[data-css-tc-show-inactive]' );
