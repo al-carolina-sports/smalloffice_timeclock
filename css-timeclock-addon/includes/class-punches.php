@@ -585,13 +585,17 @@ class Css_Tc_Punches {
 
 		wp_reset_postdata();
 
-		$by_name = static function ( $a, $b ) {
+		$by_time = static function ( $a, $b ) {
+			$cmp = Css_Tc_Time::compare_shift_rows( $a, $b );
+			if ( 0 !== $cmp ) {
+				return $cmp;
+			}
 			return strcasecmp( (string) $a['name'], (string) $b['name'] );
 		};
 		$working = array_values( $working );
 		$missed  = array_values( $missed );
-		usort( $working, $by_name );
-		usort( $missed, $by_name );
+		usort( $working, $by_time );
+		usort( $missed, $by_time );
 
 		$tz = function_exists( 'wp_timezone_string' ) ? wp_timezone_string() : css_tc_addon()->time->timezone()->getName();
 
@@ -617,7 +621,9 @@ class Css_Tc_Punches {
 		$work_date = $time->site_date_of( $clock_in );
 
 		return array(
+			'id'           => (int) $post->ID,
 			'shift_id'     => (int) $post->ID,
+			'sort_ts'      => $started ? $started->getTimestamp() : 0,
 			'user_id'      => $author,
 			'name'         => css_tc_addon()->employees->display_name( $author ),
 			'department'   => css_tc_addon()->organization->enabled()
@@ -927,9 +933,15 @@ class Css_Tc_Punches {
 		$seconds          = ( $has_in && $has_out ) ? $time->elapsed_seconds( $clock_in, $clock_out ) : -1;
 		$is_out_before_in = ( $has_in && $has_out && $seconds < 0 );
 		$is_long          = ( $seconds > ( $this->long_shift_hours() * HOUR_IN_SECONDS ) );
+		$sort_source      = $has_in ? $clock_in : $clock_out;
+		$sort_dt          = $time->parse_stored( $sort_source );
+		$reviewed         = (int) get_post_meta( $post->ID, 'css_tc_approved_by', true ) > 0
+			|| (int) get_post_meta( $post->ID, 'css_tc_last_correction_id', true ) > 0;
 
 		return array(
 			'id'              => (int) $post->ID,
+			'sort_ts'         => $sort_dt ? $sort_dt->getTimestamp() : 0,
+			'manager_reviewed' => $reviewed,
 			'clock_in_raw'    => $has_in ? $clock_in : '',
 			'clock_out_raw'   => $has_out ? $clock_out : '',
 			'clock_in'        => $has_in ? $this->format_time( $clock_in ) : '',
@@ -949,6 +961,13 @@ class Css_Tc_Punches {
 			'is_missing_in'     => $is_missing_in,
 			'is_long'           => $is_long,
 			'is_out_before_in'  => $is_out_before_in,
+			'exclude_from_overtime' => Css_Tc_Overtime::exclude_from_overtime(
+				array(
+					'is_long'          => $is_long,
+					'is_stale_open'    => $is_stale,
+					'manager_reviewed' => $reviewed,
+				)
+			),
 			'department_id'     => (int) $assignment['department_id'],
 			'location_id'       => (int) $assignment['location_id'],
 			'company_id'        => (int) $assignment['company_id'],

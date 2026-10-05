@@ -43,6 +43,34 @@ class Css_Tc_Organization {
 	private $cache = null;
 
 	/**
+	 * Locations for a brand-new site. Existing locations are left alone.
+	 * Writes the option directly so activation does not look up DNS.
+	 *
+	 * @return void
+	 */
+	public function seed_default_locations() {
+		$data = $this->data();
+		if ( ! empty( $data['locations'] ) ) {
+			return;
+		}
+		$defaults = array(
+			'Raleigh'     => '76.195.93.124',
+			'Rocky Mount' => '66.76.190.146',
+			'Wilson'      => 'csswilson.ddns.net',
+		);
+		foreach ( $defaults as $name => $ips ) {
+			$id                       = (int) $data['next_id'];
+			$data['next_id']          = $id + 1;
+			$data['locations'][ $id ] = array(
+				'id'   => $id,
+				'name' => $name,
+				'ips'  => $ips,
+			);
+		}
+		$this->save( $data );
+	}
+
+	/**
 	 * @return void
 	 */
 	public function register_hooks() {

@@ -98,7 +98,7 @@ class Css_Tc_Timecard {
 		$segments = array();
 		foreach ( $week_rows as $w => $week_row ) {
 			foreach ( $shifts as $shift ) {
-				if ( $shift['seconds'] > 0 && $shift['work_date'] >= $week_row['start'] && $shift['work_date'] <= $week_row['end'] ) {
+				if ( $shift['seconds'] > 0 && empty( $shift['exclude_from_overtime'] ) && $shift['work_date'] >= $week_row['start'] && $shift['work_date'] <= $week_row['end'] ) {
 					$segments[ (int) $shift['id'] ] = array(
 						'week'          => (int) $w,
 						'seconds'       => (int) $shift['seconds'],
@@ -292,6 +292,12 @@ class Css_Tc_Timecard {
 			}
 		}
 		$long_count = count( $long_chains );
+		$excluded   = 0;
+		foreach ( $shifts as $shift ) {
+			if ( ! empty( $shift['exclude_from_overtime'] ) ) {
+				$excluded += max( 0, (int) $shift['seconds'] );
+			}
+		}
 
 		return array(
 			'user_id'          => $user_id,
@@ -310,6 +316,8 @@ class Css_Tc_Timecard {
 			'weeks'            => $week_rows,
 			'long_shift_count' => $long_count,
 			'overtime_seconds' => $overtime_total,
+			'overtime_excluded_seconds' => $excluded,
+			'overtime_excluded_hm'      => $excluded > 0 ? css_tc_addon()->time->format_duration( $excluded ) : '',
 			'segments'         => array_values( $segments ),
 			'by_company'       => array_values( $by_company ),
 			'overtime_rule'    => $rule,
@@ -386,6 +394,7 @@ class Css_Tc_Timecard {
 			if ( $chains[ $row['chain_key'] ] > $long_limit ) {
 				$rows[ $i ]['is_long'] = true;
 			}
+			$rows[ $i ]['exclude_from_overtime'] = Css_Tc_Overtime::exclude_from_overtime( $rows[ $i ] );
 		}
 
 		usort(
@@ -395,7 +404,7 @@ class Css_Tc_Timecard {
 				if ( 0 !== $cmp ) {
 					return $cmp;
 				}
-				return strcmp( (string) $a['clock_in_raw'], (string) $b['clock_in_raw'] );
+				return Css_Tc_Time::compare_shift_rows( $a, $b );
 			}
 		);
 
@@ -449,6 +458,7 @@ class Css_Tc_Timecard {
 				'is_long'          => ! empty( $shift['is_long'] ),
 				'is_out_before_in' => ! empty( $shift['is_out_before_in'] ),
 				'out_next_day'     => ! empty( $shift['out_next_day'] ),
+				'exclude_from_overtime' => ! empty( $shift['exclude_from_overtime'] ),
 				'department_id'    => (int) $shift['department_id'],
 				'assignment'       => (string) $shift['assignment'],
 				'switched'         => ! empty( $shift['switched'] ),

@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.9.0
+Stable tag: 1.9.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,16 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under USOTC.
 
 == Changelog ==
+
+= 1.9.1 =
+* Shifts on both timecards, Real Time Monitoring, Reports, and CSV are ordered by the clock-in instant.
+* A shift that ends the next calendar day says "next day" after the clock-out. The "(+1)" mark is gone.
+* H:MM and decimal hours both come from the same whole-minute total, on screen and in CSV. A span under 30 seconds is 0:00.
+* A shift over the long-shift limit, and a missed clock-out, stay out of overtime until a manager corrects them, and are labeled as needing attention.
+* The overtime hours setting cannot be longer than the selected window: 168 hours for 1 week, 336 for 2 weeks.
+* "Overtime is not calculated. All hours are Regular." is shown to managers only.
+* Pay-period and by-employee CSV keep the Overtime column in the same place. The cell is blank when overtime is off. Holiday, PTO, and Sick columns stay where they are.
+* A fresh activation creates the PIN, name, and My Time Clock pages, a /time-clock/ page that redirects to the PIN kiosk, and the Raleigh, Rocky Mount, and Wilson locations when none exist. The office IP allowlist, overtime, and the department picker stay off.
 
 = 1.9.0 =
 * Employment status on the user profile (Time clock employment): Active, On leave (from a date, optionally until a date; active again automatically after it), or Inactive (from the day after the last day worked). The WordPress role is not changed, so history stays linked. Every change is logged with who, when and an optional note.

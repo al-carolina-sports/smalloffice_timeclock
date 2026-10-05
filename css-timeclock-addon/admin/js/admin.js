@@ -44,6 +44,27 @@
       return;
     }
 
+    function capOvertimeHours() {
+      if (!form.overtime_hours) {
+        return;
+      }
+      var perWeek = parseInt(form.overtime_hours.getAttribute("data-hours-per-week") || "168", 10);
+      var weeks = form.overtime_weeks ? parseInt(form.overtime_weeks.value, 10) : 1;
+      if (weeks !== 2) {
+        weeks = 1;
+      }
+      var max = perWeek * weeks;
+      form.overtime_hours.max = String(max);
+      var current = parseFloat(form.overtime_hours.value);
+      if (!isNaN(current) && current > max) {
+        form.overtime_hours.value = String(max);
+      }
+    }
+    capOvertimeHours();
+    if (form.overtime_weeks) {
+      form.overtime_weeks.addEventListener("change", capOvertimeHours);
+    }
+
     form.addEventListener("submit", function (event) {
       event.preventDefault();
       var data = {
