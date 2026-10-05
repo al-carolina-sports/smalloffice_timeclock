@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.9.1
+Stable tag: 1.10.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,13 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under USOTC.
 
 == Changelog ==
+
+= 1.10.0 =
+* Import employees tab: add a whole office from a CSV file. Required columns are first_name, last_name and email; username, password, role, hire_date and pin (or badge_no) are optional. A template download is on the tab.
+* Preview first: every row is marked will create, will update, will skip or error with the reason, and nothing is saved until you confirm. Rows with problems are skipped; the good rows still import.
+* Blank cells: the email becomes the username, the password is random, the role is the one you choose, the hire date stays empty, and a unique PIN is generated. Generated PINs are shown after the import and in a results CSV (passwords are never repeated there).
+* Optional department for everyone in the file (assigned as home), "update existing people" (never touches accounts that are not time clock employees), and WordPress's welcome email (off by default). Administrator is never allowed.
+* Each import is logged (who, when, file, counts). The preview is held encrypted for 15 minutes and the uploaded file is not kept.
 
 = 1.9.1 =
 * Shifts on both timecards, Real Time Monitoring, Reports, and CSV are ordered by the clock-in instant.

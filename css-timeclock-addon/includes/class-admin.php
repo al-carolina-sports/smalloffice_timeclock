@@ -217,7 +217,7 @@ class Css_Tc_Admin {
 		$settings  = css_tc_addon()->get_settings();
 		$employees = css_tc_addon()->employees->list_for_admin();
 		$tab       = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'settings'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( ! in_array( $tab, array( 'settings', 'holidays', 'leave', 'pins', 'locations', 'corrections' ), true ) ) {
+		if ( ! in_array( $tab, array( 'settings', 'holidays', 'leave', 'pins', 'import', 'locations', 'corrections' ), true ) ) {
 			$tab = 'settings';
 		}
 
@@ -447,8 +447,8 @@ class Css_Tc_Admin {
 		unset( $parent_file );
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$tab  = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( 'css-tc-addon' === $page && in_array( $tab, array( 'corrections', 'pins', 'locations' ), true ) && Css_Tc_Plugin::aio_is_active() ) {
-			return 'admin.php?page=css-tc-addon&tab=' . $tab;
+		if ( 'css-tc-addon' === $page && in_array( $tab, array( 'corrections', 'pins', 'import', 'locations' ), true ) && Css_Tc_Plugin::aio_is_active() ) {
+			return 'admin.php?page=css-tc-addon&tab=' . ( 'import' === $tab ? 'pins' : $tab );
 		}
 		return $submenu_file;
 	}

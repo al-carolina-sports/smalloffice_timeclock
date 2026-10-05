@@ -37,6 +37,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<a href="<?php echo esc_url( $base_url . '&tab=pins' ); ?>" class="nav-tab <?php echo 'pins' === $tab ? 'nav-tab-active' : ''; ?>">
 			<?php echo esc_html__( 'Employee PINs', 'css-timeclock-addon' ); ?>
 		</a>
+		<a href="<?php echo esc_url( $base_url . '&tab=import' ); ?>" class="nav-tab <?php echo 'import' === $tab ? 'nav-tab-active' : ''; ?>">
+			<?php echo esc_html__( 'Import employees', 'css-timeclock-addon' ); ?>
+		</a>
 		<a href="<?php echo esc_url( $base_url . '&tab=locations' ); ?>" class="nav-tab <?php echo 'locations' === $tab ? 'nav-tab-active' : ''; ?>">
 			<?php echo esc_html__( 'Locations & departments', 'css-timeclock-addon' ); ?>
 		</a>
@@ -56,6 +59,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<?php include CSS_TC_ADDON_DIR . 'admin/views/leave-settings.php'; ?>
 	<?php elseif ( 'locations' === $tab ) : ?>
 		<?php include CSS_TC_ADDON_DIR . 'admin/views/organization-tab.php'; ?>
+	<?php elseif ( 'import' === $tab ) : ?>
+		<?php include CSS_TC_ADDON_DIR . 'admin/views/import-tab.php'; ?>
 	<?php endif; ?>
 
 	<?php if ( 'settings' === $tab ) : ?>
