@@ -24,6 +24,7 @@ class Css_Tc_Admin {
 		add_action( 'admin_menu', array( $self, 'organize_menu' ), 1001 );
 		add_filter( 'submenu_file', array( $self, 'highlight_tab_menu' ), 10, 2 );
 		add_action( 'admin_enqueue_scripts', array( $self, 'enqueue' ) );
+		add_action( 'admin_footer', array( $self, 'pin_clock_menu_target' ) );
 	}
 
 	/**
@@ -401,6 +402,8 @@ class Css_Tc_Admin {
 			$item[1]   = $cap;
 			$ordered[] = $item;
 		}
+		// A plain link to the PIN time clock page (the slug is the address).
+		$ordered[] = array( __( 'PIN time clock', 'css-timeclock-addon' ) . ' &#8599;', $cap, Css_Tc_Shortcodes::preferred_kiosk_url(), __( 'PIN time clock', 'css-timeclock-addon' ) );
 		$ordered[] = array( __( 'Corrections', 'css-timeclock-addon' ) . $badge, $cap, $tab_url( 'corrections' ), __( 'Corrections', 'css-timeclock-addon' ) );
 		if ( css_tc_addon()->leave->any_enabled() ) {
 			$leave_pending = css_tc_addon()->leave->pending_count();
@@ -434,6 +437,31 @@ class Css_Tc_Admin {
 		if ( css_tc_addon()->organization->enabled() ) {
 			remove_submenu_page( 'users.php', 'edit-tags.php?taxonomy=department' );
 		}
+	}
+
+	/**
+	 * Open the "PIN time clock" menu link in a new tab so the admin stays put.
+	 *
+	 * @return void
+	 */
+	public function pin_clock_menu_target() {
+		if ( ! Css_Tc_Plugin::aio_is_active() || ! Css_Tc_Plugin::user_can_manage() ) {
+			return;
+		}
+		?>
+		<script>
+		(function () {
+			var url = <?php echo wp_json_encode( Css_Tc_Shortcodes::preferred_kiosk_url() ); ?>;
+			var links = document.querySelectorAll('#adminmenu a');
+			for (var i = 0; i < links.length; i++) {
+				if (links[i].getAttribute('href') === url) {
+					links[i].setAttribute('target', '_blank');
+					links[i].setAttribute('rel', 'noopener');
+				}
+			}
+		})();
+		</script>
+		<?php
 	}
 
 	/**

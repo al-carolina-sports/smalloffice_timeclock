@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.10.0
+Stable tag: 1.10.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,9 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under USOTC.
 
 == Changelog ==
+
+= 1.10.1 =
+* USOTC menu: a "PIN time clock" link to the PIN kiosk page (the page chosen in TC-Config, or /pin-time-clock/). It opens in a new tab.
 
 = 1.10.0 =
 * Import employees tab: add a whole office from a CSV file. Required columns are first_name, last_name and email; username, password, role, hire_date and pin (or badge_no) are optional. A template download is on the tab.
