@@ -123,11 +123,45 @@ class Css_Tc_Holidays {
 		if ( ! Css_Tc_Plugin::user_can_manage() || ! css_tc_addon()->employees->is_employee( (int) $user->ID ) ) {
 			return;
 		}
-		$hire     = $this->hire_date( (int) $user->ID );
-		$intro    = $this->intro_days( (int) $user->ID );
-		$from     = $this->eligible_from( (int) $user->ID );
-		$holidays = $this->enabled();
+		$hire          = $this->hire_date( (int) $user->ID );
+		$intro         = $this->intro_days( (int) $user->ID );
+		$from          = $this->eligible_from( (int) $user->ID );
+		$holidays      = $this->enabled();
+		$hire_readonly = (int) $user->ID === (int) get_current_user_id() || ! Css_Tc_Leave_Ui::actor_may_edit( (int) $user->ID );
 		include CSS_TC_ADDON_DIR . 'admin/views/profile-employment.php';
+	}
+
+	/**
+	 * @param string $hire Y-m-d or ''.
+	 * @return true|WP_Error
+	 */
+	public function validate_hire_date( $hire ) {
+		$hire = sanitize_text_field( (string) $hire );
+		if ( '' !== $hire && ( ! preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $hire, $m ) || ! checkdate( (int) $m[2], (int) $m[3], (int) $m[1] ) ) ) {
+			return new WP_Error( 'css_tc_hire', __( 'Hire date must be a valid date.', 'css-timeclock-addon' ) );
+		}
+		return true;
+	}
+
+	/**
+	 * Store a hire date. The caller has already authorized the actor.
+	 *
+	 * @param int    $user_id Employee.
+	 * @param string $hire    Y-m-d or ''.
+	 * @return true|WP_Error
+	 */
+	public function set_hire_date( $user_id, $hire ) {
+		$hire = sanitize_text_field( (string) $hire );
+		$ok   = $this->validate_hire_date( $hire );
+		if ( is_wp_error( $ok ) ) {
+			return $ok;
+		}
+		if ( '' === $hire ) {
+			delete_user_meta( (int) $user_id, self::META_HIRE );
+		} else {
+			update_user_meta( (int) $user_id, self::META_HIRE, $hire );
+		}
+		return true;
 	}
 
 	/**
@@ -166,7 +200,20 @@ class Css_Tc_Holidays {
 		if ( ! isset( $_POST['css_tc_employment_present'] ) || ! Css_Tc_Plugin::user_can_manage() ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			return;
 		}
-		$posted = $this->posted();
+		$user_id = isset( $user->ID ) ? (int) $user->ID : 0;
+		$posted  = $this->posted();
+		$writes_hire = $user_id !== (int) get_current_user_id() && Css_Tc_Leave_Ui::actor_may_edit( $user_id );
+		if ( ! $writes_hire ) {
+			// Hire date on your own profile, or for an administrator, is ignored.
+			$stored = $this->hire_date( $user_id );
+			if ( $posted['intro'] > 0 && '' === $stored ) {
+				$errors->add( 'css_tc_employment', __( 'An introductory period needs a hire date.', 'css-timeclock-addon' ) );
+			}
+			if ( $posted['intro'] > 0 && ! in_array( $posted['intro'], self::INTRO_CHOICES, true ) ) {
+				$errors->add( 'css_tc_employment', __( 'Choose an introductory period of 30, 60 or 90 days.', 'css-timeclock-addon' ) );
+			}
+			return;
+		}
 		if ( '' !== $posted['error'] ) {
 			$errors->add( 'css_tc_employment', $posted['error'] );
 		}
@@ -181,19 +228,36 @@ class Css_Tc_Holidays {
 			return;
 		}
 		check_admin_referer( self::PROFILE_NONCE, 'css_tc_employment_nonce' );
-		$posted = $this->posted();
-		if ( '' !== $posted['error'] ) {
+		$posted      = $this->posted();
+		$user_id     = (int) $user_id;
+		$writes_hire = $user_id !== (int) get_current_user_id() && Css_Tc_Leave_Ui::actor_may_edit( $user_id );
+		if ( $writes_hire && '' !== $posted['error'] ) {
 			return; // validate_profile already stopped the save with a message.
 		}
-		if ( '' === $posted['hire'] ) {
-			delete_user_meta( (int) $user_id, self::META_HIRE );
-		} else {
-			update_user_meta( (int) $user_id, self::META_HIRE, $posted['hire'] );
+		if ( $writes_hire ) {
+			$before = $this->hire_date( $user_id );
+			$saved  = $this->set_hire_date( $user_id, $posted['hire'] );
+			if ( is_wp_error( $saved ) ) {
+				return;
+			}
+			if ( $before !== $posted['hire'] ) {
+				css_tc_addon()->leave->record_audit(
+					$user_id,
+					array(
+						array(
+							'field'  => 'hire',
+							'before' => $before,
+							'after'  => $posted['hire'],
+						),
+					),
+					get_current_user_id()
+				);
+			}
 		}
-		if ( $posted['intro'] > 0 ) {
-			update_user_meta( (int) $user_id, self::META_INTRO_DAYS, $posted['intro'] );
-		} else {
-			delete_user_meta( (int) $user_id, self::META_INTRO_DAYS );
+		if ( $posted['intro'] > 0 && in_array( $posted['intro'], self::INTRO_CHOICES, true ) ) {
+			update_user_meta( $user_id, self::META_INTRO_DAYS, $posted['intro'] );
+		} elseif ( 0 === (int) $posted['intro'] ) {
+			delete_user_meta( $user_id, self::META_INTRO_DAYS );
 		}
 	}
 

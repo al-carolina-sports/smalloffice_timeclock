@@ -24,7 +24,7 @@ $css_tc_val    = static function ( $key ) use ( $css_tc_ls ) {
 	<input type="hidden" name="action" value="css_tc_leave_settings" />
 	<?php wp_nonce_field( Css_Tc_Leave_Ui::ADMIN_NONCE ); ?>
 	<p class="description" style="max-width:760px">
-		<?php echo esc_html__( 'Each employee\'s leave year runs from their hire date to the day before the next anniversary. The whole year\'s hours are available at the start of each year, and unused hours are lost at the anniversary (no carryover). Time off can be used once the introductory period on the employee\'s profile is over. Managers can change the amounts for one employee on their profile.', 'css-timeclock-addon' ); ?>
+		<?php echo esc_html__( 'Each employee\'s leave year runs from their hire date to the day before the next anniversary. The whole year\'s hours are available at the start of each year, and unused hours are lost at the anniversary (no carryover). Time off can be used once the introductory period on the employee\'s profile is over. Managers change one employee\'s hire date, hours, and balance under Time off.', 'css-timeclock-addon' ); ?>
 	</p>
 	<table class="form-table" role="presentation">
 		<tr>

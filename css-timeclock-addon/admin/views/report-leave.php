@@ -26,7 +26,7 @@ $css_tc_uid   = (int) $filters['employee'];
 		<a class="button button-small" href="<?php echo esc_url( Css_Tc_Reports::url( array( 'report' => 'leave' ) ) ); ?>"><?php echo esc_html__( 'All employees', 'css-timeclock-addon' ); ?></a>
 	</h2>
 	<?php if ( ! $css_tc_cycle ) : ?>
-		<p><a href="<?php echo esc_url( get_edit_user_link( $css_tc_uid ) . '#css-tc-employment' ); ?>"><?php echo esc_html__( 'Set a hire date to start PTO.', 'css-timeclock-addon' ); ?></a></p>
+		<p><a href="<?php echo esc_url( add_query_arg( 'employee', (int) $css_tc_uid, Css_Tc_Leave_Ui::page_url() ) ); ?>"><?php echo esc_html__( 'Set a hire date to start PTO.', 'css-timeclock-addon' ); ?></a></p>
 	<?php else : ?>
 		<?php
 		$css_tc_rows = $css_tc_leave->records( $css_tc_uid, $css_tc_cycle['start'], $css_tc_cycle['end'], array( 'approved', 'pending' ) );

@@ -65,7 +65,7 @@ $css_tc_csv = wp_nonce_url( admin_url( 'admin-post.php?action=css_tc_leave_csv' 
 				</td>
 				<?php if ( ! $css_tc_b['cycle'] ) : ?>
 					<td colspan="<?php echo esc_attr( (string) ( 1 + 4 * count( $css_tc_banks ) ) ); ?>" class="description">
-						<a href="<?php echo esc_url( get_edit_user_link( (int) $css_tc_u->ID ) . '#css-tc-employment' ); ?>"><?php echo esc_html__( 'Set a hire date to start PTO', 'css-timeclock-addon' ); ?></a>
+						<a href="<?php echo esc_url( add_query_arg( 'employee', (int) $css_tc_u->ID, Css_Tc_Leave_Ui::page_url() ) ); ?>"><?php echo esc_html__( 'Set a hire date to start PTO', 'css-timeclock-addon' ); ?></a>
 					</td>
 				<?php else : ?>
 					<td>
