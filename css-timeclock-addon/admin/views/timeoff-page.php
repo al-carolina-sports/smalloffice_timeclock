@@ -13,6 +13,10 @@
  * @var string                           $out_from
  * @var string                           $out_to
  * @var array<int,array<string,mixed>>   $out_rows
+ * @var WP_User[]                        $pto_choices
+ * @var int                              $pto_selected
+ * @var string                           $pto_editor
+ * @var string                           $pto_pick_error
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -36,6 +40,32 @@ $css_tc_status = array(
 	<h1><?php echo esc_html__( 'Time off', 'css-timeclock-addon' ); ?></h1>
 	<?php if ( $notice ) : ?>
 		<div class="notice <?php echo $notice['error'] ? 'notice-error' : 'notice-success'; ?> is-dismissible"><p><?php echo esc_html( $notice['message'] ); ?></p></div>
+	<?php endif; ?>
+
+	<h2><?php echo esc_html__( 'Employee PTO & sick', 'css-timeclock-addon' ); ?></h2>
+	<p class="description"><?php echo esc_html__( 'View and edit an employee\'s hire date, allowances, adjustments, and balances. This page does not use the Users screen.', 'css-timeclock-addon' ); ?></p>
+	<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" class="css-tc-pto-pick">
+		<input type="hidden" name="page" value="<?php echo esc_attr( Css_Tc_Leave_Ui::PAGE ); ?>" />
+		<label><?php echo esc_html__( 'Employee', 'css-timeclock-addon' ); ?>
+			<select name="employee">
+				<option value=""><?php echo esc_html__( 'Choose…', 'css-timeclock-addon' ); ?></option>
+				<?php foreach ( $pto_choices as $u ) : ?>
+					<option value="<?php echo esc_attr( (string) $u->ID ); ?>" <?php selected( $pto_selected, (int) $u->ID ); ?>><?php echo esc_html( $css_tc_emp->display_name( (int) $u->ID ) ); ?></option>
+				<?php endforeach; ?>
+			</select>
+		</label>
+		<button type="submit" class="button"><?php echo esc_html__( 'Show', 'css-timeclock-addon' ); ?></button>
+	</form>
+	<?php if ( '' !== $pto_pick_error ) : ?>
+		<div class="notice notice-error inline"><p><?php echo esc_html( $pto_pick_error ); ?></p></div>
+	<?php elseif ( '' !== $pto_editor ) : ?>
+		<form method="post" action="<?php echo esc_url( $css_tc_post ); ?>" class="css-tc-pto-editor">
+			<input type="hidden" name="action" value="css_tc_leave_employee" />
+			<input type="hidden" name="user_id" value="<?php echo esc_attr( (string) $pto_selected ); ?>" />
+			<?php wp_nonce_field( Css_Tc_Leave_Ui::EMPLOYEE_EDIT_NONCE ); ?>
+			<?php echo $pto_editor; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<p><button type="submit" class="button button-primary"><?php echo esc_html__( 'Save time off', 'css-timeclock-addon' ); ?></button></p>
+		</form>
 	<?php endif; ?>
 
 	<?php if ( ! $leave->any_enabled() ) : ?>

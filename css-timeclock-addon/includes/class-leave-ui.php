@@ -15,9 +15,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Css_Tc_Leave_Ui {
 
-	const PAGE          = 'css-tc-timeoff';
-	const ADMIN_NONCE   = 'css_tc_leave_admin';
-	const PROFILE_NONCE = 'css_tc_leave_profile';
+	const PAGE                = 'css-tc-timeoff';
+	const ADMIN_NONCE         = 'css_tc_leave_admin';
+	const PROFILE_NONCE       = 'css_tc_leave_profile';
+	const EMPLOYEE_EDIT_NONCE = 'css_tc_leave_employee';
 
 	/**
 	 * @return void
@@ -29,6 +30,7 @@ class Css_Tc_Leave_Ui {
 		add_action( 'admin_post_css_tc_leave_decide', array( $self, 'decide' ) );
 		add_action( 'admin_post_css_tc_leave_add', array( $self, 'add' ) );
 		add_action( 'admin_post_css_tc_leave_csv', array( $self, 'csv' ) );
+		add_action( 'admin_post_css_tc_leave_employee', array( $self, 'save_employee' ) );
 		add_action( 'show_user_profile', array( $self, 'render_profile' ), 6 );
 		add_action( 'edit_user_profile', array( $self, 'render_profile' ), 6 );
 		add_action( 'user_profile_update_errors', array( $self, 'validate_profile' ), 10, 3 );
@@ -196,7 +198,58 @@ class Css_Tc_Leave_Ui {
 		$out_from = ( new DateTimeImmutable( $today, new DateTimeZone( 'UTC' ) ) )->modify( 'monday this week' )->format( 'Y-m-d' );
 		$out_to   = Css_Tc_Leave::add_days( $out_from, 34 );
 		$out_rows = $leave->records( 0, $out_from, $out_to, array( 'approved', 'pending' ) );
+		$pto_choices = array();
+		foreach ( $employees as $candidate ) {
+			if ( in_array( 'administrator', (array) $candidate->roles, true ) ) {
+				continue;
+			}
+			$pto_choices[] = $candidate;
+		}
+		$pto_selected   = isset( $_GET['employee'] ) ? absint( wp_unslash( $_GET['employee'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$pto_editor     = '';
+		$pto_pick_error = '';
+		if ( $pto_selected > 0 ) {
+			$found = null;
+			foreach ( $pto_choices as $candidate ) {
+				if ( (int) $candidate->ID === $pto_selected ) {
+					$found = $candidate;
+					break;
+				}
+			}
+			if ( ! $found || ! self::actor_may_edit( $pto_selected ) ) {
+				$pto_pick_error = __( 'Choose an employee. Site administrators are not edited here.', 'css-timeclock-addon' );
+			} else {
+				$pto_editor = $this->editor_html( $found, false, true );
+			}
+		}
 		include CSS_TC_ADDON_DIR . 'admin/views/timeoff-page.php';
+	}
+
+	/**
+	 * Save hire date, allowances, and a balance adjustment from Time off.
+	 *
+	 * @return void
+	 */
+	public function save_employee() {
+		$this->require_manager();
+		check_admin_referer( self::EMPLOYEE_EDIT_NONCE );
+		$user_id = isset( $_POST['user_id'] ) ? absint( wp_unslash( $_POST['user_id'] ) ) : 0;
+		$url     = add_query_arg( 'employee', $user_id, self::page_url() );
+		if ( ! self::actor_may_edit( $user_id ) ) {
+			$this->back( self::page_url(), __( 'Choose an employee. Site administrators are not edited here.', 'css-timeclock-addon' ), true );
+		}
+		$result = $this->apply_pto( $user_id, true );
+		if ( is_wp_error( $result ) ) {
+			$this->back( $url, $result->get_error_message(), true );
+		}
+		$this->back(
+			$url,
+			sprintf(
+				/* translators: %s: employee */
+				__( 'Time off saved for %s.', 'css-timeclock-addon' ),
+				css_tc_addon()->employees->display_name( $user_id )
+			)
+		);
 	}
 
 	/**
@@ -350,19 +403,194 @@ class Css_Tc_Leave_Ui {
 	 */
 
 	/**
+	 * Manager or administrator, and the target is a time-clock employee who is not a site administrator.
+	 *
+	 * Does not require edit_users. Includes the manager's own record (edited under Time off).
+	 *
+	 * @param int $user_id Target user.
+	 * @return bool
+	 */
+	public static function actor_may_edit( $user_id ) {
+		$user_id  = (int) $user_id;
+		$user     = get_userdata( $user_id );
+		$is_admin = $user && in_array( 'administrator', (array) $user->roles, true );
+		return Css_Tc_Leave::may_edit_pto(
+			Css_Tc_Plugin::user_can_manage(),
+			(int) get_current_user_id(),
+			$user_id,
+			css_tc_addon()->employees->is_employee( $user_id ),
+			$is_admin
+		);
+	}
+
+	/**
+	 * Profile save is allowed for another employee only.
+	 *
+	 * @param int $user_id Profile user.
+	 * @return bool
+	 */
+	public static function actor_may_save_profile( $user_id ) {
+		$user_id  = (int) $user_id;
+		$user     = get_userdata( $user_id );
+		$is_admin = $user && in_array( 'administrator', (array) $user->roles, true );
+		return Css_Tc_Leave::may_save_profile_pto(
+			Css_Tc_Plugin::user_can_manage(),
+			(int) get_current_user_id(),
+			$user_id,
+			css_tc_addon()->employees->is_employee( $user_id ),
+			$is_admin
+		);
+	}
+
+	/**
+	 * Allowance keys stored on the user, blank meaning "use the default".
+	 *
+	 * @param array<string,mixed> $overrides Stored or posted values.
+	 * @return array<string,string>
+	 */
+	private static function normalize_overrides( $overrides ) {
+		$out = array();
+		foreach ( array( 'pto_year', 'pto_first', 'sick_year', 'sick_first' ) as $key ) {
+			$out[ $key ] = isset( $overrides[ $key ] ) ? (string) $overrides[ $key ] : '';
+		}
+		return $out;
+	}
+
+	/**
+	 * Shared Time off / profile markup.
+	 *
+	 * @param WP_User $user            Employee.
+	 * @param bool    $readonly        Balances only.
+	 * @param bool    $show_hire_input Hire date field (Time off page).
+	 * @return string
+	 */
+	private function editor_html( $user, $readonly, $show_hire_input ) {
+		$leave           = $this->leave();
+		$user_id         = (int) $user->ID;
+		$overrides       = $leave->overrides( $user_id );
+		$balances        = $leave->balances( $user_id );
+		$adjustments     = array_reverse( $leave->adjustments( $user_id ) );
+		$settings        = css_tc_addon()->get_settings();
+		$hire            = css_tc_addon()->holidays->hire_date( $user_id );
+		$readonly        = (bool) $readonly;
+		$show_hire_input = (bool) $show_hire_input && ! $readonly;
+		$audit           = $readonly ? array() : $leave->audit_log( $user_id );
+		ob_start();
+		include CSS_TC_ADDON_DIR . 'admin/views/profile-leave.php';
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Write allowances, an optional adjustment, and (from Time off) the hire date.
+	 *
+	 * Caller has already checked the nonce and actor_may_edit().
+	 *
+	 * @param int  $user_id   Employee.
+	 * @param bool $with_hire Read css_tc_hire_date from the request.
+	 * @return true|WP_Error
+	 */
+	private function apply_pto( $user_id, $with_hire ) {
+		$user_id = (int) $user_id;
+		if ( ! self::actor_may_edit( $user_id ) ) {
+			return new WP_Error( 'css_tc_leave_forbidden', __( 'You cannot change that person\'s time off.', 'css-timeclock-addon' ) );
+		}
+		$p = $this->posted_profile();
+		if ( '' !== $p['error'] ) {
+			return new WP_Error( 'css_tc_leave', $p['error'] );
+		}
+		$leave      = $this->leave();
+		$hire_after = null;
+		// A missing hire field must not clear the date. An empty field does.
+		if ( $with_hire && isset( $_POST['css_tc_hire_date'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$hire_after = sanitize_text_field( wp_unslash( $_POST['css_tc_hire_date'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$check      = css_tc_addon()->holidays->validate_hire_date( $hire_after );
+			if ( is_wp_error( $check ) ) {
+				return $check;
+			}
+		}
+		$hire_now       = css_tc_addon()->holidays->hire_date( $user_id );
+		$hire_effective = null !== $hire_after ? $hire_after : $hire_now;
+		$adjusting      = null !== $p['adjust'] && 0.0 !== (float) $p['adjust'];
+		if ( $adjusting && '' === $hire_effective ) {
+			return new WP_Error( 'css_tc_leave_adjust', __( 'Set a hire date first.', 'css-timeclock-addon' ) );
+		}
+		if ( $adjusting && ! in_array( $p['adjust_bank'], $leave->banks(), true ) ) {
+			return new WP_Error( 'css_tc_leave_adjust', __( 'That balance is not in use.', 'css-timeclock-addon' ) );
+		}
+
+		$changes = array();
+		if ( null !== $hire_after && $hire_after !== $hire_now ) {
+			$saved = css_tc_addon()->holidays->set_hire_date( $user_id, $hire_after );
+			if ( is_wp_error( $saved ) ) {
+				return $saved;
+			}
+			$changes[] = array(
+				'field'  => 'hire',
+				'before' => $hire_now,
+				'after'  => $hire_after,
+			);
+		}
+
+		$before = self::normalize_overrides( $leave->overrides( $user_id ) );
+		$after  = $before;
+		// Fields that were not on the form (for example while that bank is off) stay as they are.
+		foreach ( array( 'pto_year', 'pto_first', 'sick_year', 'sick_first' ) as $key ) {
+			if ( isset( $_POST[ 'css_tc_leave_' . $key ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				$after[ $key ] = (string) ( $p['overrides'][ $key ] ?? '' );
+			}
+		}
+		if ( $before !== $after ) {
+			update_user_meta( $user_id, Css_Tc_Leave::META_ALLOW, $after );
+			foreach ( $after as $key => $value ) {
+				if ( (string) $before[ $key ] !== (string) $value ) {
+					$changes[] = array(
+						'field'  => $key,
+						'before' => (string) $before[ $key ],
+						'after'  => (string) $value,
+					);
+				}
+			}
+		}
+
+		if ( $adjusting ) {
+			$bank        = $p['adjust_bank'];
+			$bal_before  = $leave->balances( $user_id );
+			$left_before = isset( $bal_before['banks'][ $bank ] ) ? (int) $bal_before['banks'][ $bank ]['left'] : 0;
+			$seconds     = (int) round( (float) $p['adjust'] * 3600 );
+			$result      = $leave->adjust( $user_id, $bank, $seconds, $p['reason'], get_current_user_id() );
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+			$bal_after  = $leave->balances( $user_id );
+			$left_after = isset( $bal_after['banks'][ $bank ] ) ? (int) $bal_after['banks'][ $bank ]['left'] : 0;
+			$changes[]  = array(
+				'field'  => 'adjust_' . $bank,
+				'before' => Css_Tc_Leave::hours( $left_before ),
+				'after'  => Css_Tc_Leave::hours( $left_after ),
+				'reason' => $p['reason'],
+			);
+		}
+
+		$leave->record_audit( $user_id, $changes, get_current_user_id() );
+		return true;
+	}
+
+	/**
 	 * @param WP_User $user Profile user.
 	 * @return void
 	 */
 	public function render_profile( $user ) {
-		if ( ! Css_Tc_Plugin::user_can_manage() || ! css_tc_addon()->employees->is_employee( (int) $user->ID ) || ! $this->leave()->any_enabled() ) {
+		$user_id = (int) $user->ID;
+		if ( ! css_tc_addon()->employees->is_employee( $user_id ) || ! $this->leave()->any_enabled() ) {
 			return;
 		}
-		$leave       = $this->leave();
-		$overrides   = $leave->overrides( (int) $user->ID );
-		$balances    = $leave->balances( (int) $user->ID );
-		$adjustments = array_reverse( $leave->adjustments( (int) $user->ID ) );
-		$settings    = css_tc_addon()->get_settings();
-		include CSS_TC_ADDON_DIR . 'admin/views/profile-leave.php';
+		$self = $user_id === (int) get_current_user_id();
+		// Other people's profiles are manager-only. Your own profile is read-only.
+		if ( ! $self && ! self::actor_may_save_profile( $user_id ) ) {
+			return;
+		}
+		$readonly = $self || ! self::actor_may_edit( $user_id );
+		echo $this->editor_html( $user, $readonly, false ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}
 
 	/**
@@ -406,13 +634,20 @@ class Css_Tc_Leave_Ui {
 	 * @return void
 	 */
 	public function validate_profile( $errors, $update, $user ) {
-		unset( $update, $user );
-		if ( ! isset( $_POST['css_tc_leave_present'] ) || ! Css_Tc_Plugin::user_can_manage() ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		unset( $update );
+		if ( ! isset( $_POST['css_tc_leave_present'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			return;
+		}
+		$user_id = isset( $user->ID ) ? (int) $user->ID : 0;
+		// Own profile and anyone who is not a manager: the fields are ignored on save.
+		if ( ! self::actor_may_save_profile( $user_id ) ) {
 			return;
 		}
 		$p = $this->posted_profile();
 		if ( '' !== $p['error'] ) {
 			$errors->add( 'css_tc_leave', $p['error'] );
+		} elseif ( null !== $p['adjust'] && 0.0 !== (float) $p['adjust'] && ! in_array( $p['adjust_bank'], $this->leave()->banks(), true ) ) {
+			$errors->add( 'css_tc_leave', __( 'That balance is not in use.', 'css-timeclock-addon' ) );
 		}
 	}
 
@@ -421,18 +656,12 @@ class Css_Tc_Leave_Ui {
 	 * @return void
 	 */
 	public function save_profile( $user_id ) {
-		if ( ! Css_Tc_Plugin::user_can_manage() || ! isset( $_POST['css_tc_leave_present'] ) ) {
+		// Employees, and a manager saving their own profile, cannot change PTO here.
+		if ( ! isset( $_POST['css_tc_leave_present'] ) || ! self::actor_may_save_profile( (int) $user_id ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			return;
 		}
 		check_admin_referer( self::PROFILE_NONCE, 'css_tc_leave_nonce' );
-		$p = $this->posted_profile();
-		if ( '' !== $p['error'] ) {
-			return;
-		}
-		update_user_meta( (int) $user_id, Css_Tc_Leave::META_ALLOW, $p['overrides'] );
-		if ( null !== $p['adjust'] && 0.0 !== $p['adjust'] ) {
-			$this->leave()->adjust( (int) $user_id, $p['adjust_bank'], (int) round( $p['adjust'] * 3600 ), $p['reason'], get_current_user_id() );
-		}
+		$this->apply_pto( (int) $user_id, false );
 	}
 
 	/*
@@ -451,6 +680,15 @@ class Css_Tc_Leave_Ui {
 		$user_id = get_current_user_id();
 		if ( $user_id < 1 || ! css_tc_addon()->employees->can_view_own_times( $user_id ) ) {
 			wp_send_json_error( array( 'message' => __( 'Sign in with your employee account.', 'css-timeclock-addon' ) ), 403 );
+		}
+		// Requests and cancellations are only for the signed-in employee.
+		if ( isset( $_POST['user_id'] ) && '' !== (string) wp_unslash( $_POST['user_id'] ) && absint( wp_unslash( $_POST['user_id'] ) ) !== $user_id ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			wp_send_json_error( array( 'message' => __( 'You can only change your own time-off requests.', 'css-timeclock-addon' ) ), 403 );
+		}
+		// Allowance, adjustment, and hire-date fields are manager-only. Drop them
+		// so a time-off request cannot carry a balance change.
+		foreach ( array( 'css_tc_leave_pto_year', 'css_tc_leave_pto_first', 'css_tc_leave_sick_year', 'css_tc_leave_sick_first', 'css_tc_leave_adjust', 'css_tc_leave_adjust_bank', 'css_tc_leave_adjust_reason', 'css_tc_leave_present', 'css_tc_hire_date', 'css_tc_employment_present' ) as $blocked ) {
+			unset( $_POST[ $blocked ], $_REQUEST[ $blocked ] );
 		}
 		if ( ! $this->leave()->any_enabled() ) {
 			wp_send_json_error( array( 'message' => __( 'Time off requests are not turned on.', 'css-timeclock-addon' ) ), 403 );
@@ -540,6 +778,9 @@ class Css_Tc_Leave_Ui {
 	}
 
 	/**
+	 * Read-only calendar state for the signed-in employee.
+	 * Does not write allowances, adjustments, or the hire date.
+	 *
 	 * @return void
 	 */
 	public function ajax_state() {
@@ -548,6 +789,9 @@ class Css_Tc_Leave_Ui {
 	}
 
 	/**
+	 * Create a time-off request for the signed-in employee only.
+	 * Does not write allowances, adjustments, or the hire date.
+	 *
 	 * @return void
 	 */
 	public function ajax_request() {
@@ -573,6 +817,9 @@ class Css_Tc_Leave_Ui {
 	}
 
 	/**
+	 * Cancel the signed-in employee's own pending or future request.
+	 * Does not write allowances, adjustments, or the hire date.
+	 *
 	 * @return void
 	 */
 	public function ajax_cancel() {

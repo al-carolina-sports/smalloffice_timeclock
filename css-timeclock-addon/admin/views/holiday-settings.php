@@ -66,7 +66,7 @@ $css_tc_hnotice = Css_Tc_Leave_Ui::take_notice();
 							<?php echo esc_html__( 'When a holiday falls on a weekend, pay it on Friday (Saturday holidays) or Monday (Sunday holidays)', 'css-timeclock-addon' ); ?>
 						</label>
 						<p class="description"><?php echo esc_html__( 'Christmas Eve and New Year\'s Eve always move back to Friday so they do not land on the holiday after them. One-off dates are paid on the date typed.', 'css-timeclock-addon' ); ?></p>
-						<p class="description"><?php echo esc_html__( 'Each eligible employee gets these hours as the Holiday pay code on that day, whether or not they work. Holiday hours do not count toward overtime. Set each employee\'s hire date and introductory period on their user profile; no holiday pay is due before the hire date or during the introductory period.', 'css-timeclock-addon' ); ?></p>
+						<p class="description"><?php echo esc_html__( 'Each eligible employee gets these hours as the Holiday pay code on that day, whether or not they work. Holiday hours do not count toward overtime. Set the hire date under Time off (administrators can also set it on the user profile) and the introductory period on the user profile. No holiday pay is due before the hire date or during the introductory period.', 'css-timeclock-addon' ); ?></p>
 						<?php if ( ! empty( $css_tc_preview ) ) : ?>
 							<details class="css-tc-holiday-preview">
 								<summary><?php echo esc_html( sprintf( /* translators: %d: year */ __( 'Paid dates in %d', 'css-timeclock-addon' ), $css_tc_year ) ); ?></summary>

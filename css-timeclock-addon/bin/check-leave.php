@@ -178,6 +178,19 @@ css_tc_check( 'ok' === code( $withhol->check_request( $onleave, array( '2026-12-
 css_tc_check( 'css_tc_leave_type' === code( $withhol->check_request( $ctx, array( '2026-12-21' => 8 * $h ), 'holiday', false ) ), 'employees cannot request the holiday type' );
 css_tc_check( 'css_tc_leave_type' === code( $lv->check_request( $ctx, array( '2026-12-21' => 8 * $h ), 'holiday', true ) ), 'holiday type off when holidays are off' );
 
+// Who may edit allowances, adjustments, and hire date. edit_users is not a factor.
+css_tc_check( ! $L::may_edit_pto( false, 8, 4, true, false ), 'employee cannot edit PTO' );
+css_tc_check( ! $L::may_edit_pto( false, 8, 8, true, false ), 'employee cannot edit their own PTO' );
+css_tc_check( ! $L::may_edit_pto( true, 2, 4, false, false ), 'manager cannot edit a non-employee' );
+css_tc_check( ! $L::may_edit_pto( true, 1, 9, true, true ), 'administrator is not a PTO target' );
+css_tc_check( ! $L::may_edit_pto( true, 0, 4, true, false ), 'anonymous actor cannot edit PTO' );
+css_tc_check( $L::may_edit_pto( true, 2, 4, true, false ), 'manager can edit another employee without edit_users' );
+css_tc_check( $L::may_edit_pto( true, 2, 2, true, false ), 'manager can edit their own record from Time off' );
+css_tc_check( ! $L::may_save_profile_pto( false, 8, 8, true, false ), 'profile save ignores an employee posting their own PTO' );
+css_tc_check( ! $L::may_save_profile_pto( true, 2, 2, true, false ), 'profile save ignores a manager posting their own PTO' );
+css_tc_check( ! $L::may_save_profile_pto( true, 1, 9, true, true ), 'profile save ignores an administrator target' );
+css_tc_check( $L::may_save_profile_pto( true, 1, 4, true, false ), 'profile save allows a manager editing another employee' );
+
 if ( $failed ) {
 	fwrite( STDERR, "{$failed} check(s) failed\n" );
 	exit( 1 );

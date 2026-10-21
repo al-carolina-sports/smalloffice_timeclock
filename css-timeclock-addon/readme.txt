@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.10.2
+Stable tag: 1.10.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,12 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under USOTC.
 
 == Changelog ==
+
+= 1.10.3 =
+* Time off: managers and administrators can view and edit each employee's hire date, PTO and sick allowances, balance adjustments, and balances on USOTC → Time off. The editor does not use the Users screen and does not need the edit_users capability. The person must be a time clock employee and must not be an administrator.
+* An employee's own profile and My Time Clock show PTO and sick balances read-only. Saving a profile ignores allowance, adjustment, and hire-date fields unless the current user is a manager or administrator editing someone else.
+* Employees can still request and cancel their own time off. Those actions cannot change allowances, adjustments, or the hire date, and they cannot act on another employee's requests.
+* Hire date, allowance, and balance edits are logged with who, when, and the before and after values.
 
 = 1.10.2 =
 * The Employee PINs tab and menu entry are now just "Employee". The tab has a "Hire date and PIN" heading above the table, and a "Departments, locations, company settings" section below it that links to Users (where each employee's departments are assigned) and to the Locations & departments tab.

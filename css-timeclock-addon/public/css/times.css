@@ -261,6 +261,7 @@
 .css-tc-to__back a { color: var(--css-tc-accent); }
 .css-tc-to__title { margin: 0 0 4px; font-size: 28px; }
 .css-tc-to__lead { margin: 0 0 12px; color: var(--css-tc-muted); }
+.css-tc-to__note { margin: 0 0 12px; color: var(--css-tc-muted); font-size: 14px; }
 .css-tc-to__balances { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 16px; }
 .css-tc-to__bank { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 18px; padding: 10px 14px; border: 1px solid var(--css-tc-line); border-left: 5px solid #0369a1; border-radius: 10px; background: var(--css-tc-card); }
 .css-tc-to__bank--sick { border-left-color: #b45309; }

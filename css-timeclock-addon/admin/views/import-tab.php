@@ -218,7 +218,7 @@ $css_tc_status_lb = array(
 			<tr><td><code>username</code></td><td><?php echo esc_html__( 'Optional', 'css-timeclock-addon' ); ?></td><td><?php echo esc_html__( 'The email address is the username.', 'css-timeclock-addon' ); ?></td></tr>
 			<tr><td><code>password</code></td><td><?php echo esc_html__( 'Optional', 'css-timeclock-addon' ); ?></td><td><?php echo esc_html( sprintf( /* translators: %d: minimum length */ __( 'A random password nobody knows (they can use “Lost your password?”). At least %d characters if given.', 'css-timeclock-addon' ), Css_Tc_Import::MIN_PASSWORD ) ); ?></td></tr>
 			<tr><td><code>role</code></td><td><?php echo esc_html__( 'Optional', 'css-timeclock-addon' ); ?></td><td><?php echo esc_html__( 'The role chosen below. Administrator is never allowed.', 'css-timeclock-addon' ); ?></td></tr>
-			<tr><td><code>hire_date</code></td><td><?php echo esc_html__( 'Optional', 'css-timeclock-addon' ); ?></td><td><?php echo esc_html__( 'No hire date. PTO starts once you set one on the profile. Use 2026-03-02 or 3/2/2026.', 'css-timeclock-addon' ); ?></td></tr>
+			<tr><td><code>hire_date</code></td><td><?php echo esc_html__( 'Optional', 'css-timeclock-addon' ); ?></td><td><?php echo esc_html__( 'No hire date. PTO starts once you set one under Time off. Use 2026-03-02 or 3/2/2026.', 'css-timeclock-addon' ); ?></td></tr>
 			<tr><td><code>pin</code> (or <code>badge_no</code>)</td><td><?php echo esc_html__( 'Optional', 'css-timeclock-addon' ); ?></td><td><?php echo esc_html__( 'A unique PIN is generated. Format this column as Text in your spreadsheet so a leading zero is not dropped.', 'css-timeclock-addon' ); ?></td></tr>
 		</tbody>
 	</table>

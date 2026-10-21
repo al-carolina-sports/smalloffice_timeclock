@@ -360,6 +360,9 @@
 .css-tc-out-cal__num { display: block; color: #50575e; font-weight: 600; }
 .css-tc-out-cal__hol { display: block; color: #6d28d9; font-style: italic; }
 .css-tc-leave-log { margin: 8px 0 0; color: #50575e; }
+.css-tc-pto-pick { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 8px 0 12px; }
+.css-tc-pto-editor { max-width: 860px; margin: 0 0 28px; padding: 4px 16px 8px; background: #fff; border: 1px solid #c3c4c7; box-shadow: 0 1px 1px rgba(0,0,0,.04); }
+.css-tc-pto-editor h2 { margin-top: 12px; }
 .css-tc-pto-summary .css-tc-group-head { text-align: center; border-bottom: 1px solid #dcdcde; }
 .css-tc-leave-yearnav { display: flex; gap: 16px; align-items: center; }
 .css-tc-leave-bal { margin: 4px 0 12px; }

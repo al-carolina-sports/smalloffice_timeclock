@@ -12,6 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 <div class="css-tc-to" data-css-tc-timeoff>
 	<p class="css-tc-to__back css-tc-no-print"><a href="<?php echo esc_url( Css_Tc_Shortcodes::times_url() ); ?>">&larr; <?php echo esc_html__( 'Back to my timecard', 'css-timeclock-addon' ); ?></a></p>
 	<h1 class="css-tc-to__title"><?php echo esc_html__( 'Request time off', 'css-timeclock-addon' ); ?></h1>
+	<p class="css-tc-to__note"><?php echo esc_html__( 'Balances are read-only. You can request or cancel your own time off. You cannot change your allowance, adjustments, or hire date.', 'css-timeclock-addon' ); ?></p>
 	<p class="css-tc-to__lead" data-role="lead"></p>
 	<div class="css-tc-to__balances" data-role="balances" aria-live="polite"></div>
 	<p class="css-tc-to__msg" data-role="msg" hidden></p>

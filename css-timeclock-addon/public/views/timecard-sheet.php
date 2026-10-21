@@ -215,9 +215,12 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 					<?php endif; ?>
 				</p>
 			<?php endif; ?>
+			<?php if ( 'employee' === $mode ) : ?>
+				<p class="css-tc-pto__note"><?php echo esc_html__( 'Balances are read-only. A manager changes allowances, adjustments, and your hire date.', 'css-timeclock-addon' ); ?></p>
+			<?php endif; ?>
 			<?php if ( ! $css_tc_lb['cycle'] ) : ?>
 				<p class="css-tc-pto__note">
-					<?php echo esc_html( 'admin' === $mode ? __( 'No hire date yet, so no PTO. Set it on the employee\'s profile.', 'css-timeclock-addon' ) : __( 'Your PTO starts once a manager sets your hire date.', 'css-timeclock-addon' ) ); ?>
+					<?php echo esc_html( 'admin' === $mode ? __( 'No hire date yet, so no PTO. Set it under Time off.', 'css-timeclock-addon' ) : __( 'Your PTO starts once a manager sets your hire date.', 'css-timeclock-addon' ) ); ?>
 				</p>
 			<?php else : ?>
 				<p class="css-tc-pto__year">
