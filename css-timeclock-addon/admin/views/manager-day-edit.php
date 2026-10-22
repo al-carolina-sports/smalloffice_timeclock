@@ -122,7 +122,7 @@ $time     = css_tc_addon()->time;
 		<?php if ( '' !== $css_tc_save_error ) : ?>
 			<p class="css-tc-sheet__error" role="alert"><?php echo esc_html( $css_tc_save_error ); ?></p>
 		<?php endif; ?>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-manager-edit novalidate data-long-hours="<?php echo esc_attr( (string) css_tc_addon()->punches->long_shift_hours() ); ?>" data-msg-order="<?php echo esc_attr__( 'Clock-out is earlier than clock-in. Fix the time, or check "Clock-out is the next day" if the shift ended after midnight.', 'css-timeclock-addon' ); ?>" data-msg-order-short="<?php echo esc_attr__( 'Clock-out is earlier than clock-in', 'css-timeclock-addon' ); ?>" data-msg-missing="<?php echo esc_attr__( 'Enter a clock-in time.', 'css-timeclock-addon' ); ?>" data-msg-bad-time="<?php echo esc_attr__( 'Enter a valid clock time.', 'css-timeclock-addon' ); ?>" data-msg-long="<?php echo esc_attr__( 'This shift is %s long. Save anyway?', 'css-timeclock-addon' ); ?>">
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-manager-edit novalidate data-saving-label="<?php echo esc_attr__( 'Saving…', 'css-timeclock-addon' ); ?>" data-long-hours="<?php echo esc_attr( (string) css_tc_addon()->punches->long_shift_hours() ); ?>" data-msg-order="<?php echo esc_attr__( 'Clock-out is earlier than clock-in. Fix the time, or check "Clock-out is the next day" if the shift ended after midnight.', 'css-timeclock-addon' ); ?>" data-msg-order-short="<?php echo esc_attr__( 'Clock-out is earlier than clock-in', 'css-timeclock-addon' ); ?>" data-msg-missing="<?php echo esc_attr__( 'Enter a clock-in time.', 'css-timeclock-addon' ); ?>" data-msg-bad-time="<?php echo esc_attr__( 'Enter a valid clock time.', 'css-timeclock-addon' ); ?>" data-msg-long="<?php echo esc_attr__( 'This shift is %s long. Save anyway?', 'css-timeclock-addon' ); ?>">
 			<?php wp_nonce_field( Css_Tc_Corrections::MANAGER_NONCE ); ?>
 			<input type="hidden" name="action" value="css_tc_manager_edit_day" />
 			<input type="hidden" name="employee" value="<?php echo esc_attr( (string) (int) $user_id ); ?>" />
@@ -196,6 +196,60 @@ $time     = css_tc_addon()->time;
 				<button type="submit" class="css-tc-save"><?php echo esc_html__( 'Save changes', 'css-timeclock-addon' ); ?></button>
 				<span class="css-tc-save-error" data-save-error role="alert" <?php echo '' === $css_tc_save_error ? 'hidden' : ''; ?>><?php echo esc_html( $css_tc_save_error ); ?></span>
 			</p>
+		</form>
+		<?php
+		$css_tc_stored_note = css_tc_addon()->day_notes->for_date( (int) $user_id, $edit_day );
+		$css_tc_note_text   = $css_tc_stored_note ? (string) $css_tc_stored_note['text'] : '';
+		if ( isset( $day_note_draft ) && is_array( $day_note_draft ) && isset( $day_note_draft['date'] ) && (string) $day_note_draft['date'] === $edit_day && (int) ( isset( $day_note_draft['employee'] ) ? $day_note_draft['employee'] : 0 ) === (int) $user_id ) {
+			$css_tc_note_text = isset( $day_note_draft['text'] ) ? (string) $day_note_draft['text'] : $css_tc_note_text;
+		}
+		$css_tc_note_audit = css_tc_addon()->day_notes->audit_for_date( (int) $user_id, $edit_day );
+		?>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="css-tc-day-note" data-day-note data-saving-label="<?php echo esc_attr__( 'Saving…', 'css-timeclock-addon' ); ?>">
+			<?php wp_nonce_field( Css_Tc_Day_Notes::NONCE ); ?>
+			<input type="hidden" name="action" value="css_tc_day_note" />
+			<input type="hidden" name="employee" value="<?php echo esc_attr( (string) (int) $user_id ); ?>" />
+			<input type="hidden" name="work_date" value="<?php echo esc_attr( $edit_day ); ?>" />
+			<input type="hidden" name="period" value="<?php echo esc_attr( (string) $period['start'] ); ?>" />
+			<label class="css-tc-correct__reason css-tc-day-note__field">
+				<span><?php echo esc_html__( 'Day note', 'css-timeclock-addon' ); ?></span>
+				<textarea name="day_note" rows="3" maxlength="500"><?php echo esc_textarea( $css_tc_note_text ); ?></textarea>
+			</label>
+			<p class="css-tc-day-note__presets">
+				<?php foreach ( Css_Tc_Day_Notes::presets() as $css_tc_preset ) : ?>
+					<button type="button" data-day-note-preset="<?php echo esc_attr( $css_tc_preset ); ?>"><?php echo esc_html( $css_tc_preset ); ?></button>
+				<?php endforeach; ?>
+			</p>
+			<p class="css-tc-day-note__hint"><?php echo esc_html__( 'Saving a day note does not change punches, pay, overtime, or PTO. Clear the text and save to remove the note. This works whether the pay period is open or closed.', 'css-timeclock-addon' ); ?></p>
+			<p class="css-tc-correct__submit">
+				<button type="submit" class="css-tc-save"><?php echo esc_html__( 'Save day note', 'css-timeclock-addon' ); ?></button>
+			</p>
+			<?php if ( ! empty( $css_tc_note_audit ) ) : ?>
+				<h3 class="css-tc-day-note__audit-title"><?php echo esc_html__( 'Note history', 'css-timeclock-addon' ); ?></h3>
+				<ul class="css-tc-day-note__audit">
+					<?php foreach ( $css_tc_note_audit as $css_tc_entry ) : ?>
+						<?php
+						$css_tc_who    = css_tc_addon()->employees->display_name( (int) $css_tc_entry['by'] );
+						$css_tc_before = '' === (string) $css_tc_entry['before'] ? __( '(none)', 'css-timeclock-addon' ) : (string) $css_tc_entry['before'];
+						$css_tc_after  = '' === (string) $css_tc_entry['after'] ? __( '(cleared)', 'css-timeclock-addon' ) : (string) $css_tc_entry['after'];
+						?>
+						<li>
+							<?php
+							echo esc_html(
+								sprintf(
+									/* translators: 1: manager name, 2: date and time, 3: previous text, 4: new text */
+									__( '%1$s, %2$s: "%3$s" → "%4$s"', 'css-timeclock-addon' ),
+									'' !== $css_tc_who ? $css_tc_who : __( 'Manager', 'css-timeclock-addon' ),
+									css_tc_addon()->day_notes->format_when( (int) $css_tc_entry['at'] ),
+									$css_tc_before,
+									$css_tc_after
+								)
+							);
+							?>
+						</li>
+					<?php endforeach; ?>
+				</ul>
+			<?php endif; ?>
 		</form>
 	<?php endif; ?>
 </div>

@@ -240,6 +240,7 @@ class Css_Tc_Punches {
 	 * @return array<string,mixed>|WP_Error
 	 */
 	private function open_segment( $user_id, $source, $department_id, $start, $prev_id = 0, $chain_start = '' ) {
+		Css_Tc_Plugin::unhook_endurance_page_cache();
 		$now = $start;
 
 		$shift_id = wp_insert_post(
@@ -1038,6 +1039,54 @@ class Css_Tc_Punches {
 	}
 
 	/**
+	 * Whether this employee already has a shift with these exact stored times.
+	 *
+	 * @param int    $user_id   Employee.
+	 * @param string $clock_in  Stored clock-in.
+	 * @param string $clock_out Stored clock-out, or empty.
+	 * @return bool
+	 */
+	public function matching_shift_exists( $user_id, $clock_in, $clock_out ) {
+		$user_id   = (int) $user_id;
+		$clock_in  = (string) $clock_in;
+		$clock_out = (string) $clock_out;
+		if ( $user_id < 1 || '' === $clock_in ) {
+			return false;
+		}
+		$ids = get_posts(
+			array(
+				'post_type'      => self::POST_TYPE,
+				'author'         => $user_id,
+				'post_status'    => array( 'publish', 'private' ),
+				'posts_per_page' => 20,
+				'fields'         => 'ids',
+				'no_found_rows'  => true,
+				'orderby'        => 'ID',
+				'order'          => 'DESC',
+				'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+					array(
+						'key'   => 'employee_clock_in_time',
+						'value' => $clock_in,
+					),
+				),
+			)
+		);
+		if ( ! is_array( $ids ) ) {
+			return false;
+		}
+		foreach ( $ids as $id ) {
+			$stored_out = get_post_meta( (int) $id, 'employee_clock_out_time', true );
+			if ( null === $stored_out || false === $stored_out ) {
+				$stored_out = '';
+			}
+			if ( (string) $stored_out === $clock_out ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * Create a shift from an approved missing-punch suggestion.
 	 *
 	 * @param int    $user_id   Employee user ID.
@@ -1047,9 +1096,18 @@ class Css_Tc_Punches {
 	 * @return array<string,mixed>|WP_Error
 	 */
 	public function create_corrected_shift( $user_id, $clock_in, $clock_out = '', $audit = array() ) {
-		$user_id = (int) $user_id;
+		Css_Tc_Plugin::unhook_endurance_page_cache();
+		$user_id   = (int) $user_id;
+		$clock_in  = (string) $clock_in;
+		$clock_out = (string) $clock_out;
 		if ( $user_id < 1 || '' === $clock_in ) {
 			return new WP_Error( 'css_tc_bad_shift', __( 'A clock-in time is required to add a shift.', 'css-timeclock-addon' ) );
+		}
+		if ( $this->matching_shift_exists( $user_id, $clock_in, $clock_out ) ) {
+			return new WP_Error(
+				'css_tc_duplicate_add',
+				__( 'That clock-in and clock-out are already on this timecard, so the shift was not added again.', 'css-timeclock-addon' )
+			);
 		}
 
 		$shift_id = wp_insert_post(

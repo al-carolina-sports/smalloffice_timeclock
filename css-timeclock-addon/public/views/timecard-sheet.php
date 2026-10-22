@@ -391,8 +391,12 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 				<?php foreach ( $week['days'] as $day ) : ?>
 					<?php
 					$day_classes = 'css-tc-day';
-					if ( empty( $day['shifts'] ) && ! $day['has_time'] && empty( $day['holiday'] ) && empty( $day['leave'] ) ) {
+					$css_tc_note = ( isset( $day['note'] ) && is_array( $day['note'] ) ) ? $day['note'] : array();
+					if ( ! Css_Tc_Day_Notes::day_has_content( $day ) ) {
 						$day_classes .= ' is-empty';
+					}
+					if ( ! empty( $css_tc_note['text'] ) ) {
+						$day_classes .= ' has-note';
 					}
 					if ( ! empty( $day['is_today'] ) ) {
 						$day_classes .= ' is-today';
@@ -555,6 +559,25 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 								</div>
 							<?php endforeach; ?>
 						</div>
+						<?php if ( ! empty( $css_tc_note['text'] ) ) : ?>
+							<p class="css-tc-day__note">
+								<span class="css-tc-day__note-text"><?php echo esc_html( (string) $css_tc_note['text'] ); ?></span>
+								<?php if ( ! empty( $css_tc_note['by_name'] ) ) : ?>
+									<span class="css-tc-day__note-by">
+										<?php
+										echo esc_html(
+											sprintf(
+												/* translators: 1: manager name, 2: date the note was saved */
+												__( 'by %1$s, %2$s', 'css-timeclock-addon' ),
+												(string) $css_tc_note['by_name'],
+												(string) ( isset( $css_tc_note['at_label'] ) ? $css_tc_note['at_label'] : '' )
+											)
+										);
+										?>
+									</span>
+								<?php endif; ?>
+							</p>
+						<?php endif; ?>
 					</div>
 				<?php endforeach; ?>
 			</div>

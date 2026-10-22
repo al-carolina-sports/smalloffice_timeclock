@@ -176,9 +176,15 @@ class Css_Tc_Reports {
 
 		foreach ( $this->employees( $use_org ? '' : $department ) as $user ) {
 			$sheet = css_tc_addon()->timecard->build( (int) $user->ID, $period );
+			$day_notes_text = Css_Tc_Day_Notes::format_period_notes(
+				css_tc_addon()->day_notes->for_user( (int) $user->ID ),
+				(string) $period['start'],
+				(string) $period['end']
+			);
 			// Someone who left before this period and has nothing in it is not listed.
-			// Anyone with hours or paid time in the period always is.
-			if ( Css_Tc_Status::INACTIVE === css_tc_addon()->status->on( (int) $user->ID, (string) $period['start'] ) && (int) $sheet['paid_seconds'] < 1 && empty( $sheet['segments'] ) ) {
+			// Anyone with hours, paid time, or a day note in the period always is.
+			// A note does not add hours.
+			if ( Css_Tc_Status::INACTIVE === css_tc_addon()->status->on( (int) $user->ID, (string) $period['start'] ) && (int) $sheet['paid_seconds'] < 1 && empty( $sheet['segments'] ) && '' === $day_notes_text ) {
 				continue;
 			}
 			$status_note = css_tc_addon()->status->describe( (int) $user->ID );
@@ -212,7 +218,7 @@ class Css_Tc_Reports {
 				$nonwork = array_fill_keys( array_keys( $nonwork ), 0 );
 			}
 			$holiday = array_sum( $nonwork ); // All paid, non-worked hours.
-			if ( $filtered && empty( $matched ) && $holiday < 1 ) {
+			if ( $filtered && empty( $matched ) && $holiday < 1 && '' === $day_notes_text ) {
 				continue;
 			}
 
@@ -310,12 +316,29 @@ class Css_Tc_Reports {
 						$emp_total[ $k ] += $r[ $k ];
 					}
 				}
-				if ( ! empty( $emp_rows ) ) {
+				if ( ! empty( $emp_rows ) || '' !== $day_notes_text ) {
+					if ( empty( $emp_rows ) ) {
+						$emp_rows = array(
+							array(
+								'company'    => '',
+								'department' => '',
+								'location'   => '',
+								'shifts'     => 0,
+								'regular'    => 0,
+								'overtime'   => 0,
+								'holiday'    => 0,
+								'pto'        => 0,
+								'sick'       => 0,
+								'total'      => 0,
+							),
+						);
+					}
 					$by_employee[] = array(
-						'user_id' => (int) $user->ID,
-						'name'    => css_tc_addon()->employees->display_name( (int) $user->ID ),
-						'rows'    => array_values( $emp_rows ),
-						'total'   => $emp_total,
+						'user_id'   => (int) $user->ID,
+						'name'      => css_tc_addon()->employees->display_name( (int) $user->ID ),
+						'rows'      => array_values( $emp_rows ),
+						'total'     => $emp_total,
+						'day_notes' => $day_notes_text,
 					);
 				}
 
@@ -409,6 +432,7 @@ class Css_Tc_Reports {
 				'weeks'        => $week_seconds,
 				'total'        => $total_seconds,
 				'attention'    => $attention,
+				'day_notes'    => $day_notes_text,
 				'timecard_url' => Css_Tc_Admin::timecards_url(
 					array(
 						'employee' => (int) $user->ID,
@@ -527,11 +551,17 @@ class Css_Tc_Reports {
 			if ( $user_id && (int) $user->ID !== (int) $user_id ) {
 				continue;
 			}
-			$name = css_tc_addon()->employees->display_name( (int) $user->ID );
-			$dept = css_tc_addon()->employees->department( (int) $user->ID );
+			$name      = css_tc_addon()->employees->display_name( (int) $user->ID );
+			$dept      = css_tc_addon()->employees->department( (int) $user->ID );
+			$note_map  = css_tc_addon()->day_notes->for_user( (int) $user->ID );
+			$noted_dates = array();
 			foreach ( css_tc_addon()->timecard->shifts_for_period( (int) $user->ID, $period ) as $shift ) {
 				if ( $use_org && ! $this->segment_matches( $shift, $org ) ) {
 					continue;
+				}
+				$note_text = ( isset( $note_map[ $shift['work_date'] ]['text'] ) ) ? (string) $note_map[ $shift['work_date'] ]['text'] : '';
+				if ( '' !== $note_text ) {
+					$noted_dates[ (string) $shift['work_date'] ] = true;
 				}
 				$flags = array();
 				if ( ! empty( $shift['switched'] ) ) {
@@ -576,6 +606,33 @@ class Css_Tc_Reports {
 					'ip_out'     => (string) get_post_meta( (int) $shift['id'], 'ip_address_out', true ),
 					'source'     => '' !== $source ? $source : 'aio',
 					'flags'      => $flags,
+					'day_note'   => $note_text,
+				);
+			}
+			foreach ( $note_map as $note_date => $note ) {
+				if ( $note_date < (string) $period['start'] || $note_date > (string) $period['end'] ) {
+					continue;
+				}
+				if ( isset( $noted_dates[ $note_date ] ) ) {
+					continue;
+				}
+				$rows[] = array(
+					'user_id'    => (int) $user->ID,
+					'id'         => 0,
+					'sort_ts'    => 0,
+					'name'       => $name,
+					'department' => $dept,
+					'date'       => (string) $note_date,
+					'weekday'    => $time->format_weekday_short( (string) $note_date ),
+					'in'         => '',
+					'out'        => '',
+					'next_day'   => false,
+					'seconds'    => 0,
+					'ip_in'      => '',
+					'ip_out'     => '',
+					'source'     => '',
+					'flags'      => array(),
+					'day_note'   => isset( $note['text'] ) ? (string) $note['text'] : '',
 				);
 			}
 		}
@@ -655,7 +712,26 @@ class Css_Tc_Reports {
 			$head[] = $week['label'] . ' ' . $week['range'] . ' (hours)';
 		}
 		$head[] = 'Needs attention';
+		$head[] = 'Day notes';
 		return $head;
+	}
+
+	/**
+	 * Shift-detail CSV columns. Day notes is last so the hour columns stay put.
+	 *
+	 * @return string[]
+	 */
+	public static function shift_csv_header() {
+		return array( 'Employee', 'Worked in', 'Date', 'Day', 'Clock in', 'Clock out', 'Out next day', 'Hours', 'IP in', 'IP out', 'Source', 'Flags', 'Day notes' );
+	}
+
+	/**
+	 * By-employee CSV columns. Day notes is last so the hour columns stay put.
+	 *
+	 * @return string[]
+	 */
+	public static function by_employee_csv_header() {
+		return array( 'Employee', 'Company', 'Department', 'Location', 'Shifts', 'Regular (hours)', 'Overtime (hours)', 'Holiday (hours)', 'PTO (hours)', 'Sick (hours)', 'Total (hours)', 'Day notes' );
 	}
 
 	/**
@@ -758,12 +834,13 @@ class Css_Tc_Reports {
 		$ot_cell = static function ( $seconds ) use ( $ot_on ) {
 			return $ot_on ? Css_Tc_Reports::decimal_hours( $seconds ) : '';
 		};
-		$lines = array( array( 'Employee', 'Company', 'Department', 'Location', 'Shifts', 'Regular (hours)', 'Overtime (hours)', 'Holiday (hours)', 'PTO (hours)', 'Sick (hours)', 'Total (hours)' ) );
+		$lines = array( self::by_employee_csv_header() );
 		foreach ( $summary['by_employee'] as $emp ) {
+			$note = isset( $emp['day_notes'] ) ? (string) $emp['day_notes'] : '';
 			foreach ( $emp['rows'] as $row ) {
-				$lines[] = array( $emp['name'], $row['company'], $row['department'], $row['location'], (string) $row['shifts'], self::decimal_hours( $row['regular'] ), $ot_cell( $row['overtime'] ), self::decimal_hours( $row['holiday'] ), self::decimal_hours( $row['pto'] ), self::decimal_hours( $row['sick'] ), self::decimal_hours( $row['total'] ) );
+				$lines[] = array( $emp['name'], $row['company'], $row['department'], $row['location'], (string) $row['shifts'], self::decimal_hours( $row['regular'] ), $ot_cell( $row['overtime'] ), self::decimal_hours( $row['holiday'] ), self::decimal_hours( $row['pto'] ), self::decimal_hours( $row['sick'] ), self::decimal_hours( $row['total'] ), $note );
 			}
-			$lines[] = array( $emp['name'], 'Total', '', '', (string) $emp['total']['shifts'], self::decimal_hours( $emp['total']['regular'] ), $ot_cell( $emp['total']['overtime'] ), self::decimal_hours( $emp['total']['holiday'] ), self::decimal_hours( $emp['total']['pto'] ), self::decimal_hours( $emp['total']['sick'] ), self::decimal_hours( $emp['total']['total'] ) );
+			$lines[] = array( $emp['name'], 'Total', '', '', (string) $emp['total']['shifts'], self::decimal_hours( $emp['total']['regular'] ), $ot_cell( $emp['total']['overtime'] ), self::decimal_hours( $emp['total']['holiday'] ), self::decimal_hours( $emp['total']['pto'] ), self::decimal_hours( $emp['total']['sick'] ), self::decimal_hours( $emp['total']['total'] ), $note );
 		}
 		return $lines;
 	}
@@ -852,6 +929,7 @@ class Css_Tc_Reports {
 				$line[] = self::decimal_hours( isset( $row['weeks'][ $w ] ) ? $row['weeks'][ $w ] : 0 );
 			}
 			$line[]  = implode( '; ', $row['attention'] );
+			$line[]  = isset( $row['day_notes'] ) ? (string) $row['day_notes'] : '';
 			$lines[] = $line;
 		}
 		return $lines;
@@ -862,7 +940,7 @@ class Css_Tc_Reports {
 	 * @return array<int,array<int,string>>
 	 */
 	private function shift_csv_lines( $rows ) {
-		$lines = array( array( 'Employee', 'Worked in', 'Date', 'Day', 'Clock in', 'Clock out', 'Out next day', 'Hours', 'IP in', 'IP out', 'Source', 'Flags' ) );
+		$lines = array( self::shift_csv_header() );
 		foreach ( $rows as $row ) {
 			$lines[] = array(
 				$row['name'],
@@ -877,6 +955,7 @@ class Css_Tc_Reports {
 				$row['ip_out'],
 				$row['source'],
 				implode( '; ', $row['flags'] ),
+				isset( $row['day_note'] ) ? (string) $row['day_note'] : '',
 			);
 		}
 		return $lines;

@@ -320,12 +320,19 @@ class Css_Tc_Admin {
 		$form_error = '';
 		if ( isset( $_GET['css_tc_notice'] ) && 'edited' === sanitize_key( wp_unslash( $_GET['css_tc_notice'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$notice = __( 'Saved.', 'css-timeclock-addon' );
+		} elseif ( isset( $_GET['css_tc_notice'] ) && 'noted' === sanitize_key( wp_unslash( $_GET['css_tc_notice'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$notice = __( 'Day note saved.', 'css-timeclock-addon' );
 		}
 		$manager_draft = get_transient( 'css_tc_manager_draft_' . get_current_user_id() );
 		if ( ! is_array( $manager_draft ) ) {
 			$manager_draft = array();
 		}
 		delete_transient( 'css_tc_manager_draft_' . get_current_user_id() );
+		$day_note_draft = get_transient( 'css_tc_day_note_draft_' . get_current_user_id() );
+		if ( ! is_array( $day_note_draft ) ) {
+			$day_note_draft = array();
+		}
+		delete_transient( 'css_tc_day_note_draft_' . get_current_user_id() );
 		$stored_error = (string) get_transient( 'css_tc_manager_error_' . get_current_user_id() );
 		if ( '' !== $stored_error ) {
 			delete_transient( 'css_tc_manager_error_' . get_current_user_id() );

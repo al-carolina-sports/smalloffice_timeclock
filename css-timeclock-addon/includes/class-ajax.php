@@ -47,6 +47,8 @@ class Css_Tc_Ajax {
 		add_action( 'admin_post_css_tc_flag_day', array( $self, 'flag_day' ) );
 		add_action( 'admin_post_css_tc_cancel_day', array( $self, 'cancel_day' ) );
 		add_action( 'admin_post_css_tc_manager_edit_day', array( $self, 'manager_edit_day' ) );
+		add_action( 'admin_post_css_tc_day_note', array( $self, 'save_day_note' ) );
+		add_action( 'admin_post_nopriv_css_tc_day_note', array( $self, 'save_day_note' ) );
 		add_action( 'admin_post_css_tc_allow_refused_ip', array( $self, 'allow_refused_ip' ) );
 		add_action( 'admin_post_css_tc_dismiss_refused', array( $self, 'dismiss_refused' ) );
 	}
@@ -747,6 +749,63 @@ class Css_Tc_Ajax {
 					'employee'      => $employee_id,
 					'period'        => $period,
 					'css_tc_notice' => 'edited',
+				)
+			)
+		);
+		exit;
+	}
+
+	/**
+	 * Manager: save or clear one day's note. Separate from the punch form so a
+	 * note-only save does not hit the "Change a clock-in..." rule, and so it
+	 * never creates a shift or a correction. Employees are refused with 403.
+	 *
+	 * @return void
+	 */
+	public function save_day_note() {
+		$employee_id = isset( $_POST['employee'] ) ? absint( $_POST['employee'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$actor_id    = get_current_user_id();
+		$user        = $employee_id > 0 ? get_userdata( $employee_id ) : false;
+		$is_admin    = $user && in_array( 'administrator', (array) $user->roles, true );
+		$is_employee = $employee_id > 0 && css_tc_addon()->employees->is_employee( $employee_id );
+		if ( ! Css_Tc_Day_Notes::may_edit( Css_Tc_Plugin::user_can_manage(), $actor_id, $employee_id, $is_employee, $is_admin ) ) {
+			wp_die( esc_html__( 'You do not have permission to edit this day note.', 'css-timeclock-addon' ), '', array( 'response' => 403 ) );
+		}
+		check_admin_referer( Css_Tc_Day_Notes::NONCE );
+
+		$date   = isset( $_POST['work_date'] ) ? sanitize_text_field( wp_unslash( $_POST['work_date'] ) ) : '';
+		$period = isset( $_POST['period'] ) ? sanitize_text_field( wp_unslash( $_POST['period'] ) ) : '';
+		$text   = isset( $_POST['day_note'] ) ? wp_unslash( $_POST['day_note'] ) : '';
+		$back   = Css_Tc_Admin::timecards_url(
+			array(
+				'employee' => $employee_id,
+				'period'   => $period,
+				'edit_day' => preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ? $date : '',
+			)
+		);
+		$result = css_tc_addon()->day_notes->save( $employee_id, $actor_id, $date, $text );
+		if ( is_wp_error( $result ) ) {
+			set_transient( 'css_tc_manager_error_' . $actor_id, $result->get_error_message(), 2 * MINUTE_IN_SECONDS );
+			set_transient(
+				'css_tc_day_note_draft_' . $actor_id,
+				array(
+					'employee' => $employee_id,
+					'date'     => $date,
+					'text'     => is_string( $text ) ? $text : '',
+				),
+				2 * MINUTE_IN_SECONDS
+			);
+			wp_safe_redirect( $back );
+			exit;
+		}
+		delete_transient( 'css_tc_day_note_draft_' . $actor_id );
+		wp_safe_redirect(
+			Css_Tc_Admin::timecards_url(
+				array(
+					'employee'      => $employee_id,
+					'period'        => $period,
+					'edit_day'      => $date,
+					'css_tc_notice' => 'noted',
 				)
 			)
 		);

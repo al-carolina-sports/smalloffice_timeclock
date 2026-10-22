@@ -117,7 +117,7 @@ $weeks = array(
 );
 $off = Css_Tc_Reports::summary_csv_header( false, $weeks, array( 'Holiday' ) );
 $on  = Css_Tc_Reports::summary_csv_header( true, $weeks, array( 'Holiday', 'PTO', 'Sick' ) );
-css_tc_ready( $off === array( 'Employee', 'Department', 'Shifts', 'Regular (hours)', 'Overtime (hours)', 'Holiday (hours)', 'Total (hours)', 'Week 1 09/07-09/13 (hours)', 'Week 2 09/14-09/20 (hours)', 'Needs attention' ), 'summary CSV header is stable' );
+css_tc_ready( $off === array( 'Employee', 'Department', 'Shifts', 'Regular (hours)', 'Overtime (hours)', 'Holiday (hours)', 'Total (hours)', 'Week 1 09/07-09/13 (hours)', 'Week 2 09/14-09/20 (hours)', 'Needs attention', 'Day notes' ), 'summary CSV header is stable' );
 css_tc_ready( 'Overtime (hours)' === $on[4] && 'Worked in' === $on[1] && 'Holiday (hours)' === $on[5] && 'PTO (hours)' === $on[6], 'organization CSV keeps overtime in the same place' );
 
 $row = array(

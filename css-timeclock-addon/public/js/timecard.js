@@ -210,7 +210,42 @@
     }, 0);
   }
 
+  function savingLabel(form) {
+    var label = form && form.getAttribute ? form.getAttribute("data-saving-label") : "";
+    return label || "Saving…";
+  }
+
+  function beginSaving(form) {
+    if (!form || !form.getAttribute) {
+      return false;
+    }
+    if (form.getAttribute("data-css-tc-saving") === "1") {
+      return false;
+    }
+    form.setAttribute("data-css-tc-saving", "1");
+    return true;
+  }
+
+  function showSaving(form) {
+    var label = savingLabel(form);
+    form.querySelectorAll("button").forEach(function (btn) {
+      if (btn.type === "submit" || btn.classList.contains("css-tc-save") || btn.hasAttribute("data-delete-shift")) {
+        btn.disabled = true;
+        btn.textContent = label;
+      }
+    });
+  }
+
   document.addEventListener("click", function (event) {
+    var preset = event.target && event.target.closest ? event.target.closest("[data-day-note-preset]") : null;
+    if (preset) {
+      var noteForm = preset.closest("form");
+      var area = noteForm ? noteForm.querySelector("[name='day_note']") : null;
+      if (area) {
+        area.value = preset.getAttribute("data-day-note-preset") || "";
+      }
+      return;
+    }
     var btn = event.target && event.target.closest ? event.target.closest("[data-delete-shift]") : null;
     if (!btn) {
       return;
@@ -237,6 +272,23 @@
       flag.value = "1";
     }
     var form = btn.closest("form");
+    if (form && form.hasAttribute("data-manager-edit")) {
+      // Submit only this delete. Unsaved Add-punch rows stay out of the POST.
+      form.querySelectorAll("[data-line]").forEach(function (other) {
+        if (other === line) {
+          return;
+        }
+        other.querySelectorAll("input, select, textarea").forEach(function (field) {
+          field.disabled = true;
+        });
+      });
+      if (!beginSaving(form)) {
+        return;
+      }
+      showSaving(form);
+      form.submit();
+      return;
+    }
     if (form) {
       form.submit();
     }
@@ -249,7 +301,12 @@
     }
     var manager = form.hasAttribute("data-manager-edit");
     var employee = form.classList && form.classList.contains("css-tc-correct__form");
-    if (!manager && !employee) {
+    var dayNote = form.hasAttribute("data-day-note");
+    if (!manager && !employee && !dayNote) {
+      return;
+    }
+    if (form.getAttribute("data-css-tc-saving") === "1") {
+      event.preventDefault();
       return;
     }
 
@@ -278,32 +335,37 @@
     }
 
     setSaveErrors(form, "");
-    if (!manager) {
+    if (manager) {
+      var limit = parseFloat(form.getAttribute("data-long-hours") || "16");
+      if (!isFinite(limit) || limit <= 0) {
+        limit = 16;
+      }
+      var maxSeconds = limit * 3600;
+      var longs = [];
+      form.querySelectorAll("[data-line]").forEach(function (line) {
+        var state = describeLine(line);
+        if (state.seconds > maxSeconds) {
+          longs.push(state.seconds);
+        }
+      });
+      var msgs = formMessages(form);
+      var i;
+      for (i = 0; i < longs.length; i++) {
+        var label = formatHours(longs[i]);
+        var text = msgs.longTpl.indexOf("%s") >= 0 ? msgs.longTpl.replace("%s", label) : "This shift is " + label + " long. Save anyway?";
+        if (!window.confirm(text)) {
+          event.preventDefault();
+          return;
+        }
+      }
+    }
+    if (!beginSaving(form)) {
+      event.preventDefault();
       return;
     }
-
-    var limit = parseFloat(form.getAttribute("data-long-hours") || "16");
-    if (!isFinite(limit) || limit <= 0) {
-      limit = 16;
-    }
-    var maxSeconds = limit * 3600;
-    var longs = [];
-    form.querySelectorAll("[data-line]").forEach(function (line) {
-      var state = describeLine(line);
-      if (state.seconds > maxSeconds) {
-        longs.push(state.seconds);
-      }
-    });
-    var msgs = formMessages(form);
-    var i;
-    for (i = 0; i < longs.length; i++) {
-      var label = formatHours(longs[i]);
-      var text = msgs.longTpl.indexOf("%s") >= 0 ? msgs.longTpl.replace("%s", label) : "This shift is " + label + " long. Save anyway?";
-      if (!window.confirm(text)) {
-        event.preventDefault();
-        return;
-      }
-    }
+    window.setTimeout(function () {
+      showSaving(form);
+    }, 0);
   });
 
   function boot() {

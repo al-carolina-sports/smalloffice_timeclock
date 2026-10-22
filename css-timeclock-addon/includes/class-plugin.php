@@ -24,6 +24,7 @@ require_once CSS_TC_ADDON_DIR . 'includes/class-pins.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-import.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-punches.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-corrections.php';
+require_once CSS_TC_ADDON_DIR . 'includes/class-day-notes.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-timecard.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-reports.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-ajax.php';
@@ -114,6 +115,11 @@ class Css_Tc_Plugin {
 	public $corrections;
 
 	/**
+	 * @var Css_Tc_Day_Notes
+	 */
+	public $day_notes;
+
+	/**
 	 * @return Css_Tc_Plugin
 	 */
 	public static function instance() {
@@ -139,6 +145,10 @@ class Css_Tc_Plugin {
 		$this->punches     = new Css_Tc_Punches();
 		$this->punches->register_hooks();
 		$this->corrections = new Css_Tc_Corrections();
+		$this->day_notes   = new Css_Tc_Day_Notes();
+		// Drop Endurance_Page_Cache::save_post before it can PURGE on a shift
+		// or correction save. Priority -9999 runs before the cache callback.
+		add_action( 'save_post', array( __CLASS__, 'suspend_endurance_page_cache' ), -9999, 2 );
 
 		add_action( 'plugins_loaded', array( $this, 'load_textdomain' ) );
 		add_action( 'init', array( $this, 'register_runtime' ) );
@@ -398,6 +408,91 @@ class Css_Tc_Plugin {
 	 */
 	public static function user_can_manage() {
 		return current_user_can( 'manage_options' ) || current_user_can( self::MANAGE_CAP );
+	}
+
+	/**
+	 * Write one line to the PHP error log when WP_DEBUG is on.
+	 *
+	 * @param string $label   What finished.
+	 * @param float  $started microtime( true ) from the start of the save.
+	 * @return void
+	 */
+	public static function log_timing( $label, $started ) {
+		if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
+			return;
+		}
+		error_log( sprintf( 'css_tc %s seconds=%.3f', $label, microtime( true ) - (float) $started ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+	}
+
+	/**
+	 * Unhook the old Bluehost/Endurance page cache while this add-on writes a
+	 * shift or a css_tc_correction. That callback issues a blocking PURGE.
+	 *
+	 * @param int          $post_id Post ID.
+	 * @param WP_Post|null $post    Post.
+	 * @return void
+	 */
+	public static function suspend_endurance_page_cache( $post_id = 0, $post = null ) {
+		$type = '';
+		if ( is_object( $post ) && isset( $post->post_type ) ) {
+			$type = (string) $post->post_type;
+		} elseif ( function_exists( 'get_post_type' ) ) {
+			$type = (string) get_post_type( $post_id );
+		}
+		if ( Css_Tc_Punches::POST_TYPE !== $type && Css_Tc_Corrections::POST_TYPE !== $type ) {
+			return;
+		}
+		self::unhook_endurance_page_cache();
+	}
+
+	/**
+	 * Remove Endurance_Page_Cache::save_post if that class is loaded.
+	 * Instance and static callbacks are both removed. Other save_post hooks stay.
+	 *
+	 * @return void
+	 */
+	public static function unhook_endurance_page_cache() {
+		if ( ! class_exists( 'Endurance_Page_Cache' ) ) {
+			return;
+		}
+		global $wp_filter;
+		if ( ! isset( $wp_filter['save_post'] ) ) {
+			return;
+		}
+		$hook   = $wp_filter['save_post'];
+		$groups = array();
+		if ( is_object( $hook ) && isset( $hook->callbacks ) && is_array( $hook->callbacks ) ) {
+			$groups = $hook->callbacks;
+		} elseif ( is_array( $hook ) ) {
+			$groups = $hook;
+		}
+		$remove = array();
+		foreach ( $groups as $priority => $callbacks ) {
+			if ( ! is_array( $callbacks ) ) {
+				continue;
+			}
+			foreach ( $callbacks as $callback ) {
+				if ( ! is_array( $callback ) || ! isset( $callback['function'] ) ) {
+					continue;
+				}
+				$fn = $callback['function'];
+				if ( is_string( $fn ) && 'Endurance_Page_Cache::save_post' === $fn ) {
+					$remove[] = array( $fn, (int) $priority );
+					continue;
+				}
+				if ( ! is_array( $fn ) || ! isset( $fn[0], $fn[1] ) || 'save_post' !== $fn[1] ) {
+					continue;
+				}
+				$target = $fn[0];
+				$match  = ( is_object( $target ) && $target instanceof Endurance_Page_Cache ) || ( is_string( $target ) && 'Endurance_Page_Cache' === $target );
+				if ( $match ) {
+					$remove[] = array( $fn, (int) $priority );
+				}
+			}
+		}
+		foreach ( $remove as $item ) {
+			remove_action( 'save_post', $item[0], $item[1] );
+		}
 	}
 
 	/**
