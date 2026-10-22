@@ -31,43 +31,183 @@ class Css_Tc_Reports {
 	 * @return void
 	 */
 	public function register_hooks() {
-		add_action( 'admin_menu', array( $this, 'add_menu' ), 30 );
+		// After AIO's admin_menu callback (priority 10) has created aio-tc-lite,
+		// so this page's hook name matches the one WordPress checks on view.
+		// Before organize_menu (1001), which places the single Reports link.
+		add_action( 'admin_menu', array( $this, 'add_menu' ), 1000 );
 		add_action( 'admin_post_' . self::CSV_ACTION, array( $this, 'download_csv' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
 	}
 
 	/**
-	 * Take over AIO's Reports slug so existing links keep working. Without
-	 * AIO, add a Reports page under Settings next to Timecards.
+	 * Parent slug a Time Clock Admin can open.
+	 *
+	 * AIO's top-level menu is aio-tc-lite (edit_posts). Settings
+	 * (options-general.php) requires manage_options, which that role does not have.
+	 *
+	 * @param bool $aio_active AIO is loaded.
+	 * @return string
+	 */
+	public static function menu_parent( $aio_active ) {
+		return $aio_active ? 'aio-tc-lite' : 'options-general.php';
+	}
+
+	/**
+	 * One capability for add_submenu_page. WordPress stores that string and
+	 * checks it again when the page opens. Time Clock Admin has css_tc_manage
+	 * and not manage_options; an administrator may have only manage_options.
+	 *
+	 * @param bool $can_manage_cap     User has css_tc_manage.
+	 * @param bool $can_manage_options User has manage_options.
+	 * @return string
+	 */
+	public static function menu_capability( $can_manage_cap, $can_manage_options ) {
+		if ( $can_manage_cap ) {
+			return Css_Tc_Plugin::MANAGE_CAP;
+		}
+		if ( $can_manage_options ) {
+			return 'manage_options';
+		}
+		return 'do_not_allow';
+	}
+
+	/**
+	 * Hook names WordPress may look up for this screen. Registering only the
+	 * name computed before AIO's menu exists (admin_page_…) makes the real
+	 * check (time-clock-lite_page_…) fail with "Sorry, you are not allowed".
+	 *
+	 * @param string $parent      Parent slug.
+	 * @param string $parent_hook admin_page_hooks value for that parent, or ''.
+	 * @return string[]
+	 */
+	public static function screen_hooks( $parent, $parent_hook = '' ) {
+		$types = array( 'admin', 'toplevel', 'settings' );
+		if ( 'aio-tc-lite' === $parent ) {
+			$types[] = 'time-clock-lite';
+		}
+		if ( '' !== (string) $parent_hook ) {
+			$types[] = (string) $parent_hook;
+		}
+		$hooks = array();
+		foreach ( array_values( array_unique( $types ) ) as $type ) {
+			$hooks[] = $type . '_page_' . self::PAGE_SLUG;
+		}
+		return $hooks;
+	}
+
+	/**
+	 * Which Reports slug to show. Prefer this add-on's page. Keep AIO's slug
+	 * only when ours was not registered, so the menu never lists both.
+	 *
+	 * @param string[] $slugs Submenu slugs present for this user.
+	 * @return string
+	 */
+	public static function visible_reports_slug( $slugs ) {
+		$slugs = array_map( 'strval', (array) $slugs );
+		if ( in_array( self::PAGE_SLUG, $slugs, true ) ) {
+			return self::PAGE_SLUG;
+		}
+		if ( in_array( self::AIO_SLUG, $slugs, true ) ) {
+			return self::AIO_SLUG;
+		}
+		return '';
+	}
+
+	/**
+	 * True when this user may open Reports or download a reports CSV.
+	 *
+	 * @param bool $can_manage_cap     User has css_tc_manage.
+	 * @param bool $can_manage_options User has manage_options.
+	 * @return bool
+	 */
+	public static function user_may_view( $can_manage_cap, $can_manage_options ) {
+		return (bool) $can_manage_cap || (bool) $can_manage_options;
+	}
+
+	/**
+	 * Register css-tc-reports for css_tc_manage or manage_options, under a
+	 * parent that role can open. Also keep aio-reports-sub rendering this
+	 * screen so older links still work, without a second menu item.
 	 *
 	 * @return void
 	 */
 	public function add_menu() {
-		if ( Css_Tc_Plugin::aio_is_active() && function_exists( 'get_plugin_page_hookname' ) ) {
-			$hook = get_plugin_page_hookname( self::AIO_SLUG, 'aio-tc-lite' );
-			if ( '' !== $hook && has_action( $hook ) ) {
-				remove_all_actions( $hook );
-				add_action( $hook, array( $this, 'render' ) );
-				return;
-			}
-			add_submenu_page(
-				'aio-tc-lite',
-				__( 'Reports', 'css-timeclock-addon' ),
-				__( 'Reports', 'css-timeclock-addon' ),
-				Css_Tc_Plugin::admin_capability(),
-				self::PAGE_SLUG,
-				array( $this, 'render' )
-			);
+		$aio = Css_Tc_Plugin::aio_is_active();
+		if ( $aio ) {
+			$this->adopt_aio_reports_screen();
+		}
+		$can_cap  = current_user_can( Css_Tc_Plugin::MANAGE_CAP );
+		$can_opts = current_user_can( 'manage_options' );
+		if ( ! self::user_may_view( $can_cap, $can_opts ) ) {
 			return;
 		}
 
-		add_options_page(
-			__( 'Timeclock Reports', 'css-timeclock-addon' ),
-			__( 'Timeclock Reports', 'css-timeclock-addon' ),
-			'manage_options',
+		$parent = self::menu_parent( $aio );
+		$cap    = self::menu_capability( $can_cap, $can_opts );
+		// No AIO menu, and this user cannot open Settings. Give them a
+		// top-level page whose capability is css_tc_manage.
+		if ( ! $aio && ! $can_opts ) {
+			add_menu_page(
+				__( 'Reports', 'css-timeclock-addon' ),
+				__( 'Reports', 'css-timeclock-addon' ),
+				$cap,
+				self::PAGE_SLUG,
+				array( $this, 'render' ),
+				'dashicons-media-spreadsheet',
+				58
+			);
+			$this->bind_screen_hooks( self::PAGE_SLUG );
+			return;
+		}
+
+		add_submenu_page(
+			$parent,
+			__( 'Reports', 'css-timeclock-addon' ),
+			__( 'Reports', 'css-timeclock-addon' ),
+			$cap,
 			self::PAGE_SLUG,
 			array( $this, 'render' )
 		);
+		$this->bind_screen_hooks( $parent );
+	}
+
+	/**
+	 * Point AIO's Reports slug at this screen. The menu hides that slug.
+	 *
+	 * @return void
+	 */
+	private function adopt_aio_reports_screen() {
+		if ( ! function_exists( 'get_plugin_page_hookname' ) ) {
+			return;
+		}
+		$hook = get_plugin_page_hookname( self::AIO_SLUG, 'aio-tc-lite' );
+		if ( '' === $hook || ! has_action( $hook ) ) {
+			return;
+		}
+		remove_all_actions( $hook );
+		add_action( $hook, array( $this, 'render' ) );
+	}
+
+	/**
+	 * Attach the screen to every hook name WordPress might check.
+	 *
+	 * @param string $parent Parent slug passed to add_submenu_page.
+	 * @return void
+	 */
+	private function bind_screen_hooks( $parent ) {
+		global $_registered_pages, $admin_page_hooks;
+		$parent_hook = '';
+		if ( is_array( $admin_page_hooks ) && isset( $admin_page_hooks[ $parent ] ) ) {
+			$parent_hook = (string) $admin_page_hooks[ $parent ];
+		}
+		if ( ! is_array( $_registered_pages ) ) {
+			$_registered_pages = array();
+		}
+		foreach ( self::screen_hooks( $parent, $parent_hook ) as $hook ) {
+			remove_action( $hook, array( $this, 'render' ) );
+			add_action( $hook, array( $this, 'render' ) );
+			$_registered_pages[ $hook ] = true;
+		}
 	}
 
 	/**
@@ -662,7 +802,7 @@ class Css_Tc_Reports {
 	 */
 	public static function url( $args = array() ) {
 		$base = Css_Tc_Plugin::aio_is_active()
-			? admin_url( 'admin.php?page=' . self::AIO_SLUG )
+			? admin_url( 'admin.php?page=' . self::PAGE_SLUG )
 			: admin_url( 'options-general.php?page=' . self::PAGE_SLUG );
 		return empty( $args ) ? $base : add_query_arg( $args, $base );
 	}
@@ -783,8 +923,8 @@ class Css_Tc_Reports {
 	 * @return void
 	 */
 	public function render() {
-		if ( ! Css_Tc_Plugin::user_can_manage() ) {
-			wp_die( esc_html__( 'You do not have permission to view timeclock reports.', 'css-timeclock-addon' ) );
+		if ( ! self::user_may_view( current_user_can( Css_Tc_Plugin::MANAGE_CAP ), current_user_can( 'manage_options' ) ) ) {
+			wp_die( esc_html__( 'You do not have permission to view timeclock reports.', 'css-timeclock-addon' ), '', array( 'response' => 403 ) );
 		}
 
 		$filters     = $this->filters( $_GET ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -851,8 +991,8 @@ class Css_Tc_Reports {
 	 * @return void
 	 */
 	public function download_csv() {
-		if ( ! Css_Tc_Plugin::user_can_manage() ) {
-			wp_die( esc_html__( 'You do not have permission to download timeclock reports.', 'css-timeclock-addon' ), 403 );
+		if ( ! self::user_may_view( current_user_can( Css_Tc_Plugin::MANAGE_CAP ), current_user_can( 'manage_options' ) ) ) {
+			wp_die( esc_html__( 'You do not have permission to download timeclock reports.', 'css-timeclock-addon' ), '', array( 'response' => 403 ) );
 		}
 		check_admin_referer( self::CSV_ACTION );
 

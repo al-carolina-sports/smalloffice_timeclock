@@ -159,6 +159,7 @@ class Css_Tc_Plugin {
 		add_action( 'init', array( $this, 'schedule_dns_refresh' ) );
 		add_action( 'init', array( __CLASS__, 'maybe_grant_caps' ), 0 );
 		add_action( 'init', array( __CLASS__, 'maybe_grant_caps' ), 20 ); // After AIO registers its roles.
+		add_filter( 'user_has_cap', array( __CLASS__, 'grant_manage_cap' ), 10, 4 );
 		add_action( 'admin_init', array( $this, 'guard_admin_pages' ), 1 );
 		add_action( 'admin_notices', array( $this, 'maybe_missing_aio_notice' ) );
 		add_action( 'admin_notices', array( $this, 'maybe_refused_kiosk_notice' ) );
@@ -408,6 +409,24 @@ class Css_Tc_Plugin {
 	 */
 	public static function user_can_manage() {
 		return current_user_can( 'manage_options' ) || current_user_can( self::MANAGE_CAP );
+	}
+
+	/**
+	 * Administrators may open manager screens before the role is granted
+	 * css_tc_manage. Time Clock Admin already has that cap and not manage_options.
+	 *
+	 * @param array<string,bool> $allcaps All capabilities for the user.
+	 * @param string[]           $caps    Required primitive capabilities.
+	 * @param array<int,mixed>   $args    Capability check arguments.
+	 * @param WP_User            $user    User being checked.
+	 * @return array<string,bool>
+	 */
+	public static function grant_manage_cap( $allcaps, $caps, $args, $user ) {
+		unset( $args, $user );
+		if ( ! empty( $allcaps['manage_options'] ) && in_array( self::MANAGE_CAP, (array) $caps, true ) ) {
+			$allcaps[ self::MANAGE_CAP ] = true;
+		}
+		return $allcaps;
 	}
 
 	/**

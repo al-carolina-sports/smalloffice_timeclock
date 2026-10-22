@@ -397,10 +397,14 @@ class Css_Tc_Admin {
 
 		$ordered = array();
 		$ordered[] = array( __( 'Timecards', 'css-timeclock-addon' ), $cap, 'css-tc-timecards', __( 'Timecards', 'css-timeclock-addon' ) );
-		if ( isset( $by_slug['aio-reports-sub'] ) ) {
-			$item      = $by_slug['aio-reports-sub'];
+		$reports_slug = Css_Tc_Reports::visible_reports_slug( array_keys( $by_slug ) );
+		if ( '' !== $reports_slug && isset( $by_slug[ $reports_slug ] ) ) {
+			$item      = $by_slug[ $reports_slug ];
 			$item[0]   = __( 'Reports', 'css-timeclock-addon' );
-			$item[1]   = $cap;
+			$item[1]   = Css_Tc_Reports::menu_capability(
+				current_user_can( Css_Tc_Plugin::MANAGE_CAP ),
+				current_user_can( 'manage_options' )
+			);
 			$ordered[] = $item;
 		}
 		if ( isset( $by_slug['aio-monitoring-sub'] ) ) {
@@ -423,7 +427,7 @@ class Css_Tc_Admin {
 		$ordered[] = array( __( 'Locations & departments', 'css-timeclock-addon' ), $cap, $tab_url( 'locations' ), __( 'Locations & departments', 'css-timeclock-addon' ) );
 		$ordered[] = array( __( 'TC-Config', 'css-timeclock-addon' ), $cap, 'css-tc-addon', __( 'TC-Config', 'css-timeclock-addon' ) );
 
-		$hide = array( 'aio-tc-lite', 'aio-reports-sub', 'aio-monitoring-sub', 'css-tc-timecards', 'css-tc-addon', 'aio-employees-sub', 'aio-shifts-sub', Css_Tc_Leave_Ui::PAGE );
+		$hide = array( 'aio-tc-lite', 'aio-reports-sub', Css_Tc_Reports::PAGE_SLUG, 'aio-monitoring-sub', 'css-tc-timecards', 'css-tc-addon', 'aio-employees-sub', 'aio-shifts-sub', Css_Tc_Leave_Ui::PAGE );
 		if ( css_tc_addon()->organization->enabled() ) {
 			$hide[] = 'aio-department-sub';
 		}

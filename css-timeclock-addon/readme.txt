@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.10.4
+Stable tag: 1.10.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,9 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under USOTC.
 
 == Changelog ==
+
+= 1.10.5 =
+* Time Clock Admin (css_tc_manage, without manage_options) can open USOTC → Reports at admin.php?page=css-tc-reports. The page is registered under AIO's time clock menu, which that role can open, and the CSV download accepts the same capability plus the report nonce. AIO's old Reports address still opens this screen, and the menu lists Reports once.
 
 = 1.10.4 =
 * Day notes: a manager (css_tc_manage or an administrator) can leave a note on an employee's day, including Out sick, Personal day, No call/no show, and Excused. It shows on the timecard and in print, including days with no punches. Employees see it on My Time Clock and cannot change it. A note does not change pay, overtime, or PTO, and saving one does not create a shift or a correction. Each change is kept in an audit log on that employee.
