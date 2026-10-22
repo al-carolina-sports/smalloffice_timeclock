@@ -43,6 +43,11 @@ class Css_Tc_Corrections {
 	const SNAP_SHIFT_ORIGINAL = 'css_tc_snap_shift_original';
 
 	/**
+	 * How long a day-save lock is kept if the request never finishes.
+	 */
+	const DAY_LOCK_SECONDS = 45;
+
+	/**
 	 * Shifts for a user and pay period, reused while building the review list.
 	 *
 	 * @var array<string,array<int,array<string,mixed>>>
@@ -220,6 +225,7 @@ class Css_Tc_Corrections {
 	 * @return array<string,mixed>|WP_Error
 	 */
 	private function store_parsed( $user_id, $parsed ) {
+		Css_Tc_Plugin::unhook_endurance_page_cache();
 		$existing = $this->pending_match( $user_id, $parsed );
 		$title    = sprintf(
 			/* translators: 1: employee name, 2: work date */
@@ -573,6 +579,7 @@ class Css_Tc_Corrections {
 	 * @return array<string,mixed>|WP_Error
 	 */
 	public function approve( $correction_id, $reviewer_id, $note = '' ) {
+		Css_Tc_Plugin::unhook_endurance_page_cache();
 		$post = $this->require_pending( $correction_id );
 		if ( is_wp_error( $post ) ) {
 			return $post;
@@ -644,6 +651,7 @@ class Css_Tc_Corrections {
 	 * @return array<string,mixed>|WP_Error
 	 */
 	public function reject( $correction_id, $reviewer_id, $note = '' ) {
+		Css_Tc_Plugin::unhook_endurance_page_cache();
 		$post = $this->require_pending( $correction_id );
 		if ( is_wp_error( $post ) ) {
 			return $post;
@@ -1174,9 +1182,99 @@ class Css_Tc_Corrections {
 	}
 
 	/**
+	 * Transient name for the per employee+day save lock.
+	 *
+	 * @param int    $employee_id Employee.
+	 * @param string $date        Y-m-d.
+	 * @return string
+	 */
+	public static function day_lock_key( $employee_id, $date ) {
+		$date = preg_replace( '/[^0-9-]/', '', (string) $date );
+		return 'css_tc_day_save_' . (int) $employee_id . '_' . $date;
+	}
+
+	/**
+	 * When a delete is posted, keep only that delete. Unsaved Add-punch rows
+	 * in the same form must not become shifts.
+	 *
+	 * @param mixed $lines Posted lines.
+	 * @return array<int,array<string,mixed>>
+	 */
+	public static function isolate_deletes( $lines ) {
+		if ( ! is_array( $lines ) ) {
+			return array();
+		}
+		$deletes = array();
+		foreach ( $lines as $line ) {
+			if ( ! is_array( $line ) ) {
+				continue;
+			}
+			$shift_id = isset( $line['shift_id'] ) ? (int) $line['shift_id'] : 0;
+			if ( $shift_id > 0 && ! empty( $line['delete'] ) ) {
+				$deletes[] = $line;
+			}
+		}
+		if ( empty( $deletes ) ) {
+			return $lines;
+		}
+		return $deletes;
+	}
+
+	/**
+	 * True when $existing already has this clock-in and clock-out.
+	 *
+	 * @param mixed  $existing    List of array{in:string,out:string}.
+	 * @param string $proposed_in Stored clock-in.
+	 * @param string $proposed_out Stored clock-out.
+	 * @return bool
+	 */
+	public static function is_duplicate_add( $existing, $proposed_in, $proposed_out ) {
+		$proposed_in  = (string) $proposed_in;
+		$proposed_out = (string) $proposed_out;
+		if ( '' === $proposed_in ) {
+			return false;
+		}
+		foreach ( (array) $existing as $pair ) {
+			if ( ! is_array( $pair ) ) {
+				continue;
+			}
+			$in  = isset( $pair['in'] ) ? (string) $pair['in'] : '';
+			$out = isset( $pair['out'] ) ? (string) $pair['out'] : '';
+			if ( $in === $proposed_in && $out === $proposed_out ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * @param int    $employee_id Employee.
+	 * @param string $date        Y-m-d.
+	 * @return bool
+	 */
+	private function acquire_day_lock( $employee_id, $date ) {
+		$key = self::day_lock_key( $employee_id, $date );
+		if ( get_transient( $key ) ) {
+			return false;
+		}
+		set_transient( $key, (string) time(), self::DAY_LOCK_SECONDS );
+		return true;
+	}
+
+	/**
+	 * @param int    $employee_id Employee.
+	 * @param string $date        Y-m-d.
+	 * @return void
+	 */
+	private function release_day_lock( $employee_id, $date ) {
+		delete_transient( self::day_lock_key( $employee_id, $date ) );
+	}
+
+	/**
 	 * Save a manager's direct edits for one day. Each changed, added, or deleted
 	 * shift becomes an auto-approved correction with a 1.4.7 day snapshot.
 	 * Closed pay periods are allowed. Days after today are not.
+	 * A day note is not part of this save.
 	 *
 	 * @param int                            $employee_id Employee whose punches change.
 	 * @param int                            $reviewer_id Manager.
@@ -1186,6 +1284,7 @@ class Css_Tc_Corrections {
 	 * @return int|WP_Error Number of recorded edits.
 	 */
 	public function manager_edit_day( $employee_id, $reviewer_id, $date, $lines, $note = '' ) {
+		$css_tc_started = microtime( true );
 		if ( ! Css_Tc_Plugin::user_can_manage() ) {
 			return new WP_Error( 'css_tc_forbidden', __( 'You do not have permission to edit timecards.', 'css-timeclock-addon' ) );
 		}
@@ -1214,29 +1313,65 @@ class Css_Tc_Corrections {
 			return new WP_Error( 'css_tc_bad_employee', __( 'That employee was not found.', 'css-timeclock-addon' ) );
 		}
 
-		$ops = $this->parse_manager_lines( $employee_id, $date, $lines );
-		if ( is_wp_error( $ops ) ) {
-			return $ops;
-		}
-		if ( empty( $ops ) ) {
+		if ( ! $this->acquire_day_lock( $employee_id, $date ) ) {
+			Css_Tc_Plugin::log_timing( 'manager_edit_day busy employee=' . (int) $employee_id . ' date=' . $date, $css_tc_started );
 			return new WP_Error(
-				'css_tc_unchanged',
-				__( 'Change a clock-in, clock-out or department, add a punch, or delete a shift before saving.', 'css-timeclock-addon' )
+				'css_tc_day_busy',
+				__( 'Another save for this employee and day is still running. Wait a moment, then look at the timecard before saving again.', 'css-timeclock-addon' )
 			);
 		}
 
-		$note  = $this->sanitize_note( $note );
-		$count = 0;
-		foreach ( $ops as $op ) {
-			$saved = $this->commit_manager_op( $employee_id, $reviewer_id, $date, $op, $note );
-			if ( is_wp_error( $saved ) ) {
-				return $saved;
+		try {
+			Css_Tc_Plugin::unhook_endurance_page_cache();
+			$lines = self::isolate_deletes( $lines );
+			$ops   = $this->parse_manager_lines( $employee_id, $date, $lines );
+			if ( is_wp_error( $ops ) ) {
+				return $ops;
 			}
-			++$count;
-		}
+			if ( empty( $ops ) ) {
+				return new WP_Error(
+					'css_tc_unchanged',
+					__( 'Change a clock-in, clock-out or department, add a punch, or delete a shift before saving.', 'css-timeclock-addon' )
+				);
+			}
 
-		css_tc_addon()->timecard->clear_flag_if_no_pending( $employee_id, $date );
-		return $count;
+			$seen_adds = array();
+			foreach ( $ops as $op ) {
+				if ( 'add' !== $op['action'] ) {
+					continue;
+				}
+				$duplicate = self::is_duplicate_add( $seen_adds, $op['proposed_in'], $op['proposed_out'] );
+				if ( ! $duplicate ) {
+					$duplicate = css_tc_addon()->punches->matching_shift_exists( $employee_id, $op['proposed_in'], $op['proposed_out'] );
+				}
+				if ( $duplicate ) {
+					return new WP_Error(
+						'css_tc_duplicate_add',
+						__( 'That clock-in and clock-out are already on this timecard, so the shift was not added again.', 'css-timeclock-addon' )
+					);
+				}
+				$seen_adds[] = array(
+					'in'  => (string) $op['proposed_in'],
+					'out' => (string) $op['proposed_out'],
+				);
+			}
+
+			$note  = $this->sanitize_note( $note );
+			$count = 0;
+			foreach ( $ops as $op ) {
+				$saved = $this->commit_manager_op( $employee_id, $reviewer_id, $date, $op, $note );
+				if ( is_wp_error( $saved ) ) {
+					return $saved;
+				}
+				++$count;
+			}
+
+			css_tc_addon()->timecard->clear_flag_if_no_pending( $employee_id, $date );
+			return $count;
+		} finally {
+			$this->release_day_lock( $employee_id, $date );
+			Css_Tc_Plugin::log_timing( 'manager_edit_day employee=' . (int) $employee_id . ' date=' . $date, $css_tc_started );
+		}
 	}
 
 	/**
@@ -1349,6 +1484,7 @@ class Css_Tc_Corrections {
 	 * @return int|WP_Error Correction post ID.
 	 */
 	private function commit_manager_op( $employee_id, $reviewer_id, $date, $op, $note ) {
+		Css_Tc_Plugin::unhook_endurance_page_cache();
 		$before  = $this->fresh_day_hours( $employee_id, $date, (int) $op['shift_id'] );
 		$post_id = wp_insert_post(
 			array(

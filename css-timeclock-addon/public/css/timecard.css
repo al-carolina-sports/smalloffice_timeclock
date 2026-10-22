@@ -1197,5 +1197,79 @@ span.css-tc-lock {
 	}
 }
 
+/* Manager day note. Shown on screen and in print. Not pay. */
+.css-tc-day__note {
+	display: block;
+	margin: 4px 0 6px;
+	padding: 4px 6px;
+	border-left: 3px solid #b45309;
+	border-radius: 3px;
+	background: #fffbeb;
+	font-size: 12px;
+	line-height: 1.35;
+	color: #1f2937;
+}
+
+.css-tc-day__note-text {
+	display: block;
+	white-space: pre-wrap;
+}
+
+.css-tc-day__note-by {
+	display: block;
+	color: #4b5563;
+	font-style: italic;
+}
+
+.css-tc-day-note {
+	margin: 16px 0 8px;
+	padding: 12px 14px;
+	border: 1px solid var(--tc-line, #e6e8ee);
+	border-radius: 10px;
+	background: #fff;
+}
+
+.css-tc-day-note__field textarea {
+	width: 100%;
+	max-width: 640px;
+}
+
+.css-tc-day-note__presets {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 8px 0;
+}
+
+.css-tc-day-note__presets button {
+	padding: 4px 10px;
+	border: 1px solid #d0d5dd;
+	border-radius: 999px;
+	background: #f9fafb;
+	color: #344054;
+	cursor: pointer;
+}
+
+.css-tc-day-note__hint,
+.css-tc-day-note__audit {
+	color: #475467;
+	font-size: 13px;
+}
+
+.css-tc-day-note__audit-title {
+	margin: 12px 0 6px;
+	font-size: 14px;
+}
+
+@media print {
+	.css-tc-day__note,
+	.css-tc-day__note-text,
+	.css-tc-day__note-by {
+		display: block !important;
+		color: #000 !important;
+		background: none !important;
+	}
+}
+
 .css-tc-pto__status { margin: 4px 0 6px; padding: 4px 10px; border-radius: 6px; font-size: 13px; background: #fef3c7; color: #92400e; }
 .css-tc-pto__status--inactive { background: #fee2e2; color: #991b1b; }

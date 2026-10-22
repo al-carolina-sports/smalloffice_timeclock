@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.10.2
+Stable tag: 1.10.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,21 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under USOTC.
 
 == Changelog ==
+
+= 1.10.5 =
+* Time Clock Admin (css_tc_manage, without manage_options) can open USOTC → Reports at admin.php?page=css-tc-reports. The page is registered under AIO's time clock menu, which that role can open, and the CSV download accepts the same capability plus the report nonce. AIO's old Reports address still opens this screen, and the menu lists Reports once.
+
+= 1.10.4 =
+* Day notes: a manager (css_tc_manage or an administrator) can leave a note on an employee's day, including Out sick, Personal day, No call/no show, and Excused. It shows on the timecard and in print, including days with no punches. Employees see it on My Time Clock and cannot change it. A note does not change pay, overtime, or PTO, and saving one does not create a shift or a correction. Each change is kept in an audit log on that employee.
+* Reports CSV (pay period, by employee, and shift detail) has a Day notes column. Hour columns stay in the same place.
+* Saving a day disables Save and Delete while the request runs, so a slow save cannot be clicked into duplicate shifts. Delete shift sends only that delete. The same clock-in and clock-out cannot be added twice, and two saves for the same employee and day cannot run at once.
+* Shift and correction saves unhook Endurance Page Cache's save_post callback when that old Bluehost plugin is present, so it does not fire a blocking PURGE. Save timing is written to the error log when WP_DEBUG is on.
+
+= 1.10.3 =
+* Time off: managers and administrators can view and edit each employee's hire date, PTO and sick allowances, balance adjustments, and balances on USOTC → Time off. The editor does not use the Users screen and does not need the edit_users capability. The person must be a time clock employee and must not be an administrator.
+* An employee's own profile and My Time Clock show PTO and sick balances read-only. Saving a profile ignores allowance, adjustment, and hire-date fields unless the current user is a manager or administrator editing someone else.
+* Employees can still request and cancel their own time off. Those actions cannot change allowances, adjustments, or the hire date, and they cannot act on another employee's requests.
+* Hire date, allowance, and balance edits are logged with who, when, and the before and after values.
 
 = 1.10.2 =
 * The Employee PINs tab and menu entry are now just "Employee". The tab has a "Hire date and PIN" heading above the table, and a "Departments, locations, company settings" section below it that links to Users (where each employee's departments are assigned) and to the Locations & departments tab.

@@ -31,43 +31,183 @@ class Css_Tc_Reports {
 	 * @return void
 	 */
 	public function register_hooks() {
-		add_action( 'admin_menu', array( $this, 'add_menu' ), 30 );
+		// After AIO's admin_menu callback (priority 10) has created aio-tc-lite,
+		// so this page's hook name matches the one WordPress checks on view.
+		// Before organize_menu (1001), which places the single Reports link.
+		add_action( 'admin_menu', array( $this, 'add_menu' ), 1000 );
 		add_action( 'admin_post_' . self::CSV_ACTION, array( $this, 'download_csv' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
 	}
 
 	/**
-	 * Take over AIO's Reports slug so existing links keep working. Without
-	 * AIO, add a Reports page under Settings next to Timecards.
+	 * Parent slug a Time Clock Admin can open.
+	 *
+	 * AIO's top-level menu is aio-tc-lite (edit_posts). Settings
+	 * (options-general.php) requires manage_options, which that role does not have.
+	 *
+	 * @param bool $aio_active AIO is loaded.
+	 * @return string
+	 */
+	public static function menu_parent( $aio_active ) {
+		return $aio_active ? 'aio-tc-lite' : 'options-general.php';
+	}
+
+	/**
+	 * One capability for add_submenu_page. WordPress stores that string and
+	 * checks it again when the page opens. Time Clock Admin has css_tc_manage
+	 * and not manage_options; an administrator may have only manage_options.
+	 *
+	 * @param bool $can_manage_cap     User has css_tc_manage.
+	 * @param bool $can_manage_options User has manage_options.
+	 * @return string
+	 */
+	public static function menu_capability( $can_manage_cap, $can_manage_options ) {
+		if ( $can_manage_cap ) {
+			return Css_Tc_Plugin::MANAGE_CAP;
+		}
+		if ( $can_manage_options ) {
+			return 'manage_options';
+		}
+		return 'do_not_allow';
+	}
+
+	/**
+	 * Hook names WordPress may look up for this screen. Registering only the
+	 * name computed before AIO's menu exists (admin_page_…) makes the real
+	 * check (time-clock-lite_page_…) fail with "Sorry, you are not allowed".
+	 *
+	 * @param string $parent      Parent slug.
+	 * @param string $parent_hook admin_page_hooks value for that parent, or ''.
+	 * @return string[]
+	 */
+	public static function screen_hooks( $parent, $parent_hook = '' ) {
+		$types = array( 'admin', 'toplevel', 'settings' );
+		if ( 'aio-tc-lite' === $parent ) {
+			$types[] = 'time-clock-lite';
+		}
+		if ( '' !== (string) $parent_hook ) {
+			$types[] = (string) $parent_hook;
+		}
+		$hooks = array();
+		foreach ( array_values( array_unique( $types ) ) as $type ) {
+			$hooks[] = $type . '_page_' . self::PAGE_SLUG;
+		}
+		return $hooks;
+	}
+
+	/**
+	 * Which Reports slug to show. Prefer this add-on's page. Keep AIO's slug
+	 * only when ours was not registered, so the menu never lists both.
+	 *
+	 * @param string[] $slugs Submenu slugs present for this user.
+	 * @return string
+	 */
+	public static function visible_reports_slug( $slugs ) {
+		$slugs = array_map( 'strval', (array) $slugs );
+		if ( in_array( self::PAGE_SLUG, $slugs, true ) ) {
+			return self::PAGE_SLUG;
+		}
+		if ( in_array( self::AIO_SLUG, $slugs, true ) ) {
+			return self::AIO_SLUG;
+		}
+		return '';
+	}
+
+	/**
+	 * True when this user may open Reports or download a reports CSV.
+	 *
+	 * @param bool $can_manage_cap     User has css_tc_manage.
+	 * @param bool $can_manage_options User has manage_options.
+	 * @return bool
+	 */
+	public static function user_may_view( $can_manage_cap, $can_manage_options ) {
+		return (bool) $can_manage_cap || (bool) $can_manage_options;
+	}
+
+	/**
+	 * Register css-tc-reports for css_tc_manage or manage_options, under a
+	 * parent that role can open. Also keep aio-reports-sub rendering this
+	 * screen so older links still work, without a second menu item.
 	 *
 	 * @return void
 	 */
 	public function add_menu() {
-		if ( Css_Tc_Plugin::aio_is_active() && function_exists( 'get_plugin_page_hookname' ) ) {
-			$hook = get_plugin_page_hookname( self::AIO_SLUG, 'aio-tc-lite' );
-			if ( '' !== $hook && has_action( $hook ) ) {
-				remove_all_actions( $hook );
-				add_action( $hook, array( $this, 'render' ) );
-				return;
-			}
-			add_submenu_page(
-				'aio-tc-lite',
-				__( 'Reports', 'css-timeclock-addon' ),
-				__( 'Reports', 'css-timeclock-addon' ),
-				Css_Tc_Plugin::admin_capability(),
-				self::PAGE_SLUG,
-				array( $this, 'render' )
-			);
+		$aio = Css_Tc_Plugin::aio_is_active();
+		if ( $aio ) {
+			$this->adopt_aio_reports_screen();
+		}
+		$can_cap  = current_user_can( Css_Tc_Plugin::MANAGE_CAP );
+		$can_opts = current_user_can( 'manage_options' );
+		if ( ! self::user_may_view( $can_cap, $can_opts ) ) {
 			return;
 		}
 
-		add_options_page(
-			__( 'Timeclock Reports', 'css-timeclock-addon' ),
-			__( 'Timeclock Reports', 'css-timeclock-addon' ),
-			'manage_options',
+		$parent = self::menu_parent( $aio );
+		$cap    = self::menu_capability( $can_cap, $can_opts );
+		// No AIO menu, and this user cannot open Settings. Give them a
+		// top-level page whose capability is css_tc_manage.
+		if ( ! $aio && ! $can_opts ) {
+			add_menu_page(
+				__( 'Reports', 'css-timeclock-addon' ),
+				__( 'Reports', 'css-timeclock-addon' ),
+				$cap,
+				self::PAGE_SLUG,
+				array( $this, 'render' ),
+				'dashicons-media-spreadsheet',
+				58
+			);
+			$this->bind_screen_hooks( self::PAGE_SLUG );
+			return;
+		}
+
+		add_submenu_page(
+			$parent,
+			__( 'Reports', 'css-timeclock-addon' ),
+			__( 'Reports', 'css-timeclock-addon' ),
+			$cap,
 			self::PAGE_SLUG,
 			array( $this, 'render' )
 		);
+		$this->bind_screen_hooks( $parent );
+	}
+
+	/**
+	 * Point AIO's Reports slug at this screen. The menu hides that slug.
+	 *
+	 * @return void
+	 */
+	private function adopt_aio_reports_screen() {
+		if ( ! function_exists( 'get_plugin_page_hookname' ) ) {
+			return;
+		}
+		$hook = get_plugin_page_hookname( self::AIO_SLUG, 'aio-tc-lite' );
+		if ( '' === $hook || ! has_action( $hook ) ) {
+			return;
+		}
+		remove_all_actions( $hook );
+		add_action( $hook, array( $this, 'render' ) );
+	}
+
+	/**
+	 * Attach the screen to every hook name WordPress might check.
+	 *
+	 * @param string $parent Parent slug passed to add_submenu_page.
+	 * @return void
+	 */
+	private function bind_screen_hooks( $parent ) {
+		global $_registered_pages, $admin_page_hooks;
+		$parent_hook = '';
+		if ( is_array( $admin_page_hooks ) && isset( $admin_page_hooks[ $parent ] ) ) {
+			$parent_hook = (string) $admin_page_hooks[ $parent ];
+		}
+		if ( ! is_array( $_registered_pages ) ) {
+			$_registered_pages = array();
+		}
+		foreach ( self::screen_hooks( $parent, $parent_hook ) as $hook ) {
+			remove_action( $hook, array( $this, 'render' ) );
+			add_action( $hook, array( $this, 'render' ) );
+			$_registered_pages[ $hook ] = true;
+		}
 	}
 
 	/**
@@ -176,9 +316,15 @@ class Css_Tc_Reports {
 
 		foreach ( $this->employees( $use_org ? '' : $department ) as $user ) {
 			$sheet = css_tc_addon()->timecard->build( (int) $user->ID, $period );
+			$day_notes_text = Css_Tc_Day_Notes::format_period_notes(
+				css_tc_addon()->day_notes->for_user( (int) $user->ID ),
+				(string) $period['start'],
+				(string) $period['end']
+			);
 			// Someone who left before this period and has nothing in it is not listed.
-			// Anyone with hours or paid time in the period always is.
-			if ( Css_Tc_Status::INACTIVE === css_tc_addon()->status->on( (int) $user->ID, (string) $period['start'] ) && (int) $sheet['paid_seconds'] < 1 && empty( $sheet['segments'] ) ) {
+			// Anyone with hours, paid time, or a day note in the period always is.
+			// A note does not add hours.
+			if ( Css_Tc_Status::INACTIVE === css_tc_addon()->status->on( (int) $user->ID, (string) $period['start'] ) && (int) $sheet['paid_seconds'] < 1 && empty( $sheet['segments'] ) && '' === $day_notes_text ) {
 				continue;
 			}
 			$status_note = css_tc_addon()->status->describe( (int) $user->ID );
@@ -212,7 +358,7 @@ class Css_Tc_Reports {
 				$nonwork = array_fill_keys( array_keys( $nonwork ), 0 );
 			}
 			$holiday = array_sum( $nonwork ); // All paid, non-worked hours.
-			if ( $filtered && empty( $matched ) && $holiday < 1 ) {
+			if ( $filtered && empty( $matched ) && $holiday < 1 && '' === $day_notes_text ) {
 				continue;
 			}
 
@@ -310,12 +456,29 @@ class Css_Tc_Reports {
 						$emp_total[ $k ] += $r[ $k ];
 					}
 				}
-				if ( ! empty( $emp_rows ) ) {
+				if ( ! empty( $emp_rows ) || '' !== $day_notes_text ) {
+					if ( empty( $emp_rows ) ) {
+						$emp_rows = array(
+							array(
+								'company'    => '',
+								'department' => '',
+								'location'   => '',
+								'shifts'     => 0,
+								'regular'    => 0,
+								'overtime'   => 0,
+								'holiday'    => 0,
+								'pto'        => 0,
+								'sick'       => 0,
+								'total'      => 0,
+							),
+						);
+					}
 					$by_employee[] = array(
-						'user_id' => (int) $user->ID,
-						'name'    => css_tc_addon()->employees->display_name( (int) $user->ID ),
-						'rows'    => array_values( $emp_rows ),
-						'total'   => $emp_total,
+						'user_id'   => (int) $user->ID,
+						'name'      => css_tc_addon()->employees->display_name( (int) $user->ID ),
+						'rows'      => array_values( $emp_rows ),
+						'total'     => $emp_total,
+						'day_notes' => $day_notes_text,
 					);
 				}
 
@@ -409,6 +572,7 @@ class Css_Tc_Reports {
 				'weeks'        => $week_seconds,
 				'total'        => $total_seconds,
 				'attention'    => $attention,
+				'day_notes'    => $day_notes_text,
 				'timecard_url' => Css_Tc_Admin::timecards_url(
 					array(
 						'employee' => (int) $user->ID,
@@ -527,11 +691,17 @@ class Css_Tc_Reports {
 			if ( $user_id && (int) $user->ID !== (int) $user_id ) {
 				continue;
 			}
-			$name = css_tc_addon()->employees->display_name( (int) $user->ID );
-			$dept = css_tc_addon()->employees->department( (int) $user->ID );
+			$name      = css_tc_addon()->employees->display_name( (int) $user->ID );
+			$dept      = css_tc_addon()->employees->department( (int) $user->ID );
+			$note_map  = css_tc_addon()->day_notes->for_user( (int) $user->ID );
+			$noted_dates = array();
 			foreach ( css_tc_addon()->timecard->shifts_for_period( (int) $user->ID, $period ) as $shift ) {
 				if ( $use_org && ! $this->segment_matches( $shift, $org ) ) {
 					continue;
+				}
+				$note_text = ( isset( $note_map[ $shift['work_date'] ]['text'] ) ) ? (string) $note_map[ $shift['work_date'] ]['text'] : '';
+				if ( '' !== $note_text ) {
+					$noted_dates[ (string) $shift['work_date'] ] = true;
 				}
 				$flags = array();
 				if ( ! empty( $shift['switched'] ) ) {
@@ -576,6 +746,33 @@ class Css_Tc_Reports {
 					'ip_out'     => (string) get_post_meta( (int) $shift['id'], 'ip_address_out', true ),
 					'source'     => '' !== $source ? $source : 'aio',
 					'flags'      => $flags,
+					'day_note'   => $note_text,
+				);
+			}
+			foreach ( $note_map as $note_date => $note ) {
+				if ( $note_date < (string) $period['start'] || $note_date > (string) $period['end'] ) {
+					continue;
+				}
+				if ( isset( $noted_dates[ $note_date ] ) ) {
+					continue;
+				}
+				$rows[] = array(
+					'user_id'    => (int) $user->ID,
+					'id'         => 0,
+					'sort_ts'    => 0,
+					'name'       => $name,
+					'department' => $dept,
+					'date'       => (string) $note_date,
+					'weekday'    => $time->format_weekday_short( (string) $note_date ),
+					'in'         => '',
+					'out'        => '',
+					'next_day'   => false,
+					'seconds'    => 0,
+					'ip_in'      => '',
+					'ip_out'     => '',
+					'source'     => '',
+					'flags'      => array(),
+					'day_note'   => isset( $note['text'] ) ? (string) $note['text'] : '',
 				);
 			}
 		}
@@ -605,7 +802,7 @@ class Css_Tc_Reports {
 	 */
 	public static function url( $args = array() ) {
 		$base = Css_Tc_Plugin::aio_is_active()
-			? admin_url( 'admin.php?page=' . self::AIO_SLUG )
+			? admin_url( 'admin.php?page=' . self::PAGE_SLUG )
 			: admin_url( 'options-general.php?page=' . self::PAGE_SLUG );
 		return empty( $args ) ? $base : add_query_arg( $args, $base );
 	}
@@ -655,7 +852,26 @@ class Css_Tc_Reports {
 			$head[] = $week['label'] . ' ' . $week['range'] . ' (hours)';
 		}
 		$head[] = 'Needs attention';
+		$head[] = 'Day notes';
 		return $head;
+	}
+
+	/**
+	 * Shift-detail CSV columns. Day notes is last so the hour columns stay put.
+	 *
+	 * @return string[]
+	 */
+	public static function shift_csv_header() {
+		return array( 'Employee', 'Worked in', 'Date', 'Day', 'Clock in', 'Clock out', 'Out next day', 'Hours', 'IP in', 'IP out', 'Source', 'Flags', 'Day notes' );
+	}
+
+	/**
+	 * By-employee CSV columns. Day notes is last so the hour columns stay put.
+	 *
+	 * @return string[]
+	 */
+	public static function by_employee_csv_header() {
+		return array( 'Employee', 'Company', 'Department', 'Location', 'Shifts', 'Regular (hours)', 'Overtime (hours)', 'Holiday (hours)', 'PTO (hours)', 'Sick (hours)', 'Total (hours)', 'Day notes' );
 	}
 
 	/**
@@ -707,8 +923,8 @@ class Css_Tc_Reports {
 	 * @return void
 	 */
 	public function render() {
-		if ( ! Css_Tc_Plugin::user_can_manage() ) {
-			wp_die( esc_html__( 'You do not have permission to view timeclock reports.', 'css-timeclock-addon' ) );
+		if ( ! self::user_may_view( current_user_can( Css_Tc_Plugin::MANAGE_CAP ), current_user_can( 'manage_options' ) ) ) {
+			wp_die( esc_html__( 'You do not have permission to view timeclock reports.', 'css-timeclock-addon' ), '', array( 'response' => 403 ) );
 		}
 
 		$filters     = $this->filters( $_GET ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -758,12 +974,13 @@ class Css_Tc_Reports {
 		$ot_cell = static function ( $seconds ) use ( $ot_on ) {
 			return $ot_on ? Css_Tc_Reports::decimal_hours( $seconds ) : '';
 		};
-		$lines = array( array( 'Employee', 'Company', 'Department', 'Location', 'Shifts', 'Regular (hours)', 'Overtime (hours)', 'Holiday (hours)', 'PTO (hours)', 'Sick (hours)', 'Total (hours)' ) );
+		$lines = array( self::by_employee_csv_header() );
 		foreach ( $summary['by_employee'] as $emp ) {
+			$note = isset( $emp['day_notes'] ) ? (string) $emp['day_notes'] : '';
 			foreach ( $emp['rows'] as $row ) {
-				$lines[] = array( $emp['name'], $row['company'], $row['department'], $row['location'], (string) $row['shifts'], self::decimal_hours( $row['regular'] ), $ot_cell( $row['overtime'] ), self::decimal_hours( $row['holiday'] ), self::decimal_hours( $row['pto'] ), self::decimal_hours( $row['sick'] ), self::decimal_hours( $row['total'] ) );
+				$lines[] = array( $emp['name'], $row['company'], $row['department'], $row['location'], (string) $row['shifts'], self::decimal_hours( $row['regular'] ), $ot_cell( $row['overtime'] ), self::decimal_hours( $row['holiday'] ), self::decimal_hours( $row['pto'] ), self::decimal_hours( $row['sick'] ), self::decimal_hours( $row['total'] ), $note );
 			}
-			$lines[] = array( $emp['name'], 'Total', '', '', (string) $emp['total']['shifts'], self::decimal_hours( $emp['total']['regular'] ), $ot_cell( $emp['total']['overtime'] ), self::decimal_hours( $emp['total']['holiday'] ), self::decimal_hours( $emp['total']['pto'] ), self::decimal_hours( $emp['total']['sick'] ), self::decimal_hours( $emp['total']['total'] ) );
+			$lines[] = array( $emp['name'], 'Total', '', '', (string) $emp['total']['shifts'], self::decimal_hours( $emp['total']['regular'] ), $ot_cell( $emp['total']['overtime'] ), self::decimal_hours( $emp['total']['holiday'] ), self::decimal_hours( $emp['total']['pto'] ), self::decimal_hours( $emp['total']['sick'] ), self::decimal_hours( $emp['total']['total'] ), $note );
 		}
 		return $lines;
 	}
@@ -774,8 +991,8 @@ class Css_Tc_Reports {
 	 * @return void
 	 */
 	public function download_csv() {
-		if ( ! Css_Tc_Plugin::user_can_manage() ) {
-			wp_die( esc_html__( 'You do not have permission to download timeclock reports.', 'css-timeclock-addon' ), 403 );
+		if ( ! self::user_may_view( current_user_can( Css_Tc_Plugin::MANAGE_CAP ), current_user_can( 'manage_options' ) ) ) {
+			wp_die( esc_html__( 'You do not have permission to download timeclock reports.', 'css-timeclock-addon' ), '', array( 'response' => 403 ) );
 		}
 		check_admin_referer( self::CSV_ACTION );
 
@@ -852,6 +1069,7 @@ class Css_Tc_Reports {
 				$line[] = self::decimal_hours( isset( $row['weeks'][ $w ] ) ? $row['weeks'][ $w ] : 0 );
 			}
 			$line[]  = implode( '; ', $row['attention'] );
+			$line[]  = isset( $row['day_notes'] ) ? (string) $row['day_notes'] : '';
 			$lines[] = $line;
 		}
 		return $lines;
@@ -862,7 +1080,7 @@ class Css_Tc_Reports {
 	 * @return array<int,array<int,string>>
 	 */
 	private function shift_csv_lines( $rows ) {
-		$lines = array( array( 'Employee', 'Worked in', 'Date', 'Day', 'Clock in', 'Clock out', 'Out next day', 'Hours', 'IP in', 'IP out', 'Source', 'Flags' ) );
+		$lines = array( self::shift_csv_header() );
 		foreach ( $rows as $row ) {
 			$lines[] = array(
 				$row['name'],
@@ -877,6 +1095,7 @@ class Css_Tc_Reports {
 				$row['ip_out'],
 				$row['source'],
 				implode( '; ', $row['flags'] ),
+				isset( $row['day_note'] ) ? (string) $row['day_note'] : '',
 			);
 		}
 		return $lines;

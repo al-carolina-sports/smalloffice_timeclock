@@ -25,6 +25,7 @@ class Css_Tc_Leave {
 	const POST_TYPE      = 'css_tc_leave';
 	const META_ALLOW     = 'css_tc_leave_allow';
 	const META_ADJUST    = 'css_tc_leave_adjust';
+	const META_AUDIT     = 'css_tc_leave_audit';
 	const TYPES          = array( 'pto', 'sick' );
 	// Managers can also record a holiday by hand (e.g. for someone on leave).
 	const MANAGER_TYPES  = array( 'pto', 'sick', 'holiday' );
@@ -462,6 +463,51 @@ class Css_Tc_Leave {
 		return rtrim( rtrim( number_format( $h, 2, '.', '' ), '0' ), '.' ) . ' h';
 	}
 
+	/**
+	 * Whether a manager may edit this employee's allowances, adjustments, and hire date.
+	 *
+	 * Does not require edit_users. A manager may edit their own record from
+	 * Time off. The profile screen uses may_save_profile_pto(), which refuses
+	 * the signed-in user's own profile.
+	 *
+	 * @param bool $actor_can_manage        Current user is a manager or administrator.
+	 * @param int  $actor_id                Current user ID.
+	 * @param int  $target_id               User being edited.
+	 * @param bool $target_is_employee      Target passes is_employee().
+	 * @param bool $target_is_administrator Target has the administrator role.
+	 * @return bool
+	 */
+	public static function may_edit_pto( $actor_can_manage, $actor_id, $target_id, $target_is_employee, $target_is_administrator ) {
+		if ( ! $actor_can_manage || (int) $actor_id < 1 || (int) $target_id < 1 ) {
+			return false;
+		}
+		if ( $target_is_administrator || ! $target_is_employee ) {
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Profile save (personal_options_update / edit_user_profile_update).
+	 *
+	 * Same rules as may_edit_pto(), and never the signed-in user's own profile,
+	 * so an employee cannot post allowance, adjustment, or hire-date fields
+	 * for themselves. Managers change their own record under Time off.
+	 *
+	 * @param bool $actor_can_manage        Current user is a manager or administrator.
+	 * @param int  $actor_id                Current user ID.
+	 * @param int  $target_id               Profile user ID.
+	 * @param bool $target_is_employee      Target passes is_employee().
+	 * @param bool $target_is_administrator Target has the administrator role.
+	 * @return bool
+	 */
+	public static function may_save_profile_pto( $actor_can_manage, $actor_id, $target_id, $target_is_employee, $target_is_administrator ) {
+		if ( (int) $actor_id === (int) $target_id ) {
+			return false;
+		}
+		return self::may_edit_pto( $actor_can_manage, $actor_id, $target_id, $target_is_employee, $target_is_administrator );
+	}
+
 	/*
 	 * ------------------------------------------------------------------
 	 * Records (WordPress)
@@ -579,6 +625,53 @@ class Css_Tc_Leave {
 	public function adjustments( $user_id ) {
 		$raw = get_user_meta( (int) $user_id, self::META_ADJUST, true );
 		return is_array( $raw ) ? array_values( $raw ) : array();
+	}
+
+	/**
+	 * Manager edits of hire date, allowances, and balances. Newest first.
+	 *
+	 * Each row is field, before, after, optional reason, by, at.
+	 *
+	 * @param int $user_id Employee.
+	 * @return array<int,array<string,mixed>>
+	 */
+	public function audit_log( $user_id ) {
+		$log = get_user_meta( (int) $user_id, self::META_AUDIT, true );
+		if ( ! is_array( $log ) ) {
+			return array();
+		}
+		return array_reverse( array_values( $log ) );
+	}
+
+	/**
+	 * Append before/after rows for a manager edit.
+	 *
+	 * @param int                              $user_id Employee.
+	 * @param array<int,array<string,string>>  $changes Field, before, after, optional reason.
+	 * @param int                              $actor   Who saved it.
+	 * @return void
+	 */
+	public function record_audit( $user_id, $changes, $actor ) {
+		if ( ! is_array( $changes ) || empty( $changes ) ) {
+			return;
+		}
+		$log = get_user_meta( (int) $user_id, self::META_AUDIT, true );
+		$log = is_array( $log ) ? array_values( $log ) : array();
+		$at  = time();
+		foreach ( $changes as $change ) {
+			if ( ! is_array( $change ) || empty( $change['field'] ) ) {
+				continue;
+			}
+			$log[] = array(
+				'field'  => sanitize_key( (string) $change['field'] ),
+				'before' => sanitize_text_field( (string) ( $change['before'] ?? '' ) ),
+				'after'  => sanitize_text_field( (string) ( $change['after'] ?? '' ) ),
+				'reason' => sanitize_text_field( (string) ( $change['reason'] ?? '' ) ),
+				'by'     => (int) $actor,
+				'at'     => $at,
+			);
+		}
+		update_user_meta( (int) $user_id, self::META_AUDIT, array_slice( $log, -100 ) );
 	}
 
 	/**

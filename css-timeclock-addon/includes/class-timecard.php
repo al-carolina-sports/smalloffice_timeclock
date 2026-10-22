@@ -299,6 +299,17 @@ class Css_Tc_Timecard {
 			}
 		}
 
+		// Day notes are labels. They are not added to $paid_seconds, overtime, or PTO.
+		$css_tc_day_notes = css_tc_addon()->day_notes->for_user( $user_id );
+		foreach ( $week_rows as $css_tc_w => $css_tc_week_row ) {
+			foreach ( $css_tc_week_row['days'] as $css_tc_d => $css_tc_day ) {
+				$css_tc_date = isset( $css_tc_day['date'] ) ? (string) $css_tc_day['date'] : '';
+				$week_rows[ $css_tc_w ]['days'][ $css_tc_d ]['note'] = isset( $css_tc_day_notes[ $css_tc_date ] )
+					? css_tc_addon()->day_notes->present( $css_tc_day_notes[ $css_tc_date ] )
+					: null;
+			}
+		}
+
 		return array(
 			'user_id'          => $user_id,
 			'employee_name'    => css_tc_addon()->employees->display_name( $user_id ),

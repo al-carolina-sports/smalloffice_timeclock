@@ -4,10 +4,10 @@ Private WordPress timeclock work for Carolina Sports and Spine / BioFunctional /
 
 ## Layout
 
-- `css-timeclock-addon/` — WordPress plugin (Ultimate Small Office Timeclock). Version 1.9.1.
+- `css-timeclock-addon/` — WordPress plugin (Ultimate Small Office Timeclock). Version 1.10.5.
 - `docs/CSS-Timeclock-Whitepaper.md` — developer whitepaper
 - `docs/PRODUCTION-INSTALL.md` — one-page checklist for a new site
-- `dist/css-timeclock-addon.zip` — WP Engine upload zip (1.9.1)
+- `dist/css-timeclock-addon.zip` — WP Engine upload zip (1.10.5)
 
 ## Install (sandbox only)
 

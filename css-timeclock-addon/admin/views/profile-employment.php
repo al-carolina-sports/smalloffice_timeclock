@@ -9,6 +9,7 @@
  * @var int     $intro
  * @var string  $from
  * @var bool    $holidays
+ * @var bool    $hire_readonly
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -86,7 +87,21 @@ $css_tc_slabs = Css_Tc_Status::labels();
 	<tr>
 		<th scope="row"><label for="css_tc_hire_date"><?php echo esc_html__( 'Hire date', 'css-timeclock-addon' ); ?></label></th>
 		<td>
-			<input type="date" name="css_tc_hire_date" id="css_tc_hire_date" value="<?php echo esc_attr( $hire ); ?>" />
+			<?php if ( ! empty( $hire_readonly ) ) : ?>
+				<p>
+					<strong><?php echo '' !== $hire ? esc_html( css_tc_addon()->time->format_day_label( $hire ) ) : esc_html__( 'Not set', 'css-timeclock-addon' ); ?></strong>
+				</p>
+				<p class="description">
+					<?php if ( (int) $user->ID === (int) get_current_user_id() ) : ?>
+						<?php echo esc_html__( 'You cannot change your own hire date on this screen.', 'css-timeclock-addon' ); ?>
+						<a href="<?php echo esc_url( add_query_arg( 'employee', (int) $user->ID, Css_Tc_Leave_Ui::page_url() ) ); ?>"><?php echo esc_html__( 'Edit it under Time off.', 'css-timeclock-addon' ); ?></a>
+					<?php else : ?>
+						<?php echo esc_html__( 'Site administrators are not edited here.', 'css-timeclock-addon' ); ?>
+					<?php endif; ?>
+				</p>
+			<?php else : ?>
+				<input type="date" name="css_tc_hire_date" id="css_tc_hire_date" value="<?php echo esc_attr( $hire ); ?>" />
+			<?php endif; ?>
 		</td>
 	</tr>
 	<tr>
