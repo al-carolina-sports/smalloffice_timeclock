@@ -28,6 +28,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<a href="<?php echo esc_url( $base_url . '&tab=settings' ); ?>" class="nav-tab <?php echo 'settings' === $tab ? 'nav-tab-active' : ''; ?>">
 			<?php echo esc_html__( 'TC-Config', 'css-timeclock-addon' ); ?>
 		</a>
+		<a href="<?php echo esc_url( $base_url . '&tab=payday' ); ?>" class="nav-tab <?php echo 'payday' === $tab ? 'nav-tab-active' : ''; ?>">
+			<?php echo esc_html__( 'Pay & Payday', 'css-timeclock-addon' ); ?>
+		</a>
 		<a href="<?php echo esc_url( $base_url . '&tab=holidays' ); ?>" class="nav-tab <?php echo 'holidays' === $tab ? 'nav-tab-active' : ''; ?>">
 			<?php echo esc_html__( 'Holidays', 'css-timeclock-addon' ); ?>
 		</a>
@@ -61,6 +64,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<?php include CSS_TC_ADDON_DIR . 'admin/views/organization-tab.php'; ?>
 	<?php elseif ( 'import' === $tab ) : ?>
 		<?php include CSS_TC_ADDON_DIR . 'admin/views/import-tab.php'; ?>
+	<?php elseif ( 'payday' === $tab ) : ?>
+		<?php include CSS_TC_ADDON_DIR . 'admin/views/payday-settings.php'; ?>
 	<?php endif; ?>
 
 	<?php if ( 'settings' === $tab ) : ?>
@@ -276,7 +281,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 							<option value="weekly" <?php selected( isset( $settings['pay_period_length'] ) ? $settings['pay_period_length'] : 'biweekly', 'weekly' ); ?>><?php echo esc_html__( 'Weekly', 'css-timeclock-addon' ); ?></option>
 							<option value="biweekly" <?php selected( isset( $settings['pay_period_length'] ) ? $settings['pay_period_length'] : 'biweekly', 'biweekly' ); ?>><?php echo esc_html__( 'Biweekly', 'css-timeclock-addon' ); ?></option>
 						</select>
-						<p class="description"><?php echo esc_html__( 'Weeks run Monday through Sunday. Biweekly is two of those weeks. The current period is the only one employees can correct.', 'css-timeclock-addon' ); ?></p>
+						<p class="description"><?php echo esc_html__( 'Weeks run Monday through Sunday. Biweekly is two of those weeks. The current period is the only one employees can correct. Pay & Payday bands are a separate calendar and do not change these hours.', 'css-timeclock-addon' ); ?></p>
 					</td>
 				</tr>
 				<tr>

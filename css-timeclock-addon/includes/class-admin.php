@@ -151,6 +151,53 @@ class Css_Tc_Admin {
 				),
 			)
 		);
+
+		$css_tc_tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'settings'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( 'payday' === $css_tc_tab && false !== strpos( (string) $hook, 'css-tc-addon' ) ) {
+			wp_enqueue_script(
+				'css-tc-payday-calc',
+				CSS_TC_ADDON_URL . 'admin/js/payday-calc.js',
+				array(),
+				CSS_TC_ADDON_ASSET_VERSION,
+				true
+			);
+			wp_enqueue_script(
+				'css-tc-payday',
+				CSS_TC_ADDON_URL . 'admin/js/payday.js',
+				array( 'css-tc-payday-calc', 'css-tc-admin' ),
+				CSS_TC_ADDON_ASSET_VERSION,
+				true
+			);
+			$css_tc_months    = array();
+			$css_tc_days      = array();
+			$css_tc_day_names = array();
+			for ( $css_tc_m = 1; $css_tc_m <= 12; $css_tc_m++ ) {
+				$css_tc_months[] = Css_Tc_Payday::month_short( $css_tc_m );
+			}
+			for ( $css_tc_d = 0; $css_tc_d < 7; $css_tc_d++ ) {
+				$css_tc_days[]      = Css_Tc_Payday::weekday_short( $css_tc_d );
+				$css_tc_day_names[] = Css_Tc_Payday::weekday_name( $css_tc_d );
+			}
+			wp_localize_script(
+				'css-tc-payday',
+				'cssTcPayday',
+				array(
+					'today'    => css_tc_addon()->time->site_today(),
+					'months'   => $css_tc_months,
+					'days'     => $css_tc_days,
+					'dayNames' => $css_tc_day_names,
+					'strings'  => array(
+						'needAnchor' => __( 'Choose a pay period start date.', 'css-timeclock-addon' ),
+						'daysWord'   => __( 'days', 'css-timeclock-addon' ),
+						'auto'       => __( 'auto from frequency', 'css-timeclock-addon' ),
+						'through'    => __( 'through', 'css-timeclock-addon' ),
+						'payday'     => __( 'Payday', 'css-timeclock-addon' ),
+						'saved'      => __( 'Saved.', 'css-timeclock-addon' ),
+						'error'      => __( 'Something went wrong. Try again.', 'css-timeclock-addon' ),
+					),
+				)
+			);
+		}
 	}
 
 	/**
@@ -218,7 +265,7 @@ class Css_Tc_Admin {
 		$settings  = css_tc_addon()->get_settings();
 		$employees = css_tc_addon()->employees->list_for_admin();
 		$tab       = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'settings'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( ! in_array( $tab, array( 'settings', 'holidays', 'leave', 'pins', 'import', 'locations', 'corrections' ), true ) ) {
+		if ( ! in_array( $tab, array( 'settings', 'payday', 'holidays', 'leave', 'pins', 'import', 'locations', 'corrections' ), true ) ) {
 			$tab = 'settings';
 		}
 

@@ -18,6 +18,7 @@ require_once CSS_TC_ADDON_DIR . 'includes/class-status.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-leave.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-leave-ui.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pay-periods.php';
+require_once CSS_TC_ADDON_DIR . 'includes/class-payday.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-employees.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-organization.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pins.php';

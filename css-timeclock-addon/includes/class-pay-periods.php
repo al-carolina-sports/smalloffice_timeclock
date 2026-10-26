@@ -1,6 +1,9 @@
 <?php
 /**
- * Pay periods. Weeks are Monday–Sunday. Default is biweekly from Monday 2026-09-07.
+ * Pay periods for hours, overtime, PTO, and corrections.
+ * Weeks are Monday–Sunday. Default is biweekly from Monday 2026-09-07.
+ * Css_Tc_Payday is a separate display calendar. Do not copy its Sunday
+ * boundaries or payday anchor into this class.
  *
  * @package CssTimeclockAddon
  */
