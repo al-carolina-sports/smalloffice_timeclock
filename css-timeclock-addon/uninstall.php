@@ -115,6 +115,7 @@ delete_metadata( 'user', 0, 'css_tc_day_note_audit', '', true );
 delete_option( 'css_tc_day_note_audit' );
 $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like( '_transient_css_tc_day_save_' ) . '%' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like( '_transient_timeout_css_tc_day_save_' ) . '%' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+delete_transient( 'css_tc_my_times_page_id' );
 
 // Employment status.
 foreach ( array( 'css_tc_status', 'css_tc_leave_from', 'css_tc_leave_to', 'css_tc_last_day', 'css_tc_status_log' ) as $css_tc_meta_key ) {

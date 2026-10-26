@@ -406,6 +406,28 @@ class Css_Tc_Ajax {
 		$settings['missed_clock_out_hours'] = min( 36, max( 1, isset( $_POST['missed_clock_out_hours'] ) ? absint( $_POST['missed_clock_out_hours'] ) : 16 ) );
 		$settings['long_shift_hours']       = min( 36, max( 1, isset( $_POST['long_shift_hours'] ) ? absint( $_POST['long_shift_hours'] ) : 16 ) );
 		$settings['wide_layout']            = empty( $_POST['wide_layout'] ) ? 0 : 1;
+		$settings['reach_dashboard']        = empty( $_POST['reach_dashboard'] ) ? 0 : 1;
+		$settings['reach_admin_menu']       = empty( $_POST['reach_admin_menu'] ) ? 0 : 1;
+		$settings['reach_admin_bar']        = empty( $_POST['reach_admin_bar'] ) ? 0 : 1;
+		$settings['reach_nav_menu']         = empty( $_POST['reach_nav_menu'] ) ? 0 : 1;
+		$nav_location = isset( $_POST['reach_nav_location'] ) ? sanitize_key( wp_unslash( $_POST['reach_nav_location'] ) ) : 'primary';
+		$settings['reach_nav_location'] = ( '' === $nav_location || strlen( $nav_location ) > 64 ) ? 'primary' : $nav_location;
+		$override_raw = isset( $_POST['my_times_url_override'] ) ? (string) wp_unslash( $_POST['my_times_url_override'] ) : '';
+		$override_raw = trim( $override_raw );
+		if ( '' === $override_raw ) {
+			$settings['my_times_url_override'] = '';
+		} else {
+			$override = Css_Tc_Reach::normalize_override( $override_raw );
+			if ( '' === $override ) {
+				wp_send_json_error( array( 'message' => __( 'Timecard page address must be a full https URL or a path starting with /.', 'css-timeclock-addon' ) ), 400 );
+			}
+			$override = esc_url_raw( $override );
+			if ( '' === $override ) {
+				wp_send_json_error( array( 'message' => __( 'Timecard page address must be a full https URL or a path starting with /.', 'css-timeclock-addon' ) ), 400 );
+			}
+			$settings['my_times_url_override'] = $override;
+		}
+		Css_Tc_Reach::forget_page_cache();
 
 		$settings['overtime_enabled'] = empty( $_POST['overtime_enabled'] ) ? 0 : 1;
 		$ot_hours = isset( $_POST['overtime_hours'] ) ? (float) sanitize_text_field( wp_unslash( $_POST['overtime_hours'] ) ) : 40;

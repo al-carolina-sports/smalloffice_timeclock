@@ -30,6 +30,7 @@ require_once CSS_TC_ADDON_DIR . 'includes/class-reports.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-ajax.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-admin.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-branding.php';
+require_once CSS_TC_ADDON_DIR . 'includes/class-reach.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-shortcodes.php';
 
 /**
@@ -205,6 +206,12 @@ class Css_Tc_Plugin {
 				'holidays_custom'         => '',
 				'holiday_weekend_shift'   => 1,
 				'wide_layout'             => 1,
+				'reach_dashboard'         => 1,
+				'reach_admin_menu'        => 1,
+				'reach_admin_bar'         => 1,
+				'reach_nav_menu'          => 1,
+				'reach_nav_location'      => 'primary',
+				'my_times_url_override'   => '',
 			)
 		);
 	}
@@ -554,6 +561,7 @@ class Css_Tc_Plugin {
 		$this->leave->register();
 		Css_Tc_Leave_Ui::register();
 		Css_Tc_Shortcodes::register();
+		Css_Tc_Reach::register();
 	}
 
 	/**
