@@ -348,6 +348,7 @@ class Css_Tc_Reach {
 		$url    = self::url();
 		$status = self::status_line( $in, $since );
 		$hours  = self::hours_line( $hm );
+		$payday = class_exists( 'Css_Tc_Payday' ) ? Css_Tc_Payday::widget_line( Css_Tc_Payday::load_history(), css_tc_addon()->time->site_today() ) : '';
 		include CSS_TC_ADDON_DIR . 'admin/views/dashboard-widget.php';
 	}
 

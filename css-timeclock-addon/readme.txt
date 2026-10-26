@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.10.6
+Stable tag: 1.11.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,11 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under USOTC.
 
 == Changelog ==
+
+= 1.11.0 =
+* Pay & Payday tab. Weekly, bi-weekly, both semi-monthly splits, or monthly. A period start date, and a separate known payday for an every-14-days series. Payday can be the first chosen weekday after the period ends, a number of days after the end, or (semi-monthly and monthly) the period end. Weekends and a holiday list on this tab can move that one payday. Calendars stay blank until the tab is saved. A later save keeps a pay period that already started.
+* My Time Clock and Timecards show alternating bands, a payday badge, and the current period and next payday. Managers can also show Period closes. The dashboard widget adds the next payday.
+* Bands follow the Monday–Sunday timecard pay period (default biweekly from Monday 2026-09-07) when Pay & Payday is set to that period. Payday is the first Friday after the period ends. Hours, overtime, and PTO are unchanged. Another frequency warns on this tab when its dates differ.
 
 = 1.10.6 =
 * Logged-in time-clock employees can open My Time Clock from the dashboard (a widget at the top with clock status, hours this pay period, and a View my timecard button), from an admin menu item, and from the toolbar. Logged-in visitors also get a My Timecard item on the chosen front-end menu. Logged-out visitors do not. Login itself is unchanged. Each link can be turned off under TC-Config, and the timecard address can be overridden.

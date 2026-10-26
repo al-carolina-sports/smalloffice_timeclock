@@ -33,6 +33,7 @@ class Css_Tc_Ajax {
 		add_action( 'wp_ajax_nopriv_css_tc_roster', array( $self, 'roster' ) );
 
 		add_action( 'wp_ajax_css_tc_save_settings', array( $self, 'save_settings' ) );
+		add_action( 'wp_ajax_css_tc_save_payday', array( $self, 'save_payday' ) );
 		add_action( 'wp_ajax_css_tc_save_pin', array( $self, 'save_pin' ) );
 		add_action( 'wp_ajax_css_tc_clear_pin', array( $self, 'clear_pin' ) );
 		add_action( 'wp_ajax_css_tc_reveal_pin', array( $self, 'reveal_pin' ) );
@@ -988,6 +989,69 @@ class Css_Tc_Ajax {
 		if ( ! check_ajax_referer( self::PUBLIC_NONCE, 'nonce', false ) ) {
 			wp_send_json_error( array( 'message' => __( 'Session expired. Refresh the kiosk page.', 'css-timeclock-addon' ) ), 403 );
 		}
+	}
+
+	/**
+	 * Pay & Payday is stored apart from the Monday hours settings.
+	 *
+	 * @return void
+	 */
+	public function save_payday() {
+		$this->verify_admin();
+
+		$post = wp_unslash( $_POST );
+		$raw_holidays = isset( $post['payday_holidays'] ) ? (string) $post['payday_holidays'] : '';
+		$raw_holidays = str_replace( array( "\r\n", "\r" ), "\n", $raw_holidays );
+		if ( function_exists( 'sanitize_textarea_field' ) ) {
+			$raw_holidays = sanitize_textarea_field( $raw_holidays );
+		}
+		if ( strlen( $raw_holidays ) > 4000 ) {
+			wp_send_json_error( array( 'message' => __( 'The payday holiday list is too long.', 'css-timeclock-addon' ) ), 400 );
+		}
+
+		$clean = Css_Tc_Payday::sanitize_fields(
+			array(
+				'frequency'      => isset( $post['payday_frequency'] ) ? sanitize_key( $post['payday_frequency'] ) : '',
+				'anchor'         => isset( $post['payday_period_anchor'] ) ? sanitize_text_field( $post['payday_period_anchor'] ) : '',
+				'week_start'     => isset( $post['payday_week_start'] ) ? absint( $post['payday_week_start'] ) : 0,
+				'payday_mode'    => isset( $post['payday_mode'] ) ? sanitize_key( $post['payday_mode'] ) : '',
+				'payday_weekday' => isset( $post['payday_weekday'] ) ? absint( $post['payday_weekday'] ) : 5,
+				'payday_days'    => isset( $post['payday_days'] ) ? absint( $post['payday_days'] ) : 6,
+				'payday_anchor'  => isset( $post['payday_anchor'] ) ? sanitize_text_field( $post['payday_anchor'] ) : '',
+				'shift'          => isset( $post['payday_shift'] ) ? sanitize_key( $post['payday_shift'] ) : '',
+				'holidays'       => $raw_holidays,
+				'show_employee'  => empty( $post['payday_show_employee'] ) ? 0 : 1,
+				'show_admin'     => empty( $post['payday_show_admin'] ) ? 0 : 1,
+				'show_closes'    => empty( $post['payday_show_closes'] ) ? 0 : 1,
+				'color_a'        => isset( $post['payday_color_a'] ) ? sanitize_text_field( $post['payday_color_a'] ) : '',
+				'color_b'        => isset( $post['payday_color_b'] ) ? sanitize_text_field( $post['payday_color_b'] ) : '',
+				'marker'         => isset( $post['payday_marker'] ) ? sanitize_key( $post['payday_marker'] ) : '',
+				'marker_color'   => isset( $post['payday_marker_color'] ) ? sanitize_text_field( $post['payday_marker_color'] ) : '',
+				'effective'      => isset( $post['payday_effective'] ) ? sanitize_text_field( $post['payday_effective'] ) : '',
+			)
+		);
+		if ( ! empty( $clean['errors'] ) ) {
+			wp_send_json_error(
+				array(
+					'message' => Css_Tc_Payday::save_error_message( $clean['errors'], $clean['invalid'] ),
+				),
+				400
+			);
+		}
+
+		$history = Css_Tc_Payday::with_snapshot(
+			Css_Tc_Payday::load_history(),
+			$clean['effective'],
+			$clean['config'],
+			current_time( 'mysql' )
+		);
+		update_option( Css_Tc_Payday::OPTION, Css_Tc_Payday::storage_rows( $history ), false );
+
+		wp_send_json_success(
+			array(
+				'message' => __( 'Pay and payday saved. A pay period that already started keeps its previous dates.', 'css-timeclock-addon' ),
+			)
+		);
 	}
 
 	/**
