@@ -394,7 +394,7 @@ class Css_Tc_Shortcodes {
 	}
 
 	/**
-	 * My Time Clock page: saved setting, else the page that contains the shortcode, else home.
+	 * My Time Clock page: override, else the published shortcode page, else the saved page.
 	 *
 	 * @return string
 	 */
@@ -403,34 +403,7 @@ class Css_Tc_Shortcodes {
 		if ( null !== $cached ) {
 			return $cached;
 		}
-
-		$settings = css_tc_addon()->get_settings();
-		$page_id  = isset( $settings['employee_times_page_id'] ) ? (int) $settings['employee_times_page_id'] : 0;
-		if ( $page_id > 0 ) {
-			$link = get_permalink( $page_id );
-			if ( $link ) {
-				$cached = (string) $link;
-				return $cached;
-			}
-		}
-
-		global $wpdb;
-		$like = '%' . $wpdb->esc_like( '[css_tc_my_times' ) . '%';
-		$found = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT ID FROM {$wpdb->posts} WHERE post_type = 'page' AND post_status = 'publish' AND post_content LIKE %s ORDER BY ID ASC LIMIT 1",
-				$like
-			)
-		);
-		if ( $found > 0 ) {
-			$link = get_permalink( $found );
-			if ( $link ) {
-				$cached = (string) $link;
-				return $cached;
-			}
-		}
-
-		$cached = home_url( '/' );
+		$cached = Css_Tc_Reach::url();
 		return $cached;
 	}
 
@@ -510,9 +483,7 @@ class Css_Tc_Shortcodes {
 	 * @return string
 	 */
 	public static function times_url( $period_start = '' ) {
-		$settings = css_tc_addon()->get_settings();
-		$page_id  = isset( $settings['employee_times_page_id'] ) ? (int) $settings['employee_times_page_id'] : 0;
-		$base     = ( $page_id && get_permalink( $page_id ) ) ? (string) get_permalink( $page_id ) : self::employee_times_url();
+		$base = self::employee_times_url();
 		if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', (string) $period_start ) ) {
 			$base = add_query_arg( 'period', $period_start, $base );
 		}

@@ -4,7 +4,7 @@ Tags: time clock, kiosk, pin, employee, aio time clock
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.10.5
+Stable tag: 1.10.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,9 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 4. Set employee PINs under USOTC.
 
 == Changelog ==
+
+= 1.10.6 =
+* Logged-in time-clock employees can open My Time Clock from the dashboard (a widget at the top with clock status, hours this pay period, and a View my timecard button), from an admin menu item, and from the toolbar. Logged-in visitors also get a My Timecard item on the chosen front-end menu. Logged-out visitors do not. Login itself is unchanged. Each link can be turned off under TC-Config, and the timecard address can be overridden.
 
 = 1.10.5 =
 * Time Clock Admin (css_tc_manage, without manage_options) can open USOTC → Reports at admin.php?page=css-tc-reports. The page is registered under AIO's time clock menu, which that role can open, and the CSV download accepts the same capability plus the report nonce. AIO's old Reports address still opens this screen, and the menu lists Reports once.

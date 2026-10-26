@@ -226,6 +226,50 @@ if ( ! defined( 'ABSPATH' ) ) {
 					</td>
 				</tr>
 				<tr>
+					<th scope="row"><?php echo esc_html__( 'Open My Timecard', 'css-timeclock-addon' ); ?></th>
+					<td>
+						<?php
+						$css_tc_locations = function_exists( 'get_registered_nav_menus' ) ? get_registered_nav_menus() : array();
+						if ( ! isset( $css_tc_locations['primary'] ) ) {
+							$css_tc_locations = array( 'primary' => __( 'Primary', 'css-timeclock-addon' ) ) + $css_tc_locations;
+						}
+						$css_tc_nav_location = isset( $settings['reach_nav_location'] ) ? (string) $settings['reach_nav_location'] : 'primary';
+						if ( ! isset( $css_tc_locations[ $css_tc_nav_location ] ) && '' !== $css_tc_nav_location ) {
+							$css_tc_locations[ $css_tc_nav_location ] = $css_tc_nav_location;
+						}
+						?>
+						<p class="description"><?php echo esc_html__( 'Logged-in staff land on the WordPress dashboard. These links open the My Time Clock page. Nothing here changes where login sends them.', 'css-timeclock-addon' ); ?></p>
+						<label>
+							<input type="checkbox" name="reach_dashboard" value="1" <?php checked( ! isset( $settings['reach_dashboard'] ) || ! empty( $settings['reach_dashboard'] ) ); ?> />
+							<?php echo esc_html__( 'Dashboard widget for time-clock employees', 'css-timeclock-addon' ); ?>
+						</label><br />
+						<label>
+							<input type="checkbox" name="reach_admin_menu" value="1" <?php checked( ! isset( $settings['reach_admin_menu'] ) || ! empty( $settings['reach_admin_menu'] ) ); ?> />
+							<?php echo esc_html__( 'Admin menu item “My Timecard” for time-clock employees', 'css-timeclock-addon' ); ?>
+						</label><br />
+						<label>
+							<input type="checkbox" name="reach_admin_bar" value="1" <?php checked( ! isset( $settings['reach_admin_bar'] ) || ! empty( $settings['reach_admin_bar'] ) ); ?> />
+							<?php echo esc_html__( 'Toolbar link on the front end and in wp-admin', 'css-timeclock-addon' ); ?>
+						</label><br />
+						<label>
+							<input type="checkbox" name="reach_nav_menu" value="1" <?php checked( ! isset( $settings['reach_nav_menu'] ) || ! empty( $settings['reach_nav_menu'] ) ); ?> />
+							<?php echo esc_html__( 'Site menu link for logged-in visitors', 'css-timeclock-addon' ); ?>
+						</label>
+						<p>
+							<label for="reach_nav_location"><?php echo esc_html__( 'Menu location', 'css-timeclock-addon' ); ?></label><br />
+							<select name="reach_nav_location" id="reach_nav_location">
+								<?php foreach ( $css_tc_locations as $css_tc_loc_slug => $css_tc_loc_label ) : ?>
+									<option value="<?php echo esc_attr( (string) $css_tc_loc_slug ); ?>" <?php selected( $css_tc_nav_location, (string) $css_tc_loc_slug ); ?>><?php echo esc_html( (string) $css_tc_loc_label ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						</p>
+						<p class="description"><?php echo esc_html__( 'The link is added to that theme menu location and is left off for logged-out visitors. Turn the checkbox off to stop adding it.', 'css-timeclock-addon' ); ?></p>
+						<label for="my_times_url_override"><?php echo esc_html__( 'Timecard page address', 'css-timeclock-addon' ); ?></label><br />
+						<input name="my_times_url_override" id="my_times_url_override" type="text" class="regular-text code" value="<?php echo esc_attr( isset( $settings['my_times_url_override'] ) ? (string) $settings['my_times_url_override'] : '' ); ?>" placeholder="https://ncfrl.com/my-time-clock/" />
+						<p class="description"><?php echo esc_html__( 'Leave blank to use the published page that contains [css_tc_my_times]. A full https address or a path starting with / overrides that.', 'css-timeclock-addon' ); ?></p>
+					</td>
+				</tr>
+				<tr>
 					<th scope="row"><label for="pay_period_length"><?php echo esc_html__( 'Pay period', 'css-timeclock-addon' ); ?></label></th>
 					<td>
 						<select name="pay_period_length" id="pay_period_length">

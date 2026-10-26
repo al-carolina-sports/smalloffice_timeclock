@@ -381,3 +381,12 @@ tr.is-pending td { color: #787c82; font-style: italic; }
 .css-tc-show-inactive { margin-left: 12px; }
 .css-tc-status-fields label { margin-left: 8px; }
 .css-tc-pto-summary .css-tc-status-badge { margin-left: 4px; }
+
+/* Dashboard: My Time Clock */
+.css-tc-reach__status { font-size: 16px; margin: 0 0 6px; }
+.css-tc-reach__status.is-in { color: #166534; font-weight: 600; }
+.css-tc-reach__status.is-out { color: #50575e; }
+.css-tc-reach__hours { font-size: 15px; margin: 0 0 4px; }
+.css-tc-reach__range { color: #646970; margin: 0 0 12px; }
+.css-tc-reach__action { margin: 12px 0 4px; }
+.css-tc-reach__button.button-hero { font-size: 16px; min-height: 46px; line-height: 44px; padding: 0 22px; }
