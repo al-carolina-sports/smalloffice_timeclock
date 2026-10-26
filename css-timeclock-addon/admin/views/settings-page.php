@@ -281,7 +281,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 							<option value="weekly" <?php selected( isset( $settings['pay_period_length'] ) ? $settings['pay_period_length'] : 'biweekly', 'weekly' ); ?>><?php echo esc_html__( 'Weekly', 'css-timeclock-addon' ); ?></option>
 							<option value="biweekly" <?php selected( isset( $settings['pay_period_length'] ) ? $settings['pay_period_length'] : 'biweekly', 'biweekly' ); ?>><?php echo esc_html__( 'Biweekly', 'css-timeclock-addon' ); ?></option>
 						</select>
-						<p class="description"><?php echo esc_html__( 'Weeks run Monday through Sunday. Biweekly is two of those weeks. The current period is the only one employees can correct. Pay & Payday bands are a separate calendar and do not change these hours.', 'css-timeclock-addon' ); ?></p>
+						<p class="description"><?php echo esc_html__( 'Weeks run Monday through Sunday. Biweekly is two of those weeks. The current period is the only one employees can correct. Pay & Payday bands use this period when that tab follows the timecard pay period. Saving the bands does not change these hours.', 'css-timeclock-addon' ); ?></p>
 					</td>
 				</tr>
 				<tr>

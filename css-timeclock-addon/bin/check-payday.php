@@ -6,17 +6,14 @@
  * Nothing in the plugin defaults to those dates, and an empty history
  * draws no markers.
  *
- * Owner coverage (not a default):
- * bi-weekly Sunday–Saturday, period anchor Sun Oct 18 2026.
- * Sun Oct 4–Sat Oct 17 paid Fri Oct 23.
- * Sun Oct 18–Sat Oct 31 paid Fri Nov 6.
- * Sun Nov 1–Sat Nov 14 paid Fri Nov 20.
- * Sun Nov 15–Sat Nov 28 paid Fri Dec 4.
- * First Friday after the period ends, which is also 6 days after a Saturday end.
- * A payday anchor of Fri Oct 23 steps every 14 days and lists the same Fridays.
- *
- * The Monday timecard engine (default anchor 2026-09-07) does not use these
- * Sunday boundaries. This script checks that disagreement and does not change it.
+ * Owner coverage (not a default). Bands use the timecard engine:
+ * biweekly Monday–Sunday from Monday 2026-09-07.
+ * Mon Oct 5–Sun Oct 18 paid Fri Oct 23.
+ * Mon Oct 19–Sun Nov 1 paid Fri Nov 6.
+ * Mon Nov 2–Sun Nov 15 paid Fri Nov 20.
+ * Mon Nov 16–Sun Nov 29 paid Fri Dec 4.
+ * Mon Dec 28 2026–Sun Jan 10 2027 paid Fri Jan 15 2027.
+ * First Friday after the period ends, which is also 5 days after a Sunday end.
  *
  * @package CssTimeclockAddon
  */
@@ -42,6 +39,7 @@ if ( ! function_exists( '__' ) ) {
 	}
 }
 
+require_once dirname( __DIR__ ) . '/includes/class-pay-periods.php';
 require_once dirname( __DIR__ ) . '/includes/class-payday.php';
 
 $failed = 0;
@@ -69,12 +67,13 @@ function css_tc_check( $cond, $label ) {
  */
 function css_tc_owner_config( $mode ) {
 	return array(
-		'frequency'      => 'biweekly',
-		'anchor'         => '2026-10-18',
-		'week_start'     => 0,
+		'frequency'      => 'engine',
+		'engine_length'  => 'biweekly',
+		'engine_anchor'  => '2026-09-07',
+		'week_start'     => 1,
 		'payday_mode'    => $mode,
 		'payday_weekday' => 5,
-		'payday_days'    => 6,
+		'payday_days'    => 5,
 		'payday_anchor'  => '2026-10-23',
 		'shift'          => 'previous',
 		'holidays'       => '',
@@ -86,28 +85,12 @@ function css_tc_owner_config( $mode ) {
  * @return array<int,array<string,mixed>>
  */
 function css_tc_owner_history( $mode ) {
-	return Css_Tc_Payday::with_snapshot( array(), '2026-10-18', css_tc_owner_config( $mode ), '2026-10-26 12:00:00' );
-}
-
-/**
- * Monday–Sunday biweekly from the hours-engine default anchor.
- * Mirrors Css_Tc_Pay_Periods for that default only.
- *
- * @param string $date Y-m-d.
- * @return array{0:string,1:string}
- */
-function css_tc_monday_period( $date ) {
-	$anchor = '2026-09-07';
-	$len    = 14;
-	$diff   = Css_Tc_Payday::diff_days( $anchor, $date );
-	$index  = (int) floor( $diff / $len );
-	$start  = Css_Tc_Payday::add_ymd( $anchor, $index * $len );
-	$end    = Css_Tc_Payday::add_ymd( $start, $len - 1 );
-	return array( $start, $end );
+	return Css_Tc_Payday::with_snapshot( array(), '2026-09-07', css_tc_owner_config( $mode ), '2026-10-26 12:00:00' );
 }
 
 $blank = Css_Tc_Payday::default_config();
 css_tc_check( '' === $blank['anchor'] && '' === $blank['payday_anchor'], 'factory config has no period anchor and no payday anchor' );
+css_tc_check( 'engine' === $blank['frequency'] && 1 === (int) $blank['week_start'] && 5 === (int) $blank['payday_days'], 'factory schedule follows the timecard period and counts 5 days after the end' );
 css_tc_check( array() === Css_Tc_Payday::normalize_history( array() ), 'empty history stays empty' );
 css_tc_check( null === Css_Tc_Payday::period_covering( array(), '2026-10-26' ), 'unconfigured date has no pay period' );
 css_tc_check( ! Css_Tc_Payday::visible( array(), 'employee' ) && ! Css_Tc_Payday::visible( array(), 'admin' ), 'unconfigured calendars draw no markers' );
@@ -117,17 +100,19 @@ $src = file_get_contents( dirname( __DIR__ ) . '/includes/class-payday.php' );
 css_tc_check( false === strpos( $src, '2026-10-18' ) && false === strpos( $src, '2026-10-23' ) && false === strpos( $src, '2026-11-06' ), 'owner dates are not hard-coded in the payday class' );
 $settings_view = file_get_contents( dirname( __DIR__ ) . '/admin/views/payday-settings.php' );
 css_tc_check( false === strpos( $settings_view, 'value="2026-10-18"' ) && false === strpos( $settings_view, 'value="2026-10-23"' ) && false === strpos( $settings_view, 'value="2026-11-06"' ), 'the settings form does not prefill the owner dates' );
+css_tc_check( false !== strpos( $settings_view, 'css-tc-payday-mismatch' ) && false !== strpos( $settings_view, "'engine'" ), 'settings can follow the timecard period and warn when bands differ' );
+css_tc_check( false === strpos( $settings_view, 'Sunday–Saturday' ), 'settings copy does not describe a Sunday pay period' );
 
 $hours_src = file_get_contents( dirname( __DIR__ ) . '/includes/class-pay-periods.php' );
-css_tc_check( false !== strpos( $hours_src, "DEFAULT_ANCHOR = '2026-09-07'" ) && false !== strpos( $hours_src, 'Monday' ), 'hours engine still documents Monday weeks from 2026-09-07' );
+css_tc_check( false !== strpos( $hours_src, "DEFAULT_ANCHOR = '2026-09-07'" ) && false !== strpos( $hours_src, 'function containing' ) && false !== strpos( $hours_src, 'Monday' ), 'hours engine still owns Monday weeks from 2026-09-07' );
 css_tc_check( '1' === ( new DateTimeImmutable( '2026-09-07' ) )->format( 'N' ), '2026-09-07 is a Monday' );
 
 $owner_rows = array(
-	array( '2026-10-04', '2026-10-17', '2026-10-23' ),
-	array( '2026-10-18', '2026-10-31', '2026-11-06' ),
-	array( '2026-11-01', '2026-11-14', '2026-11-20' ),
-	array( '2026-11-15', '2026-11-28', '2026-12-04' ),
-	array( '2026-11-29', '2026-12-12', '2026-12-18' ),
+	array( '2026-10-05', '2026-10-18', '2026-10-23' ),
+	array( '2026-10-19', '2026-11-01', '2026-11-06' ),
+	array( '2026-11-02', '2026-11-15', '2026-11-20' ),
+	array( '2026-11-16', '2026-11-29', '2026-12-04' ),
+	array( '2026-11-30', '2026-12-13', '2026-12-18' ),
 );
 
 foreach ( array( 'weekday', 'days' ) as $css_tc_mode ) {
@@ -141,13 +126,13 @@ foreach ( array( 'weekday', 'days' ) as $css_tc_mode ) {
 	}
 	$next = Css_Tc_Payday::upcoming( $history, '2026-10-26', 4 );
 	css_tc_check( 4 === count( $next ), $css_tc_mode . ' preview returns four periods' );
-	css_tc_check( $next && '2026-10-18' === $next[0]['start'] && '2026-11-06' === $next[0]['payday'], $css_tc_mode . ' period containing Oct 26 pays Nov 6' );
-	css_tc_check( $next && '2026-11-01' === $next[1]['start'] && '2026-11-20' === $next[1]['payday'], $css_tc_mode . ' Nov 1–14 pays Nov 20' );
-	css_tc_check( $next && '2026-11-15' === $next[2]['start'] && '2026-12-04' === $next[2]['payday'], $css_tc_mode . ' Nov 15–28 pays Dec 4' );
-	css_tc_check( $next && '2026-11-29' === $next[3]['start'] && '2026-12-18' === $next[3]['payday'], $css_tc_mode . ' Nov 29–Dec 12 pays Dec 18' );
+	css_tc_check( $next && '2026-10-19' === $next[0]['start'] && '2026-11-01' === $next[0]['end'] && '2026-11-06' === $next[0]['payday'], $css_tc_mode . ' period containing Oct 26 pays Nov 6' );
+	css_tc_check( $next && '2026-11-02' === $next[1]['start'] && '2026-11-15' === $next[1]['end'] && '2026-11-20' === $next[1]['payday'], $css_tc_mode . ' Nov 2–15 pays Nov 20' );
+	css_tc_check( $next && '2026-11-16' === $next[2]['start'] && '2026-11-29' === $next[2]['end'] && '2026-12-04' === $next[2]['payday'], $css_tc_mode . ' Nov 16–29 pays Dec 4' );
+	css_tc_check( $next && '2026-11-30' === $next[3]['start'] && '2026-12-13' === $next[3]['end'] && '2026-12-18' === $next[3]['payday'], $css_tc_mode . ' Nov 30–Dec 13 pays Dec 18' );
 	$sum = Css_Tc_Payday::summary( $history, '2026-10-26' );
-	css_tc_check( $sum && '2026-10-18' === $sum['start'] && '2026-10-31' === $sum['end'] && '2026-11-06' === $sum['payday'], $css_tc_mode . ' on Oct 26 the current period is Oct 18–Oct 31 and the next payday is Nov 6' );
-	css_tc_check( $sum && 'Oct 18 – Oct 31, 2026' === $sum['range'] && 'Fri, Nov 6, 2026' === $sum['payday_label'], $css_tc_mode . ' header uses the owner dates' );
+	css_tc_check( $sum && '2026-10-19' === $sum['start'] && '2026-11-01' === $sum['end'] && '2026-11-06' === $sum['payday'], $css_tc_mode . ' on Oct 26 the current period is Oct 19–Nov 1 and the next payday is Nov 6' );
+	css_tc_check( $sum && 'Oct 19 – Nov 1, 2026' === $sum['range'] && 'Fri, Nov 6, 2026' === $sum['payday_label'], $css_tc_mode . ' header uses the owner dates' );
 }
 
 $series = array( '2026-10-09', '2026-10-23', '2026-11-06', '2026-11-20', '2026-12-04', '2026-12-18' );
@@ -163,31 +148,57 @@ css_tc_check( '2026-10-09' === Css_Tc_Payday::series_on_or_after( '2026-10-23', 
 
 $anchor_mode = css_tc_owner_history( 'anchor' );
 $anchor_oct  = Css_Tc_Payday::period_covering( $anchor_mode, '2026-10-26' );
-css_tc_check( $anchor_oct && '2026-11-06' === $anchor_oct['payday'], 'every-14-days rule pays Nov 6 for the Oct 18–31 period' );
+css_tc_check( $anchor_oct && '2026-10-19' === $anchor_oct['start'] && '2026-11-06' === $anchor_oct['payday'], 'every-14-days rule pays Nov 6 for the Oct 19–Nov 1 period' );
 $moved = css_tc_owner_config( 'anchor' );
-$moved['anchor'] = '2026-09-06';
-$moved_history   = Css_Tc_Payday::with_snapshot( array(), '2026-09-06', $moved, '' );
+$moved['engine_anchor'] = '2026-08-31';
 css_tc_check(
-	'2026-11-06' === Css_Tc_Payday::series_on_or_after( '2026-10-23', '2026-10-26', 14 )
-	&& '2026-11-06' === Css_Tc_Payday::next_payday( $moved, '2026-10-26' ),
-	'changing the period start does not move the 14-day payday series'
+	'2026-11-06' === Css_Tc_Payday::next_payday( $moved, '2026-10-26' )
+	&& Css_Tc_Payday::period_for( $moved, '2026-10-26' )
+	&& '2026-10-26' === Css_Tc_Payday::period_for( $moved, '2026-10-26' )['start'],
+	'changing the timecard anchor moves the period and leaves the 14-day payday series'
 );
 $wrong_anchor = css_tc_owner_config( 'weekday' );
 $wrong_anchor['payday_anchor'] = '2026-01-02';
 css_tc_check( '2026-11-06' === Css_Tc_Payday::next_payday( $wrong_anchor, '2026-10-26' ), 'first Friday ignores a different payday anchor' );
 
 $early = Css_Tc_Payday::period_covering( css_tc_owner_history( 'weekday' ), '2026-10-10' );
-css_tc_check( $early && '2026-10-04' === $early['start'] && '2026-10-17' === $early['end'] && '2026-10-23' === $early['payday'], 'Oct 23 payday covers Oct 4–17' );
+css_tc_check( $early && '2026-10-05' === $early['start'] && '2026-10-18' === $early['end'] && '2026-10-23' === $early['payday'], 'Oct 23 payday covers Oct 5–18' );
 
-foreach ( array( '2026-10-18', '2026-10-31', '2026-11-06', '2026-11-14' ) as $css_tc_day ) {
+foreach ( array( '2026-10-05', '2026-10-18', '2026-10-19', '2026-11-01', '2026-11-02', '2026-11-15', '2026-11-16', '2026-11-29', '2026-12-28', '2027-01-10' ) as $css_tc_day ) {
 	$display = Css_Tc_Payday::period_covering( css_tc_owner_history( 'weekday' ), $css_tc_day );
-	$monday  = css_tc_monday_period( $css_tc_day );
+	$engine  = Css_Tc_Pay_Periods::containing( $css_tc_day, 'biweekly', Css_Tc_Pay_Periods::DEFAULT_ANCHOR );
 	css_tc_check(
-		$display && ( $monday[0] !== $display['start'] || $monday[1] !== $display['end'] ),
-		'Monday timecard period does not match the Sunday display period on ' . $css_tc_day
+		$display && $engine && $display['start'] === $engine['start'] && $display['end'] === $engine['end'],
+		'display period matches the timecard period on ' . $css_tc_day
 	);
 }
-css_tc_check( array( '2026-10-05', '2026-10-18' ) === css_tc_monday_period( '2026-10-18' ), 'hours engine puts Oct 18 at the end of Mon Oct 5–Sun Oct 18' );
+css_tc_check( '2026-10-05' === Css_Tc_Pay_Periods::containing( '2026-10-18', 'biweekly', '2026-09-07' )['start'], 'hours engine puts Oct 18 at the end of Mon Oct 5–Sun Oct 18' );
+$css_tc_bad_anchor = Css_Tc_Pay_Periods::containing( '2026-10-18', 'biweekly', '2026-10-18' );
+css_tc_check( $css_tc_bad_anchor && '2026-10-05' === $css_tc_bad_anchor['start'] && '2026-10-18' === $css_tc_bad_anchor['end'], 'a non-Monday anchor falls back to the timecard default' );
+$css_tc_sunday = array(
+	'frequency'      => 'biweekly',
+	'anchor'         => '2026-10-18',
+	'payday_mode'    => 'weekday',
+	'payday_weekday' => 5,
+	'shift'          => 'keep',
+	'engine_length'  => 'biweekly',
+	'engine_anchor'  => '2026-09-07',
+);
+css_tc_check( Css_Tc_Payday::differs_from_engine( $css_tc_sunday, '2026-10-26' ), 'a separate Sunday anchor differs from the timecard period' );
+css_tc_check( ! Css_Tc_Payday::differs_from_engine( css_tc_owner_config( 'weekday' ), '2026-10-26' ), 'the timecard schedule matches itself' );
+$css_tc_zone_ok = true;
+$css_tc_zone_day = '2026-01-01';
+$css_tc_ny = new DateTimeZone( 'America/New_York' );
+while ( $css_tc_zone_day <= '2027-02-01' ) {
+	$css_tc_utc_bounds = Css_Tc_Pay_Periods::containing( $css_tc_zone_day, 'biweekly', '2026-09-07' );
+	$css_tc_ny_bounds  = Css_Tc_Pay_Periods::containing( $css_tc_zone_day, 'biweekly', '2026-09-07', $css_tc_ny );
+	if ( ! $css_tc_utc_bounds || ! $css_tc_ny_bounds || $css_tc_utc_bounds['start'] !== $css_tc_ny_bounds['start'] || $css_tc_utc_bounds['end'] !== $css_tc_ny_bounds['end'] ) {
+		$css_tc_zone_ok = false;
+		break;
+	}
+	$css_tc_zone_day = Css_Tc_Payday::add_ymd( $css_tc_zone_day, 1 );
+}
+css_tc_check( $css_tc_zone_ok, 'New York and UTC timecard bounds match across 2026' );
 
 $weekly = array(
 	'frequency'      => 'weekly',
@@ -246,9 +257,11 @@ css_tc_check( $m5 && '2024-01-31' === $m5['start'] && '2024-02-28' === $m5['end'
 css_tc_check( $m6 && '2024-02-29' === $m6['start'] && '2024-03-30' === $m6['end'], 'monthly day 31 uses leap day as the February start' );
 
 $year = Css_Tc_Payday::period_for( css_tc_owner_config( 'weekday' ), '2026-12-31' );
-css_tc_check( $year && '2026-12-27' === $year['start'] && '2027-01-09' === $year['end'] && '2027-01-15' === $year['payday'], 'bi-weekly period crosses into 2027 and pays the Friday after' );
+css_tc_check( $year && '2026-12-28' === $year['start'] && '2027-01-10' === $year['end'] && '2027-01-15' === $year['payday'], 'bi-weekly period crosses into 2027 and pays the Friday after' );
 $year_days = Css_Tc_Payday::period_for( css_tc_owner_config( 'days' ), '2027-01-02' );
-css_tc_check( $year_days && '2027-01-15' === $year_days['payday'], '6 days after the Saturday year-boundary end is the same Friday' );
+css_tc_check( $year_days && '2026-12-28' === $year_days['start'] && '2027-01-15' === $year_days['payday'], '5 days after the Sunday year-boundary end is the same Friday' );
+$year_pay = Css_Tc_Payday::period_for( css_tc_owner_config( 'weekday' ), '2026-12-20' );
+css_tc_check( $year_pay && '2026-12-14' === $year_pay['start'] && '2026-12-27' === $year_pay['end'] && '2027-01-01' === $year_pay['payday'], 'Sun Dec 27 pays Fri Jan 1' );
 
 css_tc_check( '2026-03-09' === Css_Tc_Payday::add_ymd( '2026-03-08', 1 ), 'the day after US spring-forward is the next calendar date' );
 css_tc_check( '2026-03-22' === Css_Tc_Payday::add_ymd( '2026-03-08', 14 ), '14 days across spring-forward stays on the calendar' );
@@ -286,7 +299,7 @@ $moved_pay = Css_Tc_Payday::period_for( $holiday, '2026-10-26' );
 css_tc_check( $moved_pay && '2026-11-06' === $moved_pay['raw_payday'] && '2026-11-05' === $moved_pay['payday'], 'a Friday holiday payday moves to Thursday' );
 $annual = $holiday;
 $annual['holidays'] = '11-06';
-css_tc_check( '2026-11-05' === Css_Tc_Payday::period_for( $annual, '2026-10-18' )['payday'], 'an annual MM-DD holiday moves that payday every year' );
+css_tc_check( '2026-11-05' === Css_Tc_Payday::period_for( $annual, '2026-10-26' )['payday'], 'an annual MM-DD holiday moves that payday every year' );
 $chain = $shift_prev;
 $chain['holidays'] = '2026-10-30';
 css_tc_check( '2026-10-29' === Css_Tc_Payday::period_for( $chain, '2026-10-24' )['payday'], 'previous business day walks through a Friday holiday off a Saturday' );
@@ -304,20 +317,15 @@ for ( $i = 0; $i < 30; $i++ ) {
 $long = Css_Tc_Payday::shift_payday( '2026-10-31', array( 'shift' => 'previous', 'holidays' => $blocked ) );
 css_tc_check( Css_Tc_Payday::is_ymd( $long ) && '2026-10-31' !== $long, 'a long holiday stretch still returns a calendar date' );
 
-$later_weekly = array(
-	'frequency'      => 'weekly',
-	'anchor'         => '2026-10-18',
-	'payday_mode'    => 'weekday',
-	'payday_weekday' => 5,
-	'shift'          => 'keep',
-);
+$later_days = css_tc_owner_config( 'days' );
+$later_days['payday_days'] = 10;
 $hist = css_tc_owner_history( 'weekday' );
-$hist = Css_Tc_Payday::with_snapshot( $hist, '2026-11-05', $later_weekly, '2026-11-05 09:00:00' );
+$hist = Css_Tc_Payday::with_snapshot( $hist, '2026-11-05', $later_days, '2026-11-05 09:00:00' );
 $kept = Css_Tc_Payday::period_covering( $hist, '2026-11-10' );
 $fresh = Css_Tc_Payday::period_covering( $hist, '2026-11-16' );
 css_tc_check( 2 === count( $hist ), 'a second save keeps the earlier snapshot' );
-css_tc_check( $kept && '2026-11-01' === $kept['start'] && '2026-11-14' === $kept['end'] && '2026-11-20' === $kept['payday'], 'a period that already started keeps Nov 1–14 and Nov 20' );
-css_tc_check( $fresh && '2026-11-15' === $fresh['start'] && '2026-11-21' === $fresh['end'], 'the day after that period uses the new weekly schedule' );
+css_tc_check( $kept && '2026-11-02' === $kept['start'] && '2026-11-15' === $kept['end'] && '2026-11-20' === $kept['payday'], 'a period that already started keeps Nov 2–15 and Nov 20' );
+css_tc_check( $fresh && '2026-11-16' === $fresh['start'] && '2026-11-29' === $fresh['end'] && '2026-12-09' === $fresh['payday'], 'the next period keeps the timecard bounds and uses the new payday' );
 $replaced = Css_Tc_Payday::with_snapshot( $hist, '2026-11-05', css_tc_owner_config( 'weekday' ), 'again' );
 css_tc_check( 2 === count( $replaced ) && 'again' === $replaced[1]['saved_at'], 'saving the same effective date replaces that row' );
 $stored = Css_Tc_Payday::storage_rows( $hist );
@@ -330,8 +338,8 @@ css_tc_check( in_array( 'payday_anchor', $need_anchor['errors'], true ), 'the 14
 $on_end_weekly = Css_Tc_Payday::normalize_config( array( 'frequency' => 'weekly', 'payday_mode' => 'on_end', 'anchor' => '2026-10-18' ) );
 css_tc_check( 'weekday' === $on_end_weekly['payday_mode'], 'on the period end is not kept for a weekly schedule' );
 
-$band_old = Css_Tc_Payday::period_covering( css_tc_owner_history( 'weekday' ), '2026-10-10' );
-$band_new = Css_Tc_Payday::period_covering( css_tc_owner_history( 'weekday' ), '2026-10-18' );
+$band_old = Css_Tc_Payday::period_covering( css_tc_owner_history( 'weekday' ), '2026-08-31' );
+$band_new = Css_Tc_Payday::period_covering( css_tc_owner_history( 'weekday' ), '2026-09-07' );
 css_tc_check( $band_old && 1 === (int) $band_old['band'] && $band_new && 0 === (int) $band_new['band'], 'periods before the anchor still alternate colors' );
 
 $view = Css_Tc_Payday::month_view(
@@ -340,22 +348,22 @@ $view = Css_Tc_Payday::month_view(
 	11,
 	'2026-10-26',
 	true,
-	array( '2026-11-02' => '8.0 h' ),
+	array( '2026-11-03' => '8.0 h' ),
 	array( '2026-11-26' => 'Thanksgiving' )
 );
-css_tc_check( $view && 'November 2026' === $view['title'] && 'Sun' === $view['weekdays'][0] && '2026-11-01' === $view['weeks'][0][0]['date'], 'November 2026 opens on Sunday the 1st' );
+css_tc_check( $view && 'November 2026' === $view['title'] && 'Mon' === $view['weekdays'][0] && '2026-10-26' === $view['weeks'][0][0]['date'], 'November 2026 opens on Monday Oct 26' );
 $by_date = array();
 foreach ( $view['weeks'] as $css_tc_week ) {
 	foreach ( $css_tc_week as $css_tc_cell ) {
 		$by_date[ $css_tc_cell['date'] ] = $css_tc_cell;
 	}
 }
-css_tc_check( isset( $by_date['2026-11-01'] ) && false !== strpos( $by_date['2026-11-01']['label'], 'Nov 1 – Nov 14' ), 'Nov 1 carries the period label' );
-css_tc_check( isset( $by_date['2026-11-08'] ) && false !== strpos( $by_date['2026-11-08']['label'], 'Nov 1 – Nov 14' ), 'the next Sunday repeats the period label' );
-css_tc_check( isset( $by_date['2026-11-02'] ) && '' === $by_date['2026-11-02']['label'] && $by_date['2026-11-02']['bar'] && '8.0 h' === $by_date['2026-11-02']['hours'], 'a middle day keeps the band and the hours' );
+css_tc_check( isset( $by_date['2026-11-02'] ) && false !== strpos( $by_date['2026-11-02']['label'], 'Nov 2 – Nov 15' ), 'Nov 2 carries the period label' );
+css_tc_check( isset( $by_date['2026-11-09'] ) && false !== strpos( $by_date['2026-11-09']['label'], 'Nov 2 – Nov 15' ), 'the next Monday repeats the period label' );
+css_tc_check( isset( $by_date['2026-11-03'] ) && '' === $by_date['2026-11-03']['label'] && $by_date['2026-11-03']['bar'] && '8.0 h' === $by_date['2026-11-03']['hours'], 'a middle day keeps the band and the hours' );
 css_tc_check( ! empty( $by_date['2026-11-06']['payday'] ) && ! empty( $by_date['2026-11-20']['payday'] ) && empty( $by_date['2026-11-13']['payday'] ), 'November paydays are Nov 6 and Nov 20' );
 css_tc_check( ! empty( $by_date['2026-12-04']['payday'] ), 'Dec 4 payday is on the November grid' );
-css_tc_check( ! empty( $by_date['2026-11-14']['closes'] ) && ! empty( $by_date['2026-11-28']['closes'] ) && ! empty( $view['show_closes'] ), 'admin period-closes marks Nov 14 and Nov 28' );
+css_tc_check( ! empty( $by_date['2026-11-01']['closes'] ) && ! empty( $by_date['2026-11-15']['closes'] ) && ! empty( $by_date['2026-11-29']['closes'] ) && ! empty( $view['show_closes'] ), 'admin period-closes marks Nov 1, Nov 15, and Nov 29' );
 css_tc_check( 'Thanksgiving' === $by_date['2026-11-26']['holiday'], 'office holiday label is passed through' );
 $employee = Css_Tc_Payday::month_view( css_tc_owner_history( 'weekday' ), 2026, 11, '2026-10-26', false );
 css_tc_check( $employee && empty( $employee['show_closes'] ), 'employee calendars do not show period closes' );
@@ -364,7 +372,7 @@ css_tc_check( false !== strpos( Css_Tc_Payday::widget_line( css_tc_owner_history
 $off = css_tc_owner_config( 'weekday' );
 $off['show_employee'] = 0;
 $off['show_admin']    = 0;
-$hidden = Css_Tc_Payday::with_snapshot( array(), '2026-10-18', $off, '' );
+$hidden = Css_Tc_Payday::with_snapshot( array(), '2026-09-07', $off, '' );
 css_tc_check( ! Css_Tc_Payday::visible( $hidden, 'employee' ) && ! Css_Tc_Payday::visible( $hidden, 'admin' ), 'display toggles can hide both calendars after a save' );
 css_tc_check( '' !== Css_Tc_Payday::widget_line( $hidden, '2026-10-26' ), 'the widget still names the next payday when calendars are hidden' );
 

@@ -2,7 +2,8 @@
 /**
  * TC-Config → Pay & Payday.
  *
- * Markers stay off until this form is saved. The Monday hours engine is not changed.
+ * Markers stay off until this form is saved. Bands that follow the timecard
+ * pay period use the same Monday bounds as hours. Saving does not change hours.
  *
  * @package CssTimeclockAddon
  */
@@ -16,25 +17,58 @@ $css_tc_pay_cfg  = Css_Tc_Payday::display_config( $css_tc_pay_hist );
 if ( ! $css_tc_pay_cfg ) {
 	$css_tc_pay_cfg = Css_Tc_Payday::default_config();
 }
-$css_tc_pay_today = css_tc_addon()->time->site_today();
-$css_tc_pay_fixed = in_array( $css_tc_pay_cfg['frequency'], array( 'semimonthly_1_15', 'semimonthly_15_eom', 'monthly' ), true );
-$css_tc_pay_rows  = array();
-if ( Css_Tc_Payday::is_ymd( $css_tc_pay_cfg['anchor'] ) && ( 'anchor' !== $css_tc_pay_cfg['payday_mode'] || Css_Tc_Payday::is_ymd( $css_tc_pay_cfg['payday_anchor'] ) ) ) {
+$css_tc_pay_today   = css_tc_addon()->time->site_today();
+$css_tc_pay_engine  = css_tc_addon()->pay_periods;
+$css_tc_pay_bounds  = $css_tc_pay_engine->period_for_date( $css_tc_pay_today );
+$css_tc_pay_fixed   = in_array( $css_tc_pay_cfg['frequency'], array( 'semimonthly_1_15', 'semimonthly_15_eom', 'monthly' ), true );
+$css_tc_pay_follows = ( 'engine' === $css_tc_pay_cfg['frequency'] );
+$css_tc_pay_differs = Css_Tc_Payday::differs_from_engine( $css_tc_pay_cfg, $css_tc_pay_today );
+$css_tc_pay_rows    = array();
+$css_tc_pay_ready   = $css_tc_pay_follows || Css_Tc_Payday::is_ymd( $css_tc_pay_cfg['anchor'] );
+if ( 'anchor' === $css_tc_pay_cfg['payday_mode'] && ! Css_Tc_Payday::is_ymd( $css_tc_pay_cfg['payday_anchor'] ) ) {
+	$css_tc_pay_ready = false;
+}
+if ( $css_tc_pay_ready ) {
 	$css_tc_pay_rows = Css_Tc_Payday::upcoming(
-		Css_Tc_Payday::with_snapshot( array(), $css_tc_pay_cfg['anchor'], $css_tc_pay_cfg, '' ),
+		Css_Tc_Payday::with_snapshot( array(), $css_tc_pay_today, $css_tc_pay_cfg, '' ),
 		$css_tc_pay_today,
 		4
 	);
 }
-$css_tc_pay_length = Css_Tc_Payday::length_blurb( $css_tc_pay_cfg, $css_tc_pay_cfg['anchor'] );
+$css_tc_pay_length = Css_Tc_Payday::length_blurb( $css_tc_pay_cfg, $css_tc_pay_today );
 ?>
 <form class="css-tc-payday-form" method="post" action="">
 	<?php if ( ! $css_tc_pay_hist ) : ?>
 		<div class="notice notice-info inline"><p><?php echo esc_html__( 'Paydays stay off until you save. Calendars show no bands, and the dashboard does not list a payday, until this form is saved.', 'css-timeclock-addon' ); ?></p></div>
 	<?php endif; ?>
 	<p class="description">
-		<?php echo esc_html__( 'Timecards, overtime, and PTO keep the Monday–Sunday pay period from TC-Config. This tab only draws the calendar. A Sunday–Saturday period will not match that Monday period, and saving here does not move hours.', 'css-timeclock-addon' ); ?>
+		<?php echo esc_html__( 'Colored bands use the timecard pay period: Monday through Sunday, weekly or biweekly, from the anchor on TC-Config. Payday is the first Friday after that period ends, which is 5 days after a Sunday end. Saving here does not change hours, overtime, or PTO.', 'css-timeclock-addon' ); ?>
 	</p>
+	<p class="description">
+		<?php
+		echo esc_html(
+			sprintf(
+				/* translators: 1: Weekly or Biweekly, 2: anchor date */
+				__( 'Timecard pay period: %1$s from %2$s.', 'css-timeclock-addon' ),
+				'weekly' === $css_tc_pay_engine->length() ? __( 'Weekly', 'css-timeclock-addon' ) : __( 'Biweekly', 'css-timeclock-addon' ),
+				Css_Tc_Payday::format_long( $css_tc_pay_engine->anchor() )
+			)
+		);
+		if ( is_array( $css_tc_pay_bounds ) && ! empty( $css_tc_pay_bounds['start'] ) ) {
+			echo ' ';
+			echo esc_html(
+				sprintf(
+					/* translators: %s: current timecard period range */
+					__( 'Today is in %s.', 'css-timeclock-addon' ),
+					Css_Tc_Payday::format_range( $css_tc_pay_bounds['start'], $css_tc_pay_bounds['end'] )
+				)
+			);
+		}
+		?>
+	</p>
+	<div id="css-tc-payday-mismatch" class="notice notice-warning inline" <?php echo $css_tc_pay_differs ? '' : 'hidden'; ?>>
+		<p><?php echo esc_html__( 'These bands do not match the timecard pay period. Hours, overtime, and PTO still use that Monday period. Choose “Same as the timecard pay period” so the bands stay aligned.', 'css-timeclock-addon' ); ?></p>
+	</div>
 
 	<h2><?php echo esc_html__( 'Pay', 'css-timeclock-addon' ); ?></h2>
 	<table class="form-table" role="presentation">
@@ -48,11 +82,11 @@ $css_tc_pay_length = Css_Tc_Payday::length_blurb( $css_tc_pay_cfg, $css_tc_pay_c
 				</select>
 			</td>
 		</tr>
-		<tr>
+		<tr data-css-tc-anchor-row <?php echo $css_tc_pay_follows ? 'hidden' : ''; ?>>
 			<th scope="row"><label for="payday_period_anchor"><?php echo esc_html__( 'Pay period start date (anchor)', 'css-timeclock-addon' ); ?></label></th>
 			<td>
 				<input name="payday_period_anchor" id="payday_period_anchor" type="date" value="<?php echo esc_attr( $css_tc_pay_cfg['anchor'] ); ?>" />
-				<p class="description"><?php echo esc_html__( 'Every period is calculated forward and backward from this date. Weekly, bi-weekly, and monthly periods step from it. Semi-monthly periods follow the calendar split you picked.', 'css-timeclock-addon' ); ?></p>
+				<p class="description"><?php echo esc_html__( 'Used only when this calendar does not follow the timecard pay period. Weekly, bi-weekly, and monthly periods step from this date. Semi-monthly periods follow the calendar split you picked.', 'css-timeclock-addon' ); ?></p>
 			</td>
 		</tr>
 		<tr>
@@ -110,7 +144,7 @@ $css_tc_pay_length = Css_Tc_Payday::length_blurb( $css_tc_pay_cfg, $css_tc_pay_c
 						<input name="payday_anchor" id="payday_anchor" type="date" value="<?php echo esc_attr( $css_tc_pay_cfg['payday_anchor'] ); ?>" />
 					</label>
 				</p>
-				<p class="description"><?php echo esc_html__( 'The 14-day list is counted from that known payday. Changing the period start does not move those Fridays. The other rules count from the period end instead. A Sunday–Saturday period that ends on Saturday and uses first Friday, or 6 days after the end, lands on the same Friday. Nothing here is filled in for you: calendars stay blank until you save.', 'css-timeclock-addon' ); ?></p>
+				<p class="description"><?php echo esc_html__( 'First Friday after the period ends is 5 days after a Sunday end. The 14-day list is counted from a known payday and does not move when the timecard anchor changes. Calendars stay blank until you save.', 'css-timeclock-addon' ); ?></p>
 			</td>
 		</tr>
 		<tr>
@@ -189,7 +223,7 @@ $css_tc_pay_length = Css_Tc_Payday::length_blurb( $css_tc_pay_cfg, $css_tc_pay_c
 
 	<h2><?php echo esc_html__( 'Preview — next 4 pay periods', 'css-timeclock-addon' ); ?></h2>
 	<p class="description"><?php echo esc_html__( 'This preview uses the schedule in the form, from today. It is not shown on calendars until you save.', 'css-timeclock-addon' ); ?></p>
-	<p id="css-tc-payday-empty" class="description" <?php echo $css_tc_pay_rows ? 'hidden' : ''; ?>><?php echo esc_html__( 'Choose a pay period start date. For the every-14-days rule, also choose a known payday.', 'css-timeclock-addon' ); ?></p>
+	<p id="css-tc-payday-empty" class="description" <?php echo $css_tc_pay_rows ? 'hidden' : ''; ?>><?php echo esc_html__( 'Choose a pay period start date, or follow the timecard pay period. For the every-14-days rule, also choose a known payday.', 'css-timeclock-addon' ); ?></p>
 	<table class="widefat striped css-tc-payday-table" id="css-tc-payday-preview">
 		<thead>
 			<tr>
@@ -253,7 +287,7 @@ $css_tc_pay_length = Css_Tc_Payday::length_blurb( $css_tc_pay_cfg, $css_tc_pay_c
 					<tr>
 						<td><?php echo esc_html( $css_tc_snap['effective'] ); ?></td>
 						<td><?php echo esc_html( isset( $css_tc_freqs[ $css_tc_sc['frequency'] ] ) ? $css_tc_freqs[ $css_tc_sc['frequency'] ] : $css_tc_sc['frequency'] ); ?></td>
-						<td><?php echo esc_html( $css_tc_sc['anchor'] ); ?></td>
+						<td><?php echo esc_html( 'engine' === $css_tc_sc['frequency'] ? __( 'Timecard pay period', 'css-timeclock-addon' ) : $css_tc_sc['anchor'] ); ?></td>
 						<td><?php echo esc_html( $css_tc_rule ); ?></td>
 						<td><?php echo esc_html( $css_tc_snap['saved_at'] ); ?></td>
 					</tr>

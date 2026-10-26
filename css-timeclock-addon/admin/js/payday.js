@@ -78,9 +78,12 @@
   }
 
   function readConfig(form) {
+    var engine = pack.engine || {};
     return {
       frequency: form.payday_frequency.value,
       anchor: form.payday_period_anchor.value,
+      engine_length: engine.length || "biweekly",
+      engine_anchor: engine.anchor || "2026-09-07",
       week_start: form.payday_week_start.value,
       payday_mode: checkedMode(form),
       payday_weekday: form.payday_weekday.value,
@@ -101,8 +104,12 @@
     var freq = form.payday_frequency.value;
     var fixed = freq === "semimonthly_1_15" || freq === "semimonthly_15_eom" || freq === "monthly";
     var onEnd = form.querySelector("[data-css-tc-on-end]");
+    var anchorRow = form.querySelector("[data-css-tc-anchor-row]");
     if (onEnd) {
       onEnd.hidden = !fixed;
+    }
+    if (anchorRow) {
+      anchorRow.hidden = freq === "engine";
     }
     if (!fixed) {
       var onEndRadio = form.querySelector('input[name="payday_mode"][value="on_end"]');
@@ -152,20 +159,29 @@
       return;
     }
     var config = readConfig(form);
-    var sample = calc.isYmd(config.anchor) ? config.anchor : pack.today;
+    var sample = config.frequency === "engine" ? (calc.isYmd(pack.today) ? pack.today : config.engine_anchor) : (calc.isYmd(config.anchor) ? config.anchor : pack.today);
     var period = calc.periodFor(config, sample);
+    var mismatch = document.getElementById("css-tc-payday-mismatch");
+    if (mismatch && calc.differs) {
+      mismatch.hidden = !calc.differs(config, calc.isYmd(pack.today) ? pack.today : sample);
+    }
     if (length) {
       if (!period) {
         length.textContent = strings.needAnchor || "Choose a pay period start date.";
       } else {
         var startDow = weekdayName(new Date(Date.UTC(parseInt(period.start.slice(0, 4), 10), parseInt(period.start.slice(5, 7), 10) - 1, parseInt(period.start.slice(8, 10), 10))).getUTCDay());
         var endDow = weekdayName(new Date(Date.UTC(parseInt(period.end.slice(0, 4), 10), parseInt(period.end.slice(5, 7), 10) - 1, parseInt(period.end.slice(8, 10), 10))).getUTCDay());
-        length.textContent = period.length + " " + (strings.daysWord || "days") + " (" + (strings.auto || "auto from frequency") + ") — " + startDow + " " + (strings.through || "through") + " " + endDow;
+        var source = config.frequency === "engine" ? (strings.engine || "timecard pay period") : (strings.auto || "auto from frequency");
+        length.textContent = period.length + " " + (strings.daysWord || "days") + " (" + source + ") — " + startDow + " " + (strings.through || "through") + " " + endDow;
       }
     }
     var rows = [];
-    if (calc.isYmd(config.anchor) && (config.payday_mode !== "anchor" || calc.isYmd(config.payday_anchor))) {
-      var from = calc.isYmd(pack.today) ? pack.today : config.anchor;
+    var ready = config.frequency === "engine" || calc.isYmd(config.anchor);
+    if (config.payday_mode === "anchor" && !calc.isYmd(config.payday_anchor)) {
+      ready = false;
+    }
+    if (ready) {
+      var from = calc.isYmd(pack.today) ? pack.today : (config.frequency === "engine" ? config.engine_anchor : config.anchor);
       rows = calc.upcoming(config, from, 4);
     }
     body.textContent = "";

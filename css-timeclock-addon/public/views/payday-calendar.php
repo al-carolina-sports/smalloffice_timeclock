@@ -5,7 +5,6 @@
  * @package CssTimeclockAddon
  *
  * @var array<string,mixed>|null $css_tc_pay_cal
- * @var string                   $css_tc_pay_note
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -16,8 +15,7 @@ if ( empty( $css_tc_pay_cal ) || ! is_array( $css_tc_pay_cal ) ) {
 	return;
 }
 
-$css_tc_pay_note = isset( $css_tc_pay_note ) ? (string) $css_tc_pay_note : '';
-$css_tc_sum      = isset( $css_tc_pay_cal['summary'] ) && is_array( $css_tc_pay_cal['summary'] ) ? $css_tc_pay_cal['summary'] : null;
+$css_tc_sum = isset( $css_tc_pay_cal['summary'] ) && is_array( $css_tc_pay_cal['summary'] ) ? $css_tc_pay_cal['summary'] : null;
 $css_tc_prev_url = add_query_arg( 'css_tc_month', (string) $css_tc_pay_cal['prev'] );
 $css_tc_next_url = add_query_arg( 'css_tc_month', (string) $css_tc_pay_cal['next'] );
 ?>
@@ -34,9 +32,6 @@ $css_tc_next_url = add_query_arg( 'css_tc_month', (string) $css_tc_pay_cal['next
 			<span class="css-tc-payday__badge" style="background:<?php echo esc_attr( $css_tc_pay_cal['marker_color'] ); ?>"><?php echo esc_html( $css_tc_pay_cal['marker_glyph'] ); ?></span>
 			<?php echo esc_html( $css_tc_sum['payday_label'] ); ?>
 		</p>
-	<?php endif; ?>
-	<?php if ( '' !== $css_tc_pay_note ) : ?>
-		<p class="css-tc-payday__note"><?php echo esc_html( $css_tc_pay_note ); ?></p>
 	<?php endif; ?>
 	<div class="css-tc-payday__nav">
 		<a class="css-tc-payday__nav-btn css-tc-no-print" href="<?php echo esc_url( $css_tc_prev_url ); ?>" aria-label="<?php echo esc_attr__( 'Previous month', 'css-timeclock-addon' ); ?>">&lsaquo;</a>

@@ -117,8 +117,8 @@
 
   function normalize(input) {
     input = input || {};
-    var freqs = { weekly: 1, biweekly: 1, semimonthly_1_15: 1, semimonthly_15_eom: 1, monthly: 1 };
-    var freq = freqs[input.frequency] ? input.frequency : "biweekly";
+    var freqs = { engine: 1, weekly: 1, biweekly: 1, semimonthly_1_15: 1, semimonthly_15_eom: 1, monthly: 1 };
+    var freq = freqs[input.frequency] ? input.frequency : "engine";
     var mode = input.payday_mode;
     if (mode !== "weekday" && mode !== "days" && mode !== "on_end" && mode !== "anchor") {
       mode = "weekday";
@@ -129,13 +129,18 @@
     }
     var week = parseInt(input.week_start, 10);
     if (isNaN(week) || week < 0 || week > 6) {
-      week = 0;
+      week = 1;
     }
     var dow = parseInt(input.payday_weekday, 10);
     if (isNaN(dow) || dow < 0 || dow > 6) {
       dow = 5;
     }
-    var days = parseInt(input.payday_days, 10);
+    var days;
+    if (input.payday_days === undefined || input.payday_days === null || input.payday_days === "") {
+      days = 5;
+    } else {
+      days = parseInt(input.payday_days, 10);
+    }
     if (isNaN(days) || days < 0) {
       days = 0;
     }
@@ -146,9 +151,12 @@
     if (shift !== "previous" && shift !== "next" && shift !== "keep") {
       shift = "previous";
     }
+    var engineLength = input.engine_length === "weekly" ? "weekly" : "biweekly";
     return {
       frequency: freq,
       anchor: isYmd(input.anchor) ? input.anchor : "",
+      engine_length: engineLength,
+      engine_anchor: isYmd(input.engine_anchor) ? input.engine_anchor : "2026-09-07",
       week_start: week,
       payday_mode: mode,
       payday_weekday: dow,
@@ -224,9 +232,47 @@
     return cursor;
   }
 
+  function engineBounds(input, date) {
+    var config = normalize(input);
+    if (!isYmd(date)) {
+      return null;
+    }
+    var anchor = config.engine_anchor;
+    var anchorDay = utc(anchor);
+    if (!anchorDay || anchorDay.getUTCDay() !== 1) {
+      anchor = "2026-09-07";
+    }
+    var len = config.engine_length === "weekly" ? 7 : 14;
+    var index = Math.floor(diffDays(anchor, date) / len);
+    var start = addDays(anchor, index * len);
+    return {
+      start: start,
+      end: addDays(start, len - 1),
+      length: len,
+      index: index,
+    };
+  }
+
   function periodFor(input, date) {
     var config = normalize(input);
-    if (!config.anchor || !isYmd(date)) {
+    if (!isYmd(date)) {
+      return null;
+    }
+    if (config.frequency === "engine") {
+      var bounds = engineBounds(config, date);
+      if (!bounds) {
+        return null;
+      }
+      var rawEngine = rawPayday(config, bounds.end);
+      return {
+        start: bounds.start,
+        end: bounds.end,
+        length: bounds.length,
+        raw_payday: rawEngine,
+        payday: shiftPayday(rawEngine, config),
+      };
+    }
+    if (!config.anchor) {
       return null;
     }
     var start;
@@ -327,6 +373,19 @@
     return next ? next.payday : "";
   }
 
+  function differs(input, date) {
+    var config = normalize(input);
+    if (config.frequency === "engine") {
+      return false;
+    }
+    var display = periodFor(input, date);
+    var engine = engineBounds(input, date);
+    if (!display || !engine) {
+      return false;
+    }
+    return display.start !== engine.start || display.end !== engine.end;
+  }
+
   return {
     INTERVAL: INTERVAL,
     isYmd: isYmd,
@@ -336,6 +395,7 @@
     periodFor: periodFor,
     upcoming: upcoming,
     nextPayday: nextPayday,
+    differs: differs,
     normalize: normalize,
   };
 });

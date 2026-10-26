@@ -2,8 +2,11 @@
 /**
  * Pay & Payday display calendar.
  *
- * Periods and paydays drawn on calendars. This does not change the Monday
- * hours engine in Css_Tc_Pay_Periods (timecards, overtime, PTO, corrections).
+ * Colored bands that follow the timecard pay period use
+ * Css_Tc_Pay_Periods::containing(), the same bounds as period_for_date().
+ * That does not change hours, overtime, PTO, or corrections. Another
+ * frequency can still be saved, and the settings tab warns when its period
+ * does not match the timecard period.
  *
  * A saved history row applies from its effective date forward. The first row
  * also covers earlier dates. A pay period that already started keeps the
@@ -34,12 +37,12 @@ class Css_Tc_Payday {
 	 */
 	public static function default_config() {
 		return array(
-			'frequency'       => 'biweekly',
+			'frequency'       => 'engine',
 			'anchor'          => '',
-			'week_start'      => 0,
+			'week_start'      => 1,
 			'payday_mode'     => 'weekday',
 			'payday_weekday'  => 5,
-			'payday_days'     => 6,
+			'payday_days'     => 5,
 			'payday_anchor'   => '',
 			'shift'           => 'previous',
 			'holidays'        => '',
@@ -59,6 +62,7 @@ class Css_Tc_Payday {
 	 */
 	public static function frequencies() {
 		return array(
+			'engine'              => __( 'Same as the timecard pay period', 'css-timeclock-addon' ),
 			'weekly'              => __( 'Weekly', 'css-timeclock-addon' ),
 			'biweekly'            => __( 'Bi-weekly (every 2 weeks)', 'css-timeclock-addon' ),
 			'semimonthly_1_15'    => __( 'Semi-monthly (1st & 15th)', 'css-timeclock-addon' ),
@@ -348,9 +352,9 @@ class Css_Tc_Payday {
 		if ( ! self::is_ymd( $anchor ) ) {
 			$anchor = '';
 		}
-		$week = isset( $input['week_start'] ) ? (int) $input['week_start'] : 0;
+		$week = isset( $input['week_start'] ) ? (int) $input['week_start'] : (int) $base['week_start'];
 		if ( $week < 0 || $week > 6 ) {
-			$week = 0;
+			$week = (int) $base['week_start'];
 		}
 		$mode = isset( $input['payday_mode'] ) ? (string) $input['payday_mode'] : 'weekday';
 		if ( ! in_array( $mode, array( 'weekday', 'days', 'on_end', 'anchor' ), true ) ) {
@@ -364,7 +368,7 @@ class Css_Tc_Payday {
 		if ( $dow < 0 || $dow > 6 ) {
 			$dow = 5;
 		}
-		$days = isset( $input['payday_days'] ) ? (int) $input['payday_days'] : 6;
+		$days = isset( $input['payday_days'] ) ? (int) $input['payday_days'] : (int) $base['payday_days'];
 		if ( $days < 0 ) {
 			$days = 0;
 		}
@@ -387,8 +391,16 @@ class Css_Tc_Payday {
 		if ( strlen( $holidays ) > 4000 ) {
 			$holidays = substr( $holidays, 0, 4000 );
 		}
-		$parsed = self::parse_holidays( $holidays );
-		$flag   = static function ( $key, $default ) use ( $input ) {
+		$parsed        = self::parse_holidays( $holidays );
+		$engine_length = isset( $input['engine_length'] ) ? (string) $input['engine_length'] : '';
+		if ( 'weekly' !== $engine_length && 'biweekly' !== $engine_length ) {
+			$engine_length = '';
+		}
+		$engine_anchor = isset( $input['engine_anchor'] ) ? (string) $input['engine_anchor'] : '';
+		if ( ! self::is_ymd( $engine_anchor ) ) {
+			$engine_anchor = '';
+		}
+		$flag = static function ( $key, $default ) use ( $input ) {
 			if ( ! array_key_exists( $key, $input ) ) {
 				return $default;
 			}
@@ -398,6 +410,8 @@ class Css_Tc_Payday {
 		return array(
 			'frequency'      => $freq,
 			'anchor'         => $anchor,
+			'engine_length'  => $engine_length,
+			'engine_anchor'  => $engine_anchor,
 			'week_start'     => $week,
 			'payday_mode'    => $mode,
 			'payday_weekday' => $dow,
@@ -431,7 +445,7 @@ class Css_Tc_Payday {
 		$errors    = array();
 		$parsed    = self::parse_holidays( isset( $fields['holidays'] ) ? (string) $fields['holidays'] : '' );
 		$effective = isset( $fields['effective'] ) ? (string) $fields['effective'] : '';
-		if ( ! self::is_ymd( $config['anchor'] ) ) {
+		if ( 'engine' !== $config['frequency'] && ! self::is_ymd( $config['anchor'] ) ) {
 			$errors[] = 'anchor';
 		}
 		if ( 'anchor' === $config['payday_mode'] && ! self::is_ymd( $config['payday_anchor'] ) ) {
@@ -494,7 +508,7 @@ class Css_Tc_Payday {
 				continue;
 			}
 			$config = self::normalize_config( $row['config'] );
-			if ( ! self::is_ymd( $config['anchor'] ) ) {
+			if ( 'engine' !== $config['frequency'] && ! self::is_ymd( $config['anchor'] ) ) {
 				continue;
 			}
 			$by[ $effective ] = array(
@@ -534,7 +548,7 @@ class Css_Tc_Payday {
 		$out = array();
 		foreach ( self::normalize_history( $history ) as $row ) {
 			$config = $row['config'];
-			unset( $config['holiday_set'] );
+			unset( $config['holiday_set'], $config['engine_length'], $config['engine_anchor'], $config['engine_tz'] );
 			$out[] = array(
 				'effective' => $row['effective'],
 				'saved_at'  => $row['saved_at'],
@@ -714,17 +728,94 @@ class Css_Tc_Payday {
 	}
 
 	/**
+	 * Fill the timecard length and Monday anchor. Live settings win, so a
+	 * saved payday row cannot keep a second weekly boundary.
+	 *
+	 * @param array<string,mixed> $config Schedule.
+	 * @return array<string,mixed>
+	 */
+	public static function bind_engine( $config ) {
+		$config = self::normalize_config( $config );
+		$length = $config['engine_length'];
+		$anchor = $config['engine_anchor'];
+		if ( function_exists( 'css_tc_addon' ) ) {
+			$addon = css_tc_addon();
+			if ( is_object( $addon ) && isset( $addon->pay_periods ) && is_object( $addon->pay_periods ) ) {
+				$length = $addon->pay_periods->length();
+				$anchor = $addon->pay_periods->anchor();
+			}
+		}
+		if ( 'weekly' !== $length ) {
+			$length = 'biweekly';
+		}
+		if ( ! self::is_ymd( $anchor ) ) {
+			$anchor = Css_Tc_Pay_Periods::DEFAULT_ANCHOR;
+		}
+		$config['engine_length'] = $length;
+		$config['engine_anchor'] = $anchor;
+		$config['engine_tz']     = self::engine_timezone();
+		return $config;
+	}
+
+	/**
+	 * @return DateTimeZone
+	 */
+	private static function engine_timezone() {
+		if ( function_exists( 'css_tc_addon' ) ) {
+			$addon = css_tc_addon();
+			if ( is_object( $addon ) && isset( $addon->time ) && is_object( $addon->time ) && method_exists( $addon->time, 'timezone' ) ) {
+				$zone = $addon->time->timezone();
+				if ( $zone instanceof DateTimeZone ) {
+					return $zone;
+				}
+			}
+		}
+		return new DateTimeZone( 'UTC' );
+	}
+
+	/**
+	 * True when this schedule's period is not the timecard period.
+	 *
+	 * @param array<string,mixed> $config Schedule.
+	 * @param string              $date   Y-m-d.
+	 * @return bool
+	 */
+	public static function differs_from_engine( $config, $date ) {
+		$config = self::bind_engine( $config );
+		if ( 'engine' === $config['frequency'] || ! self::is_ymd( $date ) ) {
+			return false;
+		}
+		$display = self::period_for( $config, $date );
+		$engine  = Css_Tc_Pay_Periods::containing( $date, $config['engine_length'], $config['engine_anchor'], $config['engine_tz'] );
+		if ( ! $display || ! $engine ) {
+			return false;
+		}
+		return $display['start'] !== $engine['start'] || $display['end'] !== $engine['end'];
+	}
+
+	/**
 	 * @param array<string,mixed> $config One schedule.
 	 * @param string              $date   Y-m-d inside the period.
 	 * @return array<string,mixed>|null
 	 */
 	public static function period_for( $config, $date ) {
-		$config = self::normalize_config( $config );
-		if ( ! self::is_ymd( $config['anchor'] ) || ! self::is_ymd( $date ) ) {
+		$config = self::bind_engine( $config );
+		if ( ! self::is_ymd( $date ) ) {
 			return null;
 		}
 		$freq = $config['frequency'];
-		if ( 'weekly' === $freq || 'biweekly' === $freq ) {
+		if ( 'engine' === $freq ) {
+			$bounds = Css_Tc_Pay_Periods::containing( $date, $config['engine_length'], $config['engine_anchor'], $config['engine_tz'] );
+			if ( ! $bounds ) {
+				return null;
+			}
+			$start  = $bounds['start'];
+			$end    = $bounds['end'];
+			$index  = (int) $bounds['index'];
+			$length = (int) $bounds['length'];
+		} elseif ( ! self::is_ymd( $config['anchor'] ) ) {
+			return null;
+		} elseif ( 'weekly' === $freq || 'biweekly' === $freq ) {
 			$len   = ( 'weekly' === $freq ) ? 7 : 14;
 			$diff  = self::diff_days( $config['anchor'], $date );
 			$index = (int) floor( $diff / $len );
@@ -971,18 +1062,22 @@ class Css_Tc_Payday {
 	 * @return string
 	 */
 	public static function length_blurb( $config, $sample ) {
-		$config = self::normalize_config( $config );
+		$config = self::bind_engine( $config );
 		if ( ! self::is_ymd( $sample ) ) {
-			$sample = $config['anchor'];
+			$sample = ( 'engine' === $config['frequency'] ) ? $config['engine_anchor'] : $config['anchor'];
 		}
 		$period = self::period_for( $config, $sample );
 		if ( ! $period ) {
 			return '';
 		}
+		$source = ( 'engine' === $config['frequency'] )
+			? __( 'timecard pay period', 'css-timeclock-addon' )
+			: __( 'auto from frequency', 'css-timeclock-addon' );
 		return sprintf(
-			/* translators: 1: number of days, 2: weekday the period starts, 3: weekday it ends */
-			__( '%1$d days (auto from frequency) — %2$s through %3$s', 'css-timeclock-addon' ),
+			/* translators: 1: number of days, 2: where the length came from, 3: weekday the period starts, 4: weekday it ends */
+			__( '%1$d days (%2$s) — %3$s through %4$s', 'css-timeclock-addon' ),
 			(int) $period['length'],
+			$source,
 			self::weekday_name( (int) self::day( $period['start'] )->format( 'w' ) ),
 			self::weekday_name( (int) self::day( $period['end'] )->format( 'w' ) )
 		);

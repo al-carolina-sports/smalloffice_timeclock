@@ -186,10 +186,15 @@ class Css_Tc_Admin {
 					'months'   => $css_tc_months,
 					'days'     => $css_tc_days,
 					'dayNames' => $css_tc_day_names,
+					'engine'   => array(
+						'length' => css_tc_addon()->pay_periods->length(),
+						'anchor' => css_tc_addon()->pay_periods->anchor(),
+					),
 					'strings'  => array(
 						'needAnchor' => __( 'Choose a pay period start date.', 'css-timeclock-addon' ),
 						'daysWord'   => __( 'days', 'css-timeclock-addon' ),
 						'auto'       => __( 'auto from frequency', 'css-timeclock-addon' ),
+						'engine'     => __( 'timecard pay period', 'css-timeclock-addon' ),
 						'through'    => __( 'through', 'css-timeclock-addon' ),
 						'payday'     => __( 'Payday', 'css-timeclock-addon' ),
 						'saved'      => __( 'Saved.', 'css-timeclock-addon' ),

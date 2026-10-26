@@ -165,8 +165,7 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 	<?php endif; ?>
 
 	<?php
-	$css_tc_pay_cal  = null;
-	$css_tc_pay_note = '';
+	$css_tc_pay_cal = null;
 	if ( class_exists( 'Css_Tc_Payday' ) ) {
 		$css_tc_pay_hist = Css_Tc_Payday::load_history();
 		if ( Css_Tc_Payday::visible( $css_tc_pay_hist, $mode ) ) {
@@ -183,10 +182,6 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 				$user_id,
 				'admin' === $mode
 			);
-			$css_tc_hours_now = css_tc_addon()->pay_periods->current_period();
-			if ( $css_tc_pay_cal && ! empty( $css_tc_pay_cal['summary'] ) && is_array( $css_tc_hours_now ) && ( $css_tc_hours_now['start'] !== $css_tc_pay_cal['summary']['start'] || $css_tc_hours_now['end'] !== $css_tc_pay_cal['summary']['end'] ) ) {
-				$css_tc_pay_note = __( 'Colored bands follow Pay & Payday. Hours, overtime, and PTO still use the Monday pay period chosen in the list at the top.', 'css-timeclock-addon' );
-			}
 		}
 	}
 	include CSS_TC_ADDON_DIR . 'public/views/payday-calendar.php';

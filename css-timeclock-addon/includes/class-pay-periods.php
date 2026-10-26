@@ -2,8 +2,8 @@
 /**
  * Pay periods for hours, overtime, PTO, and corrections.
  * Weeks are Monday–Sunday. Default is biweekly from Monday 2026-09-07.
- * Css_Tc_Payday is a separate display calendar. Do not copy its Sunday
- * boundaries or payday anchor into this class.
+ * Css_Tc_Payday reads these same bounds from containing() when its schedule
+ * follows the timecard pay period. Do not change this math to follow a payday.
  *
  * @package CssTimeclockAddon
  */
@@ -67,26 +67,75 @@ class Css_Tc_Pay_Periods {
 	}
 
 	/**
+	 * Monday–Sunday period that contains a calendar day.
+	 *
+	 * period_for_date() and Pay & Payday bands that follow the timecard
+	 * schedule both call this, so the start and end cannot drift apart.
+	 * A non-Monday anchor falls back to DEFAULT_ANCHOR, same as anchor().
+	 *
+	 * @param string            $date     Y-m-d.
+	 * @param string            $length   weekly|biweekly.
+	 * @param string            $anchor   Monday Y-m-d.
+	 * @param DateTimeZone|null $timezone Site timezone. UTC when omitted.
+	 * @return array{start:string,end:string,length:int,index:int}|null
+	 */
+	public static function containing( $date, $length, $anchor, $timezone = null ) {
+		if ( ! $timezone instanceof DateTimeZone ) {
+			$timezone = new DateTimeZone( 'UTC' );
+		}
+		$anchor_day = self::ymd_in_zone( $anchor, $timezone );
+		if ( ! $anchor_day || '1' !== $anchor_day->format( 'N' ) ) {
+			$anchor_day = self::ymd_in_zone( self::DEFAULT_ANCHOR, $timezone );
+		}
+		$day = self::ymd_in_zone( $date, $timezone );
+		if ( ! $anchor_day || ! $day ) {
+			return null;
+		}
+
+		$len   = ( 'weekly' === $length ) ? 7 : 14;
+		$diff  = (int) $anchor_day->diff( $day )->format( '%r%a' );
+		$index = (int) floor( $diff / $len );
+		$start = $anchor_day->modify( ( $index * $len >= 0 ? '+' : '' ) . ( $index * $len ) . ' days' );
+		$end   = $start->modify( '+' . ( $len - 1 ) . ' days' );
+
+		return array(
+			'start'  => $start->format( 'Y-m-d' ),
+			'end'    => $end->format( 'Y-m-d' ),
+			'length' => $len,
+			'index'  => $index,
+		);
+	}
+
+	/**
+	 * @param string       $date     Y-m-d.
+	 * @param DateTimeZone $timezone Zone.
+	 * @return DateTimeImmutable|null Midnight in $timezone.
+	 */
+	private static function ymd_in_zone( $date, $timezone ) {
+		$date = trim( (string) $date );
+		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ) {
+			return null;
+		}
+		$dt     = DateTimeImmutable::createFromFormat( '!Y-m-d', $date, $timezone );
+		$errors = DateTimeImmutable::getLastErrors();
+		if ( ! $dt || ( is_array( $errors ) && ( ! empty( $errors['warning_count'] ) || ! empty( $errors['error_count'] ) ) ) ) {
+			return null;
+		}
+		return $dt;
+	}
+
+	/**
 	 * Period that contains a site calendar day.
 	 *
 	 * @param string $date Y-m-d in the site timezone.
 	 * @return array<string,mixed>|null
 	 */
 	public function period_for_date( $date ) {
-		$time   = $this->time();
-		$anchor = $time->date_immutable( $this->anchor() );
-		$day    = $time->date_immutable( $date );
-		if ( ! $anchor || ! $day ) {
+		$bounds = self::containing( $date, $this->length(), $this->anchor(), $this->time()->timezone() );
+		if ( ! $bounds ) {
 			return null;
 		}
-
-		$diff = (int) $anchor->diff( $day )->format( '%r%a' );
-		$len  = $this->length_days();
-		$index = (int) floor( $diff / $len );
-		$start = $anchor->modify( ( $index * $len >= 0 ? '+' : '' ) . ( $index * $len ) . ' days' );
-		$end   = $start->modify( '+' . ( $len - 1 ) . ' days' );
-
-		return $this->describe( $start->format( 'Y-m-d' ), $end->format( 'Y-m-d' ) );
+		return $this->describe( $bounds['start'], $bounds['end'] );
 	}
 
 	/**
