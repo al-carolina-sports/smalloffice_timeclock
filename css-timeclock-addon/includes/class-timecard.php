@@ -481,8 +481,15 @@ class Css_Tc_Timecard {
 			$needs = true;
 		}
 
-		$in_period = ( $date >= $period['start'] && $date <= $period['end'] );
-		$hm        = $seconds > 0 ? $time->format_duration( $seconds ) : '';
+		$in_period    = ( $date >= $period['start'] && $date <= $period['end'] );
+		$hm           = $seconds > 0 ? $time->format_duration( $seconds ) : '';
+		$missed_lunch = false;
+		if ( function_exists( 'css_tc_addon' ) ) {
+			$css_tc_plugin = css_tc_addon();
+			if ( isset( $css_tc_plugin->lunch ) && is_object( $css_tc_plugin->lunch ) && $css_tc_plugin->lunch->enabled() ) {
+				$missed_lunch = $css_tc_plugin->lunch->day_is_missed( $shifts, (int) $seconds );
+			}
+		}
 		$status    = '';
 		if ( $open_fresh ) {
 			$status = __( 'Still clocked in', 'css-timeclock-addon' );
@@ -506,6 +513,7 @@ class Css_Tc_Timecard {
 			'shifts'           => $pairs,
 			'needs_correction' => $needs && ! empty( $period['is_open'] ),
 			'has_long'         => $has_long,
+			'missed_lunch'     => $missed_lunch,
 			'pending'          => ! empty( $day_pending ),
 			'pending_count'    => count( $day_pending ),
 			'has_approved'     => isset( $approved[ $date ] ),

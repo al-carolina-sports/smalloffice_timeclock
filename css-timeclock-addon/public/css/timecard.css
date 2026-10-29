@@ -370,6 +370,13 @@
 	background: #fff7f7;
 }
 
+.css-tc-lunch-flag {
+	margin: 6px 0 0;
+	color: #991b1b;
+	font-size: 12px;
+	font-weight: 700;
+}
+
 .css-tc-pair__flag {
 	flex: 0 0 auto;
 	color: #991b1b;

@@ -19,6 +19,7 @@ require_once CSS_TC_ADDON_DIR . 'includes/class-leave.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-leave-ui.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pay-periods.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-payday.php';
+require_once CSS_TC_ADDON_DIR . 'includes/class-lunch.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-employees.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-organization.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pins.php';
@@ -122,6 +123,11 @@ class Css_Tc_Plugin {
 	public $day_notes;
 
 	/**
+	 * @var Css_Tc_Lunch
+	 */
+	public $lunch;
+
+	/**
 	 * @return Css_Tc_Plugin
 	 */
 	public static function instance() {
@@ -148,6 +154,8 @@ class Css_Tc_Plugin {
 		$this->punches->register_hooks();
 		$this->corrections = new Css_Tc_Corrections();
 		$this->day_notes   = new Css_Tc_Day_Notes();
+		$this->lunch       = new Css_Tc_Lunch();
+		$this->lunch->register_hooks();
 		// Drop Endurance_Page_Cache::save_post before it can PURGE on a shift
 		// or correction save. Priority -9999 runs before the cache callback.
 		add_action( 'save_post', array( __CLASS__, 'suspend_endurance_page_cache' ), -9999, 2 );
@@ -176,6 +184,7 @@ class Css_Tc_Plugin {
 	public static function default_settings() {
 		return array_merge(
 			Css_Tc_Leave::default_settings(),
+			Css_Tc_Lunch::defaults(),
 			array(
 				'pin_kiosk_enabled'  => 1,
 				'name_kiosk_enabled' => 1,

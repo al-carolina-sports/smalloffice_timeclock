@@ -74,6 +74,13 @@ class Css_Tc_Punches {
 		update_post_meta( (int) $object_id, (string) $meta_key, $utc );
 		$this->normalizing_clock_meta = false;
 
+		if ( 'employee_clock_out_time' === (string) $meta_key && isset( css_tc_addon()->lunch ) ) {
+			$clock = isset( $_POST['clock_action'] ) ? sanitize_key( wp_unslash( $_POST['clock_action'] ) ) : '';
+			if ( 'clock_out' === $clock ) {
+				css_tc_addon()->lunch->on_clock_out( (int) $object_id, (int) $post->post_author, 'aio' );
+			}
+		}
+
 		return true;
 	}
 

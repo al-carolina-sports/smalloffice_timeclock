@@ -354,6 +354,51 @@ if ( ! defined( 'ABSPATH' ) ) {
 					</td>
 				</tr>
 				<tr>
+					<th scope="row"><?php echo esc_html__( 'Lunch alerts', 'css-timeclock-addon' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="lunch_alert_enabled" value="1" <?php checked( ! empty( $settings['lunch_alert_enabled'] ) ); ?> />
+							<?php echo esc_html__( 'Email when a clock-out ends a day with no lunch', 'css-timeclock-addon' ); ?>
+						</label>
+						<p class="description"><?php echo esc_html__( 'Off until you turn this on. After a clock-out, that work day is checked. If the hours already on the timecard are more than the threshold and no meal was recorded, the day gets the red flag and one email goes out. A meal is a clock-out followed by a clock-in at least the minimum minutes later, or a break of at least that length stored on the shift. Switching departments is not a meal. Hours, overtime, and pay do not change.', 'css-timeclock-addon' ); ?></p>
+						<p>
+							<label for="lunch_alert_hours"><?php echo esc_html__( 'Threshold', 'css-timeclock-addon' ); ?></label>
+							<input name="lunch_alert_hours" id="lunch_alert_hours" type="number" min="1" max="16" step="0.1" value="<?php echo esc_attr( (string) ( isset( $settings['lunch_alert_hours'] ) ? $settings['lunch_alert_hours'] : 4 ) ); ?>" class="small-text" />
+							<?php echo esc_html__( 'hours. More than this, with no meal, is a missed lunch.', 'css-timeclock-addon' ); ?>
+						</p>
+						<p>
+							<label for="lunch_alert_break_minutes"><?php echo esc_html__( 'Minimum break', 'css-timeclock-addon' ); ?></label>
+							<input name="lunch_alert_break_minutes" id="lunch_alert_break_minutes" type="number" min="1" max="240" step="1" value="<?php echo esc_attr( (string) ( isset( $settings['lunch_alert_break_minutes'] ) ? $settings['lunch_alert_break_minutes'] : 30 ) ); ?>" class="small-text" />
+							<?php echo esc_html__( 'minutes. A gap or a recorded break at least this long counts as lunch.', 'css-timeclock-addon' ); ?>
+						</p>
+						<p>
+							<label>
+								<input type="checkbox" name="lunch_alert_email_employee" value="1" <?php checked( ! isset( $settings['lunch_alert_email_employee'] ) || ! empty( $settings['lunch_alert_email_employee'] ) ); ?> />
+								<?php echo esc_html__( 'Email the employee', 'css-timeclock-addon' ); ?>
+							</label>
+							<br />
+							<label>
+								<input type="checkbox" name="lunch_alert_email_admins" value="1" <?php checked( ! isset( $settings['lunch_alert_email_admins'] ) || ! empty( $settings['lunch_alert_email_admins'] ) ); ?> />
+								<?php echo esc_html__( 'Email Time Clock Admins', 'css-timeclock-addon' ); ?>
+							</label>
+						</p>
+						<p>
+							<label for="lunch_alert_extra"><?php echo esc_html__( 'Extra email addresses', 'css-timeclock-addon' ); ?></label><br />
+							<textarea name="lunch_alert_extra" id="lunch_alert_extra" rows="3" class="large-text code"><?php echo esc_textarea( isset( $settings['lunch_alert_extra'] ) ? (string) $settings['lunch_alert_extra'] : '' ); ?></textarea>
+						</p>
+						<p class="description"><?php echo esc_html__( 'One address per line, or separated by commas. Each person gets their own email. The same address is used once. Nothing is sent more than once for an employee on the same day.', 'css-timeclock-addon' ); ?></p>
+						<p>
+							<label for="lunch_alert_subject"><?php echo esc_html__( 'Email subject', 'css-timeclock-addon' ); ?></label><br />
+							<input name="lunch_alert_subject" id="lunch_alert_subject" type="text" class="large-text" value="<?php echo esc_attr( isset( $settings['lunch_alert_subject'] ) ? (string) $settings['lunch_alert_subject'] : 'No lunch recorded: {name} on {date}' ); ?>" />
+						</p>
+						<p>
+							<label for="lunch_alert_body"><?php echo esc_html__( 'Email body', 'css-timeclock-addon' ); ?></label><br />
+							<textarea name="lunch_alert_body" id="lunch_alert_body" rows="4" class="large-text"><?php echo esc_textarea( isset( $settings['lunch_alert_body'] ) ? (string) $settings['lunch_alert_body'] : "{name} worked {hours} on {date}. No lunch was recorded." ); ?></textarea>
+						</p>
+						<p class="description"><?php echo esc_html__( 'Placeholders: {name}, {date}, and {hours}. Hours are the same total already on the timecard.', 'css-timeclock-addon' ); ?></p>
+					</td>
+				</tr>
+				<tr>
 					<th scope="row"><label for="times_lookback_days"><?php echo esc_html__( 'Times lookback', 'css-timeclock-addon' ); ?></label></th>
 					<td>
 						<input name="times_lookback_days" id="times_lookback_days" type="number" min="7" max="60" value="<?php echo esc_attr( (string) ( isset( $settings['times_lookback_days'] ) ? $settings['times_lookback_days'] : 21 ) ); ?>" class="small-text" />
