@@ -294,6 +294,57 @@
 	cursor: not-allowed;
 }
 
+.css-tc-quote {
+	max-width: 720px;
+	margin: 0 auto 18px;
+	padding: 14px 18px 12px;
+	background: var(--css-tc-card);
+	border: 1px solid var(--css-tc-line);
+	border-left: 4px solid #1aa6a0;
+	border-radius: 16px;
+	box-shadow: var(--css-tc-shadow);
+	text-align: left;
+}
+
+.css-tc-quote__label {
+	margin: 0 0 6px;
+	color: var(--css-tc-muted);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.css-tc-quote__text {
+	margin: 0;
+	font-size: 18px;
+	font-weight: 600;
+	line-height: 1.4;
+}
+
+.css-tc-quote__text::before {
+	content: "“";
+}
+
+.css-tc-quote__text::after {
+	content: "”";
+}
+
+.css-tc-quote__by {
+	margin: 8px 0 0;
+	color: var(--css-tc-muted);
+	font-size: 14px;
+}
+
+.css-tc-quote__by::before {
+	content: "— ";
+}
+
+.css-tc-quote--confirm {
+	margin: 18px auto 0;
+	box-shadow: none;
+}
+
 .css-tc-kiosk__panel--success {
 	background: linear-gradient(180deg, #e8f7f0 0%, #ffffff 70%);
 }

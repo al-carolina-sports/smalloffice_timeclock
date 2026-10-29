@@ -11,6 +11,8 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+
+$css_tc_quote = ( $enabled && class_exists( 'Css_Tc_Quotes' ) ) ? Css_Tc_Quotes::present( css_tc_addon()->get_settings() ) : null;
 ?>
 <div class="css-tc-kiosk" data-kiosk="pin" data-enabled="<?php echo $enabled ? '1' : '0'; ?>" data-location="<?php echo esc_attr( (string) (int) $location ); ?>">
 	<div class="css-tc-kiosk__chrome">
@@ -26,6 +28,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<p class="css-tc-kiosk__clock" data-role="live-clock" aria-live="off"></p>
 		</div>
 	</div>
+
+	<?php if ( $css_tc_quote ) : ?>
+		<aside class="css-tc-quote" data-role="daily-quote">
+			<p class="css-tc-quote__label"><?php echo esc_html__( 'Quote of the day', 'css-timeclock-addon' ); ?></p>
+			<blockquote class="css-tc-quote__text"><?php echo esc_html( $css_tc_quote['text'] ); ?></blockquote>
+			<p class="css-tc-quote__by"><?php echo esc_html( $css_tc_quote['author'] ); ?></p>
+		</aside>
+	<?php endif; ?>
 
 	<div class="css-tc-kiosk__layout">
 	<?php if ( ! $enabled ) : ?>
@@ -78,6 +88,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<section class="css-tc-kiosk__panel css-tc-kiosk__panel--success" data-screen="success" hidden>
 				<p class="css-tc-kiosk__success-title" data-role="success-title"></p>
 				<p class="css-tc-kiosk__success-detail" data-role="success-detail"></p>
+				<?php if ( $css_tc_quote ) : ?>
+					<aside class="css-tc-quote css-tc-quote--confirm" data-role="success-quote" hidden>
+						<p class="css-tc-quote__text"><?php echo esc_html( $css_tc_quote['text'] ); ?></p>
+						<p class="css-tc-quote__by"><?php echo esc_html( $css_tc_quote['author'] ); ?></p>
+					</aside>
+				<?php endif; ?>
 			</section>
 		</div>
 	<?php endif; ?>

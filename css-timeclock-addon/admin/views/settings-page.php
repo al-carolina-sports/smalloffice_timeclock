@@ -354,6 +354,75 @@ if ( ! defined( 'ABSPATH' ) ) {
 					</td>
 				</tr>
 				<tr>
+					<th scope="row"><?php echo esc_html__( 'Lunch alerts', 'css-timeclock-addon' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="lunch_alert_enabled" value="1" <?php checked( ! empty( $settings['lunch_alert_enabled'] ) ); ?> />
+							<?php echo esc_html__( 'Email when a clock-out ends a day with no lunch', 'css-timeclock-addon' ); ?>
+						</label>
+						<p class="description"><?php echo esc_html__( 'Off until you turn this on. After a clock-out, that work day is checked. If the hours already on the timecard are more than the threshold and no meal was recorded, the day gets the red flag and one email goes out. A meal is a clock-out followed by a clock-in at least the minimum minutes later, or a break of at least that length stored on the shift. Switching departments is not a meal. Hours, overtime, and pay do not change.', 'css-timeclock-addon' ); ?></p>
+						<p>
+							<label for="lunch_alert_hours"><?php echo esc_html__( 'Threshold', 'css-timeclock-addon' ); ?></label>
+							<input name="lunch_alert_hours" id="lunch_alert_hours" type="number" min="1" max="16" step="0.1" value="<?php echo esc_attr( (string) ( isset( $settings['lunch_alert_hours'] ) ? $settings['lunch_alert_hours'] : 4 ) ); ?>" class="small-text" />
+							<?php echo esc_html__( 'hours. More than this, with no meal, is a missed lunch.', 'css-timeclock-addon' ); ?>
+						</p>
+						<p>
+							<label for="lunch_alert_break_minutes"><?php echo esc_html__( 'Minimum break', 'css-timeclock-addon' ); ?></label>
+							<input name="lunch_alert_break_minutes" id="lunch_alert_break_minutes" type="number" min="1" max="240" step="1" value="<?php echo esc_attr( (string) ( isset( $settings['lunch_alert_break_minutes'] ) ? $settings['lunch_alert_break_minutes'] : 30 ) ); ?>" class="small-text" />
+							<?php echo esc_html__( 'minutes. A gap or a recorded break at least this long counts as lunch.', 'css-timeclock-addon' ); ?>
+						</p>
+						<p>
+							<label>
+								<input type="checkbox" name="lunch_alert_email_employee" value="1" <?php checked( ! isset( $settings['lunch_alert_email_employee'] ) || ! empty( $settings['lunch_alert_email_employee'] ) ); ?> />
+								<?php echo esc_html__( 'Email the employee', 'css-timeclock-addon' ); ?>
+							</label>
+							<br />
+							<label>
+								<input type="checkbox" name="lunch_alert_email_admins" value="1" <?php checked( ! isset( $settings['lunch_alert_email_admins'] ) || ! empty( $settings['lunch_alert_email_admins'] ) ); ?> />
+								<?php echo esc_html__( 'Email Time Clock Admins', 'css-timeclock-addon' ); ?>
+							</label>
+						</p>
+						<p>
+							<label for="lunch_alert_extra"><?php echo esc_html__( 'Extra email addresses', 'css-timeclock-addon' ); ?></label><br />
+							<textarea name="lunch_alert_extra" id="lunch_alert_extra" rows="3" class="large-text code"><?php echo esc_textarea( isset( $settings['lunch_alert_extra'] ) ? (string) $settings['lunch_alert_extra'] : '' ); ?></textarea>
+						</p>
+						<p class="description"><?php echo esc_html__( 'One address per line, or separated by commas. Each person gets their own email. The same address is used once. Nothing is sent more than once for an employee on the same day.', 'css-timeclock-addon' ); ?></p>
+						<p>
+							<label for="lunch_alert_subject"><?php echo esc_html__( 'Email subject', 'css-timeclock-addon' ); ?></label><br />
+							<input name="lunch_alert_subject" id="lunch_alert_subject" type="text" class="large-text" value="<?php echo esc_attr( isset( $settings['lunch_alert_subject'] ) ? (string) $settings['lunch_alert_subject'] : 'No lunch recorded: {name} on {date}' ); ?>" />
+						</p>
+						<p>
+							<label for="lunch_alert_body"><?php echo esc_html__( 'Email body', 'css-timeclock-addon' ); ?></label><br />
+							<textarea name="lunch_alert_body" id="lunch_alert_body" rows="4" class="large-text"><?php echo esc_textarea( isset( $settings['lunch_alert_body'] ) ? (string) $settings['lunch_alert_body'] : "{name} worked {hours} on {date}. No lunch was recorded." ); ?></textarea>
+						</p>
+						<p class="description"><?php echo esc_html__( 'Placeholders: {name}, {date}, and {hours}. Hours are the same total already on the timecard.', 'css-timeclock-addon' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php echo esc_html__( 'Daily quote', 'css-timeclock-addon' ); ?></th>
+					<td>
+						<?php $css_tc_quote_source = isset( $settings['quote_source'] ) ? (string) $settings['quote_source'] : 'builtin'; ?>
+						<label>
+							<input type="checkbox" name="quote_enabled" value="1" <?php checked( ! empty( $settings['quote_enabled'] ) ); ?> />
+							<?php echo esc_html__( 'Show a quote of the day on the PIN kiosk', 'css-timeclock-addon' ); ?>
+						</label>
+						<p class="description"><?php echo esc_html__( 'Off until you turn this on. One quote is chosen for the Eastern calendar day and is the same on every kiosk. It also appears after a clock-in. Punches are not affected.', 'css-timeclock-addon' ); ?></p>
+						<p>
+							<label for="quote_source"><?php echo esc_html__( 'Quotes to use', 'css-timeclock-addon' ); ?></label><br />
+							<select name="quote_source" id="quote_source">
+								<option value="builtin" <?php selected( $css_tc_quote_source, 'builtin' ); ?>><?php echo esc_html__( 'Built-in quotes', 'css-timeclock-addon' ); ?></option>
+								<option value="custom" <?php selected( $css_tc_quote_source, 'custom' ); ?>><?php echo esc_html__( 'Custom quotes only', 'css-timeclock-addon' ); ?></option>
+								<option value="both" <?php selected( $css_tc_quote_source, 'both' ); ?>><?php echo esc_html__( 'Built-in and custom', 'css-timeclock-addon' ); ?></option>
+							</select>
+						</p>
+						<p>
+							<label for="quote_custom"><?php echo esc_html__( 'Custom quotes', 'css-timeclock-addon' ); ?></label><br />
+							<textarea name="quote_custom" id="quote_custom" rows="8" class="large-text code" placeholder="<?php echo esc_attr__( 'The way to get started is to quit talking and begin doing. — Walt Disney', 'css-timeclock-addon' ); ?>"><?php echo esc_textarea( isset( $settings['quote_custom'] ) ? (string) $settings['quote_custom'] : '' ); ?></textarea>
+						</p>
+						<p class="description"><?php echo esc_html__( 'One quote per line: quote — author. These lines replace the built-in list when you choose custom quotes only, or they are added to it when you choose both.', 'css-timeclock-addon' ); ?></p>
+					</td>
+				</tr>
+				<tr>
 					<th scope="row"><label for="times_lookback_days"><?php echo esc_html__( 'Times lookback', 'css-timeclock-addon' ); ?></label></th>
 					<td>
 						<input name="times_lookback_days" id="times_lookback_days" type="number" min="7" max="60" value="<?php echo esc_attr( (string) ( isset( $settings['times_lookback_days'] ) ? $settings['times_lookback_days'] : 21 ) ); ?>" class="small-text" />

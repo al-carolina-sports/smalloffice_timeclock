@@ -119,7 +119,7 @@ $widget = file_get_contents( dirname( __DIR__ ) . '/admin/views/dashboard-widget
 css_tc_check( false === strpos( $widget, '<form' ) && false !== strpos( $widget, 'esc_html' ) && false !== strpos( $widget, 'esc_url' ), 'widget output is escaped and read-only' );
 
 $version = file_get_contents( dirname( __DIR__ ) . '/css-timeclock-addon.php' );
-css_tc_check( false !== strpos( $version, 'Version:           1.11.0' ) && false !== strpos( $version, "define( 'CSS_TC_ADDON_VERSION', '1.11.0' )" ), 'plugin version is 1.11.0' );
+css_tc_check( false !== strpos( $version, 'Version:           1.12.0' ) && false !== strpos( $version, "define( 'CSS_TC_ADDON_VERSION', '1.12.0' )" ), 'plugin version is 1.12.0' );
 
 if ( $failed > 0 ) {
 	echo "{$failed} failed\n";

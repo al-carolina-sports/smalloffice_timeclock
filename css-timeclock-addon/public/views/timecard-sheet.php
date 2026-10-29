@@ -445,7 +445,7 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 					$show_pencil  = false;
 					$show_check   = false;
 					$show_lock    = false;
-					$css_tc_attention = ! empty( $day['has_long'] );
+					$css_tc_attention = ! empty( $day['has_long'] ) || ! empty( $day['missed_lunch'] );
 					if ( ! empty( $day['shifts'] ) && is_array( $day['shifts'] ) ) {
 						foreach ( $day['shifts'] as $css_tc_mark_pair ) {
 							if ( ! empty( $css_tc_mark_pair['is_stale'] ) || ! empty( $css_tc_mark_pair['is_out_before_in'] ) || ! empty( $css_tc_mark_pair['is_long'] ) ) {
@@ -487,6 +487,9 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 							<span class="css-tc-day__marks">
 								<?php if ( ! empty( $day['has_long'] ) ) : ?>
 									<span class="css-tc-badge css-tc-badge--long"><?php echo esc_html__( 'Long shift', 'css-timeclock-addon' ); ?></span>
+								<?php endif; ?>
+								<?php if ( ! empty( $day['missed_lunch'] ) ) : ?>
+									<span class="css-tc-badge css-tc-badge--long"><?php echo esc_html__( 'No lunch', 'css-timeclock-addon' ); ?></span>
 								<?php endif; ?>
 								<?php if ( ! empty( $day['pending'] ) ) : ?>
 									<span class="css-tc-badge css-tc-badge--pending" title="<?php echo esc_attr__( 'Pending request', 'css-timeclock-addon' ); ?>"><?php echo esc_html__( 'Pending', 'css-timeclock-addon' ); ?></span>
@@ -582,6 +585,9 @@ $css_tc_flag  = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="tr
 								</div>
 							<?php endforeach; ?>
 						</div>
+						<?php if ( ! empty( $day['missed_lunch'] ) ) : ?>
+							<p class="css-tc-lunch-flag"><?php echo esc_html__( 'No lunch recorded', 'css-timeclock-addon' ); ?></p>
+						<?php endif; ?>
 						<?php if ( ! empty( $css_tc_note['text'] ) ) : ?>
 							<p class="css-tc-day__note">
 								<span class="css-tc-day__note-text"><?php echo esc_html( (string) $css_tc_note['text'] ); ?></span>

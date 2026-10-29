@@ -406,6 +406,34 @@ class Css_Tc_Ajax {
 		$settings['pay_period_anchor'] = $anchor;
 		$settings['missed_clock_out_hours'] = min( 36, max( 1, isset( $_POST['missed_clock_out_hours'] ) ? absint( $_POST['missed_clock_out_hours'] ) : 16 ) );
 		$settings['long_shift_hours']       = min( 36, max( 1, isset( $_POST['long_shift_hours'] ) ? absint( $_POST['long_shift_hours'] ) : 16 ) );
+		$css_tc_lunch = Css_Tc_Lunch::sanitize_input( wp_unslash( $_POST ) );
+		if ( ! empty( $css_tc_lunch['invalid'] ) ) {
+			wp_send_json_error(
+				array(
+					'message' => sprintf(
+						/* translators: %s: email addresses that could not be read */
+						__( 'Lunch alert addresses must be email addresses. Could not read: %s', 'css-timeclock-addon' ),
+						implode( ', ', array_slice( $css_tc_lunch['invalid'], 0, 5 ) )
+					),
+				),
+				400
+			);
+		}
+		$settings = array_merge( $settings, $css_tc_lunch['settings'] );
+		$css_tc_quotes = Css_Tc_Quotes::sanitize_input( wp_unslash( $_POST ) );
+		if ( ! empty( $css_tc_quotes['invalid'] ) ) {
+			wp_send_json_error(
+				array(
+					'message' => sprintf(
+						/* translators: %s: quote lines that could not be read */
+						__( 'Each custom quote needs a line like: quote — author. Could not read: %s', 'css-timeclock-addon' ),
+						implode( '; ', array_slice( $css_tc_quotes['invalid'], 0, 3 ) )
+					),
+				),
+				400
+			);
+		}
+		$settings = array_merge( $settings, $css_tc_quotes['settings'] );
 		$settings['wide_layout']            = empty( $_POST['wide_layout'] ) ? 0 : 1;
 		$settings['reach_dashboard']        = empty( $_POST['reach_dashboard'] ) ? 0 : 1;
 		$settings['reach_admin_menu']       = empty( $_POST['reach_admin_menu'] ) ? 0 : 1;
