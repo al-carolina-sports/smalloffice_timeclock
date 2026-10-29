@@ -420,6 +420,20 @@ class Css_Tc_Ajax {
 			);
 		}
 		$settings = array_merge( $settings, $css_tc_lunch['settings'] );
+		$css_tc_quotes = Css_Tc_Quotes::sanitize_input( wp_unslash( $_POST ) );
+		if ( ! empty( $css_tc_quotes['invalid'] ) ) {
+			wp_send_json_error(
+				array(
+					'message' => sprintf(
+						/* translators: %s: quote lines that could not be read */
+						__( 'Each custom quote needs a line like: quote — author. Could not read: %s', 'css-timeclock-addon' ),
+						implode( '; ', array_slice( $css_tc_quotes['invalid'], 0, 3 ) )
+					),
+				),
+				400
+			);
+		}
+		$settings = array_merge( $settings, $css_tc_quotes['settings'] );
 		$settings['wide_layout']            = empty( $_POST['wide_layout'] ) ? 0 : 1;
 		$settings['reach_dashboard']        = empty( $_POST['reach_dashboard'] ) ? 0 : 1;
 		$settings['reach_admin_menu']       = empty( $_POST['reach_admin_menu'] ) ? 0 : 1;

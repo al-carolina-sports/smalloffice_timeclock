@@ -399,6 +399,30 @@ if ( ! defined( 'ABSPATH' ) ) {
 					</td>
 				</tr>
 				<tr>
+					<th scope="row"><?php echo esc_html__( 'Daily quote', 'css-timeclock-addon' ); ?></th>
+					<td>
+						<?php $css_tc_quote_source = isset( $settings['quote_source'] ) ? (string) $settings['quote_source'] : 'builtin'; ?>
+						<label>
+							<input type="checkbox" name="quote_enabled" value="1" <?php checked( ! empty( $settings['quote_enabled'] ) ); ?> />
+							<?php echo esc_html__( 'Show a quote of the day on the PIN kiosk', 'css-timeclock-addon' ); ?>
+						</label>
+						<p class="description"><?php echo esc_html__( 'Off until you turn this on. One quote is chosen for the Eastern calendar day and is the same on every kiosk. It also appears after a clock-in. Punches are not affected.', 'css-timeclock-addon' ); ?></p>
+						<p>
+							<label for="quote_source"><?php echo esc_html__( 'Quotes to use', 'css-timeclock-addon' ); ?></label><br />
+							<select name="quote_source" id="quote_source">
+								<option value="builtin" <?php selected( $css_tc_quote_source, 'builtin' ); ?>><?php echo esc_html__( 'Built-in quotes', 'css-timeclock-addon' ); ?></option>
+								<option value="custom" <?php selected( $css_tc_quote_source, 'custom' ); ?>><?php echo esc_html__( 'Custom quotes only', 'css-timeclock-addon' ); ?></option>
+								<option value="both" <?php selected( $css_tc_quote_source, 'both' ); ?>><?php echo esc_html__( 'Built-in and custom', 'css-timeclock-addon' ); ?></option>
+							</select>
+						</p>
+						<p>
+							<label for="quote_custom"><?php echo esc_html__( 'Custom quotes', 'css-timeclock-addon' ); ?></label><br />
+							<textarea name="quote_custom" id="quote_custom" rows="8" class="large-text code" placeholder="<?php echo esc_attr__( 'The way to get started is to quit talking and begin doing. — Walt Disney', 'css-timeclock-addon' ); ?>"><?php echo esc_textarea( isset( $settings['quote_custom'] ) ? (string) $settings['quote_custom'] : '' ); ?></textarea>
+						</p>
+						<p class="description"><?php echo esc_html__( 'One quote per line: quote — author. These lines replace the built-in list when you choose custom quotes only, or they are added to it when you choose both.', 'css-timeclock-addon' ); ?></p>
+					</td>
+				</tr>
+				<tr>
 					<th scope="row"><label for="times_lookback_days"><?php echo esc_html__( 'Times lookback', 'css-timeclock-addon' ); ?></label></th>
 					<td>
 						<input name="times_lookback_days" id="times_lookback_days" type="number" min="7" max="60" value="<?php echo esc_attr( (string) ( isset( $settings['times_lookback_days'] ) ? $settings['times_lookback_days'] : 21 ) ); ?>" class="small-text" />

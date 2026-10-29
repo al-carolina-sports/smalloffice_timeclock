@@ -696,6 +696,7 @@
       detail += (detail ? " · " : "") + (strings.workingSince || "Clocked in since") + " " + data.clock_in_time;
     }
     text($(this.root, '[data-role="success-detail"]'), detail);
+    show($(this.root, '[data-role="success-quote"]'), data.action === "clock_in");
     this.scheduleReset();
   };
 

@@ -20,6 +20,7 @@ require_once CSS_TC_ADDON_DIR . 'includes/class-leave-ui.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pay-periods.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-payday.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-lunch.php';
+require_once CSS_TC_ADDON_DIR . 'includes/class-quotes.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-employees.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-organization.php';
 require_once CSS_TC_ADDON_DIR . 'includes/class-pins.php';
@@ -185,6 +186,7 @@ class Css_Tc_Plugin {
 		return array_merge(
 			Css_Tc_Leave::default_settings(),
 			Css_Tc_Lunch::defaults(),
+			Css_Tc_Quotes::defaults(),
 			array(
 				'pin_kiosk_enabled'  => 1,
 				'name_kiosk_enabled' => 1,

@@ -26,6 +26,7 @@ This plugin does not modify aio-time-clock-lite files. In wp-admin the add-on is
 == Changelog ==
 
 = 1.12.0 =
+* Daily quote on the PIN kiosk, off until turned on under TC-Config. One quote is chosen for the Eastern calendar day and is the same for everyone. It shows on the kiosk and again after clock-in. Admins can use the built-in list, their own lines (quote — author), or both.
 * Lunch alerts, off until turned on under TC-Config. After a clock-out, a day with more than the threshold (default 4 hours) and no meal is flagged on the employee and manager timecards. A meal is a gap of at least the minimum break (default 30 minutes) between a clock-out and the next clock-in, or a break of that length stored on the shift. One email can go to the employee, Time Clock Admins, and extra addresses. The same employee and day is emailed once, and the send is logged. Hours, overtime, and pay are unchanged.
 
 = 1.11.0 =
